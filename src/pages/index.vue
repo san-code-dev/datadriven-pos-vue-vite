@@ -1,26 +1,26 @@
 <script setup lang="ts">
-  definePage({
+import { UI } from '@/sample-data'
+definePage({
     name: 'home',
     // alias: ['home'],
     meta: {
-      title: 'Home',
-      navOrder: 1,
+        title: 'Home',
+        navOrder: 1,
     },
-  })
+})
+
 </script>
 <template>
     <div>
-        <div style="
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: center;
-        padding-top: 1.5rem /* 24px */;
-        padding-bottom: 1.5rem /* 24px */;
-      ">
-            <DarkModeSwitch/>
-            <span style="margin-left: 0.5rem; /* 8px */">A Fresh Start!</span>
-        </div>
+        <nav>
+            <ul>
+                <li v-for="menu in UI.AccessMenu" :key="menu.key">
+                    <RouterLink :to="menu.link">
+                        {{ menu.name }}
+                    </RouterLink>
+                </li>
+            </ul>
+        </nav>
     </div>
 </template>
 <style scoped></style>

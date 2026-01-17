@@ -1,3 +1,7 @@
+import MasterComponent from '@/components/MasterComponent.vue'
+import TransactionComponent from '@/components/TransactionComponent.vue'
+import ReportComponent from '@/components/ReportComponent.vue'
+
 // Global configurations
 // App component types
 const MenuType = {
@@ -6,7 +10,7 @@ const MenuType = {
   Report: ReportComponent,
 }
 
-// from data source builder all field
+// from data source builder all field assumption backend ready
 const DataSource = {
   Master: {
     Products: 'https://api.example.com/products',
@@ -111,7 +115,7 @@ export const UI = {
 }
 
 //example response data from AccessMenu data source that generated to be used in the UI after user press menu item
-const response = {
+export const response = {
   PRODUCT: {
     permission: {
       create: true,

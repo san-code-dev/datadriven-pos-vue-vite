@@ -10,13 +10,11 @@ const menu = computed(() =>
 )
 
 const Component = computed(() => menu.value?.type)
-const data = computed(() => response[menu.value?.key]?.data ?? [])
-const permission = computed(() => response[menu.value?.key]?.permission)
 </script>
 
 <template>
     <div v-if="menu && Component">
-        <component :is="Component" :menu="menu" :data="data" :permission="permission" />
+        <component :is="Component" :menu="menu" />
     </div>
 
     <div v-else>

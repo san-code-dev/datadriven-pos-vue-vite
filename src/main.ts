@@ -1,8 +1,6 @@
 import '@/assets/css/tailwind.css'
-import '@/assets/css/shiki.css'
-
+import '@/assets/css/style.css'
 import 'uno.css'
-
 import pinia from '@/plugins/pinia'
 // import { useRootStore } from '@/stores/counter'
 

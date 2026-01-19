@@ -2,22 +2,25 @@
 import { ref, watch, onMounted } from 'vue'
 
 const props = defineProps({
-	menu: Object,       // Menu info & fields
+	menu: {
+		type: Object,
+		required: true
+	}
 })
 
 const rows = ref([])          // Ini akan menampung data
 const permission = ref({})    // Permission per menu
 
 const load = async () => {
+	// REAL API nanti:
+	// const res = await fetch(props.menu.data)
+
 	// MOCK
 	const mock = (await import('@/sample-data')).response
 	const res = mock[props.menu.key]
 
 	rows.value = res.data
 	permission.value = res.permission
-
-	// REAL API nanti:
-	// const res = await fetch(props.menu.data)
 }
 
 onMounted(load)
@@ -28,10 +31,9 @@ watch(() => props.menu.key, load)
 
 <template>
 	<div>
+		<DatePickerPopUp />
 		<h2>{{ props.menu.name }}</h2>
 
-		<!-- tombol create jika ada permission -->
-		<button v-if="permission.create">Create</button>
 
 		<table border="1">
 			<thead>

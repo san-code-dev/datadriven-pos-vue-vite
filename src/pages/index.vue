@@ -17,7 +17,7 @@ definePage({
                 <li v-for="menu in UI.AccessMenu" :key="menu.key">
                     <RouterLink :to="menu.link">
                         {{ menu.name }}
-                    </RouterLink>
+</RouterLink>
                 </li>
             </ul>
         </nav>

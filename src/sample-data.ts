@@ -1,6 +1,6 @@
-import MasterComponent from '@/components/MasterComponent.vue'
-import TransactionComponent from '@/components/TransactionComponent.vue'
-import ReportComponent from '@/components/ReportComponent.vue'
+import MasterComponent from '@/components/dynamic/MasterComponent.vue'
+import TransactionComponent from '@/components/dynamic/TransactionComponent.vue'
+import ReportComponent from '@/components/dynamic/ReportComponent.vue'
 
 // Global configurations
 // App component types
@@ -61,7 +61,7 @@ const AccessMenu = [
     name: 'Sales transaction',
     link: '/sales',
     type: MenuType.Transaction,
-    data: DataSource.Transaction.Sales,
+    url: DataSource.Transaction.Sales,
     fields: [
       { key: 'id', label: 'Transaction ID' },
       { key: 'product_id', label: 'Product ID' },
@@ -74,7 +74,7 @@ const AccessMenu = [
     name: 'Purchase transaction',
     link: '/purchase',
     type: MenuType.Transaction,
-    data: DataSource.Transaction.Purchases,
+    url: DataSource.Transaction.Purchases,
     fields: [
       { key: 'id', label: 'Transaction ID' },
       { key: 'product_id', label: 'Product ID' },
@@ -87,7 +87,7 @@ const AccessMenu = [
     name: 'Sales summary report',
     link: '/report/sales-summary',
     type: MenuType.Report,
-    data: DataSource.Report.SalesSummary,
+    url: DataSource.Report.SalesSummary,
     fields: [
       { key: 'date', label: 'Date' },
       { key: 'total_sales', label: 'Total Sales' },
@@ -99,7 +99,7 @@ const AccessMenu = [
     name: 'Inventory status report',
     link: '/report/inventory-status',
     type: MenuType.Report,
-    data: DataSource.Report.InventoryStatus,
+    url: DataSource.Report.InventoryStatus,
     fields: [
       { key: 'product_id', label: 'Product ID' },
       { key: 'product_name', label: 'Product Name' },

@@ -25,7 +25,6 @@ const load = async () => {
 	columns.value = props.menu.fields.map(field => ({
 		prop: field.key,
 		name: field.label,
-		autoSize: true
 	}))
 
 	rows.value = res.data
@@ -37,8 +36,36 @@ onMounted(load)
 // Watch menu.key, reload data jika menu berubah
 watch(() => props.menu.key, load)
 
-function cekEvent(event) {
-	console.log(event)
+const afterEdit = (event) => {
+	console.log('tersimpan.')
+}
+const beforeEditStart = async (event) => {
+	console.log('mengecek proses sebelumnya...')
+	await new Promise(resolve => setTimeout(resolve, 5000))
+
+}
+const beforeEditRender = async (event) => {
+	console.log('menyiapkan editor...')
+	await new Promise(resolve => setTimeout(resolve, 5000))
+
+}
+const beforeEdit = async (event) => {
+	console.log('sebelum diedit...')
+	await new Promise(resolve => setTimeout(resolve, 5000))
+
+}
+const cancelEdit = (event) => {
+	console.log('edit dibatalkan')
+}
+const cellEdit = (event) => {
+	console.log('diedit, memvalidasi data...')
+}
+const closeEdit = (event) => {
+	console.log('edit ditutup')
+}
+const cellEditInit = async (event) => {
+	console.log('inisialisasi editor sel')
+	await new Promise(resolve => setTimeout(resolve, 5000))
 }
 </script>
 
@@ -46,8 +73,9 @@ function cekEvent(event) {
 	<div>
 		<h2>{{ props.menu.name }}</h2>
 		<button v-if="permission.create">Create</button>
-		<RevoGrid :columns="columns" :readonly="permission.update" :source="rows"
-			:theme="isDark ? 'darkCompact' : 'compact'" @afteredit="cekEvent" @beforeeditstart="cekEvent"
-			@beforecellfocus="cekEvent" />
+		<RevoGrid ref="grid" :columns="columns" :readonly="permission.update" :source="rows"
+			:theme="isDark ? 'darkCompact' : 'compact'" @afteredit="afterEdit" @beforeedit="beforeEdit"
+			@beforeeditrender="beforeEditRender" @beforeeditstart="beforeEditStart" @canceledit="cancelEdit"
+			@celledit="cellEdit" @closeedit="closeEdit" @celleditinit="cellEditInit" />
 	</div>
 </template>

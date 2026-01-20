@@ -1,5 +1,11 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue'
+import { isDark } from '@/composables/dark'
+import RevoGrid from '@revolist/vue3-datagrid'
+
+const columns = ref([])
+const rows = ref([])
+const permission = ref({})
 
 const props = defineProps({
 	menu: {
@@ -7,9 +13,6 @@ const props = defineProps({
 		required: true
 	}
 })
-
-const rows = ref([])          // Ini akan menampung data
-const permission = ref({})    // Permission per menu
 
 const load = async () => {
 	// REAL API nanti:
@@ -19,6 +22,12 @@ const load = async () => {
 	const mock = (await import('@/sample-data')).response
 	const res = mock[props.menu.key]
 
+	columns.value = props.menu.fields.map(field => ({
+		prop: field.key,
+		name: field.label,
+		autoSize: true
+	}))
+
 	rows.value = res.data
 	permission.value = res.permission
 }
@@ -27,30 +36,18 @@ onMounted(load)
 
 // Watch menu.key, reload data jika menu berubah
 watch(() => props.menu.key, load)
+
+function cekEvent(event) {
+	console.log(event)
+}
 </script>
 
 <template>
 	<div>
 		<h2>{{ props.menu.name }}</h2>
-
-		<!-- tombol create jika ada permission -->
 		<button v-if="permission.create">Create</button>
-
-		<table border="1">
-			<thead>
-				<tr>
-					<th v-for="f in props.menu.fields" :key="f.key">
-						{{ f.label }}
-					</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr v-for="row in rows" :key="row.id">
-					<td v-for="f in props.menu.fields" :key="f.key">
-						{{ row[f.key] }}
-					</td>
-				</tr>
-			</tbody>
-		</table>
+		<RevoGrid :columns="columns" :readonly="permission.update" :source="rows"
+			:theme="isDark ? 'darkCompact' : 'compact'" @afteredit="cekEvent" @beforeeditstart="cekEvent"
+			@beforecellfocus="cekEvent" />
 	</div>
 </template>

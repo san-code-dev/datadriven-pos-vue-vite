@@ -117,11 +117,12 @@ export const UI = {
 //example response data from AccessMenu data source that generated to be used in the UI after user press menu item
 export const response = {
   PRODUCT: {
+    primaryKey: 'id',
     permission: {
       create: true,
       read: true,
       update: false,
-      delete: false,
+      delete: true,
     },
     data: [
       { id: 1, name: 'Product A', price: 100, stock: 50 },
@@ -129,11 +130,12 @@ export const response = {
     ],
   },
   USER: {
+    primaryKey: 'id',
     permission: {
       create: true,
       read: true,
       update: true,
-      delete: false,
+      delete: true,
     },
     data: [
       { id: 1, username: 'user1', email: 'user1@example.com', role: 'admin' },
@@ -141,6 +143,7 @@ export const response = {
     ],
   },
   SALES: {
+    primaryKey: 'id',
     permission: {
       create: true,
       read: true,
@@ -153,6 +156,7 @@ export const response = {
     ],
   },
   PURCHASE: {
+    primaryKey: 'id',
     permission: {
       create: true,
       read: true,

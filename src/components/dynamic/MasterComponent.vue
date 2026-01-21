@@ -3,17 +3,27 @@ import { ref, watch, onMounted } from 'vue'
 import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 
-const columns = ref([])
-const rows = ref([])
-const permission = ref({})
-const isEditable = ref(false)
-
 const props = defineProps({
 	menu: {
 		type: Object,
 		required: true
 	}
 })
+
+const columns = ref([])
+const rows = ref([])
+const primaryKey = ref('')
+const permission = ref({})
+
+const newData = ref({})
+const editData = ref({})
+
+const openDrawerAdd = ref(false)
+const openDrawerEdit = ref(false)
+
+const selectedKey = ref(null)
+
+
 
 const load = async () => {
 	// REAL API nanti:
@@ -29,6 +39,7 @@ const load = async () => {
 	}))
 
 	rows.value = res.data
+	primaryKey.value = res.primaryKey || 'id'
 	permission.value = res.permission
 }
 
@@ -37,48 +48,84 @@ onMounted(load)
 // Watch menu.key, reload data jika menu berubah
 watch(() => props.menu.key, load)
 
-const afterEdit = (event) => {
-	console.log('tersimpan.')
-}
-const beforeEditStart = async (event) => {
-	isEditable.value = false
-	console.log('mengecek proses sebelumnya...')
-	await new Promise(resolve => setTimeout(resolve, 5000))
-	isEditable.value = true
-	console.log('siap diedit.')
-}
-const beforeEditRender = async (event) => {
-	console.log('menyiapkan editor...')
-	await new Promise(resolve => setTimeout(resolve, 5000))
 
+const addData = () => {
+	rows.value = [
+		...rows.value,
+		newData.value
+	]
 }
-const beforeEdit = async (event) => {
-	console.log('sebelum diedit...')
-	await new Promise(resolve => setTimeout(resolve, 5000))
-
+const removeData = (key) => {
+	if (key != '') {
+		rows.value = rows.value.filter(row => row[primaryKey.value] !== key)
+		console.log('Data removed with key:', key)
+		openDrawerEdit.value = false
+	}
 }
-const cancelEdit = (event) => {
-	console.log('edit dibatalkan')
+const showEditForm = (event) => {
+	selectedKey.value = event.detail.model[primaryKey.value]
+	editData.value = { ...event.detail.model }
+	openDrawerEdit.value = true
+	openDrawerAdd.value = false
 }
-const cellEdit = (event) => {
-	console.log('diedit, memvalidasi data...')
-}
-const closeEdit = (event) => {
-	console.log('edit ditutup')
-}
-const cellEditInit = async (event) => {
-	console.log('inisialisasi editor sel')
-	await new Promise(resolve => setTimeout(resolve, 5000))
+const updateData = () => {
+	const index = rows.value.findIndex(r => r[primaryKey.value] === editData.value[primaryKey.value])
+	if (index !== -1) {
+		rows.value[index] = { ...editData.value }
+		rows.value = [...rows.value]
+		console.log('Data updated:', rows.value[index])
+	} else {
+		console.warn('Data not found for update')
+	}
+	openDrawerEdit.value = false
 }
 </script>
 
 <template>
 	<div>
+		<!-- display data -->
 		<h2>{{ props.menu.name }}</h2>
-		<button v-if="permission.create">Create</button>
-		<RevoGrid ref="grid" :columns="columns" :readonly="(permission.update && false)" :source="rows"
-			:theme="isDark ? 'darkCompact' : 'compact'" @afteredit="afterEdit" @beforeedit="beforeEdit"
-			@beforeeditrender="beforeEditRender" @beforeeditstart="beforeEditStart" @canceledit="cancelEdit"
-			@celledit="cellEdit" @closeedit="closeEdit" @celleditinit="cellEditInit" />
+		<ButtonTheme v-if="permission.create" @click="openDrawerAdd = true; openDrawerEdit = false"> add data
+		</ButtonTheme>
+		<br />
+		<br />
+		<RevoGrid :columns="columns" :readonly="true" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'"
+			resize="true" @beforecellfocus="showEditForm" />
+
+
+
+		<!-- add form -->
+		<Drawer v-if="permission.create" :is-open="openDrawerAdd" @close="openDrawerAdd = false">
+			<form>
+				<h4>Add New {{ props.menu.name }}</h4>
+				<div v-for="f in menu.fields" :key="f.key">
+					<LabelTheme :for="f.key">{{ f.label }}</LabelTheme>
+					<input :id="f.key" v-model="newData[f.key]" :type="f.type" :placeholder="f.label" />
+				</div>
+				<div>
+					<ButtonTheme @click.prevent="addData()">Add Data</ButtonTheme>
+					<ButtonTheme @click.prevent="openDrawerAdd = false">cancel</ButtonTheme>
+				</div>
+			</form>
+		</Drawer>
+
+
+		<!-- update form -->
+		<Drawer :is-open="openDrawerEdit" @close="openDrawerEdit = false">
+			<form>
+				<h4>Edit {{ props.menu.name }}</h4>
+
+				<div v-for="f in menu.fields" :key="f.key">
+					<LabelTheme :for="f.key">{{ f.label }}</LabelTheme>
+					<input :id="f.key" v-model="editData[f.key]" :type="f.type" :placeholder="f.label" />
+				</div>
+				<div>
+					<ButtonTheme v-if="permission.update" @click.prevent="updateData()">Update Data</ButtonTheme>
+					<ButtonTheme v-if="permission.delete" @click.prevent="removeData(selectedKey)">Delete
+					</ButtonTheme>
+					<ButtonTheme @click.prevent="openDrawerEdit = false">[ESC] cancel</ButtonTheme>
+				</div>
+			</form>
+		</Drawer>
 	</div>
 </template>

@@ -20,28 +20,43 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 const drawerRef = ref(null)
+const focusedElement = document.activeElement;
 
 function close() {
     emit('close')
 }
 
-function handleEsc(event) {
-    if (event.key === 'Escape') close()
+function handleKey(event) {
+    if (event.key === 'Escape') {
+        event.preventDefault()
+        close()
+    }
+    if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        moveFocus('prev')
+    }
+
+    if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        moveFocus('next')
+    }
 }
 
 // Watch for when drawer opens and focus the first input
 watch(
     () => props.isOpen,
-    (newVal) => {
-        if (newVal) {
+    async (isDrawerOpen) => {
+        if (isDrawerOpen) {
             // Menambahkan event listener untuk ESC
-            window.addEventListener('keydown', handleEsc)
+            window.addEventListener('keydown', handleKey)
 
             // Tunggu sedikit setelah drawer terbuka (untuk memastikan transition selesai)
-            setTimeout(focusFirstInput, 300) // Delay 300ms untuk menunggu animasi selesai
+            await new Promise(resolve => setTimeout(resolve, 300));
+            focusFirstInput()
+            // Delay 300ms untuk menunggu animasi selesai
         } else {
             // Hapus event listener ketika drawer ditutup
-            window.removeEventListener('keydown', handleEsc)
+            window.removeEventListener('keydown', handleKey)
         }
     }
 )
@@ -55,9 +70,27 @@ function focusFirstInput() {
     }
 }
 
+function moveFocus(direction) {
+    const focusableElements = Array.from(drawerRef.value?.querySelectorAll('input, textarea, select, [tabindex]:not([tabindex="-1"])') || [])
+
+    if (focusableElements.length === 0) return;
+
+    let currentIndex = focusableElements.indexOf(document.activeElement);
+
+    if (direction === 'next') {
+        currentIndex = (currentIndex + 1) % focusableElements.length; // Loop back to the first element
+    } else if (direction === 'prev') {
+        currentIndex = (currentIndex - 1 + focusableElements.length) % focusableElements.length; // Loop to the last element
+    }
+
+    // Move focus to the new element
+    focusableElements[currentIndex].focus()
+}
+
+
 onUnmounted(() => {
     // Pastikan event listener dihapus saat komponen di-unmount
-    window.removeEventListener('keydown', handleEsc)
+    window.removeEventListener('keydown', handleKey)
 })
 </script>
 

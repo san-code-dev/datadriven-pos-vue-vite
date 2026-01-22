@@ -39,7 +39,7 @@ const load = async () => {
 	}))
 
 	rows.value = res.data
-	primaryKey.value = res.primaryKey || 'id'
+	primaryKey.value = props.menu.fields.find(f => f.primary)?.key || 'id'
 	permission.value = res.permission
 }
 
@@ -92,53 +92,68 @@ const updateData = () => {
 
 <template>
 	<div>
-		<!-- display data -->
-		<h2>{{ props.menu.name }}</h2>
-		<ButtonTheme v-if="permission.create" @click="showAddForm"> add data
-		</ButtonTheme>
-		<br />
-		<br />
-		<RevoGrid ref="grid" :columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" resize="true"
-			@beforeeditstart="showEditForm" />
+		<div class="flex">
+			<Menu />
+			<div class="flex-1 p-6">
+
+				<!-- display data -->
+				<h2>{{ props.menu.name }}</h2>
+				<ButtonTheme v-if="permission.create" @click="showAddForm"> add data
+				</ButtonTheme>
+				<br />
+				<br />
+				<RevoGrid ref="grid" :columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'"
+					resize="true" @beforeeditstart="showEditForm" />
 
 
 
-		<!-- add form -->
-		<Drawer v-if="permission.create" :is-open="openDrawerAdd" @close="openDrawerAdd = false">
-			<form>
-				<h4>Add New {{ props.menu.name }}</h4>
-				<div v-for="f in menu.fields" :key="f.key">
-					<LabelTheme :for="f.key">{{ f.label }}</LabelTheme>
-					<input :id="f.key" v-model="newData[f.key]" :type="f.type" :placeholder="f.label" />
-				</div>
-				<div>
-					<ButtonTheme button-type="submit" @click.prevent="addData()"><Kbd>Enter</Kbd> save</ButtonTheme>
-					<ButtonTheme @click.prevent="openDrawerAdd = false"><Kbd>ESC</Kbd> cancel</ButtonTheme>
-				</div>
-			</form>
-		</Drawer>
+				<!-- add form -->
+				<Drawer v-if="permission.create" :is-open="openDrawerAdd" @close="openDrawerAdd = false">
+					<form>
+						<h4>Add New {{ props.menu.name }}</h4>
+						<div v-for="f in menu.fields" :key="f.key">
+							<LabelTheme :for="f.key">{{ f.label }}</LabelTheme>
+							<input v-model="newData[f.key]" :name="f.key" :type="f.type" :placeholder="f.label"
+								:required="f.required" />
+						</div>
+						<div>
+							<ButtonTheme button-type="submit" @click.prevent="addData()"><Kbd>Enter</Kbd> save
+							</ButtonTheme>
+							<ButtonTheme @click.prevent="openDrawerAdd = false"><Kbd>ESC</Kbd> cancel</ButtonTheme>
+						</div>
+					</form>
+				</Drawer>
 
 
-		<!-- update form -->
-		<Drawer :is-open="openDrawerEdit" @close="openDrawerEdit = false">
-			<form>
-				<h4>Edit {{ props.menu.name }}</h4>
-				<br>
-				<div v-for="f in menu.fields" :key="f.key" class="mb-2">
-					<LabelTheme :for="f.key">{{ f.label }}</LabelTheme>
-					<input :id="f.key" v-model="editData[f.key]" :type="f.type" :placeholder="f.label" />
-				</div>
-				<br>
-				<div>
-					<ButtonTheme v-if="permission.update" button-type="submit" @click.prevent="updateData()">
-						<Kbd>Enter</Kbd>
-						update
-					</ButtonTheme>
-					<ButtonTheme v-if="permission.delete" @click.prevent="removeData()"><Kbd>Del</Kbd> delete
-					</ButtonTheme>
-					<ButtonTheme @click.prevent="openDrawerEdit = false"><Kbd>ESC</Kbd> cancel</ButtonTheme>
-				</div>
-			</form>
-		</Drawer>
+				<!-- update form -->
+				<Drawer :is-open="openDrawerEdit" @close="openDrawerEdit = false">
+					<form>
+						<h4>Edit {{ props.menu.name }}</h4>
+						<br>
+						<div v-for="f in menu.fields" :key="f.key" class="mb-2">
+							<LabelTheme :for="f.key">{{ f.label }}</LabelTheme>
+							<div v-if="f.primary" class="text-sm text-gray-500 dark:text-gray-400 mb-1">
+								{{ editData[f.key] }}
+							</div>
+							<div v-else>
+								<input v-model="editData[f.key]" :name="f.key" :type="f.type" :placeholder="f.label" />
+
+							</div>
+						</div>
+						<br>
+						<div>
+							<ButtonTheme v-if="permission.update" button-type="submit" @click.prevent="updateData()">
+								<Kbd>Enter</Kbd>
+								update
+							</ButtonTheme>
+							<ButtonTheme v-if="permission.delete" @click.prevent="removeData()"><Kbd>Del</Kbd> delete
+							</ButtonTheme>
+							<ButtonTheme @click.prevent="openDrawerEdit = false"><Kbd>ESC</Kbd> cancel</ButtonTheme>
+						</div>
+					</form>
+				</Drawer>
+			</div>
+		</div>
+
 	</div>
 </template>

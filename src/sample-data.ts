@@ -36,9 +36,11 @@ const AccessMenu = [
     link: '/product',
     type: MenuType.Master,
     data: DataSource.Master.Products,
+    menuCategory: 'product',
+    menuSubCategory: 'data',
     fields: [
-      { key: 'id', label: 'Product ID' },
-      { key: 'name', label: 'Product Name' },
+      { key: 'id', label: 'Product ID', primary: true },
+      { key: 'name', label: 'Product Name', required: true },
       { key: 'price', label: 'Price' },
       { key: 'stock', label: 'Stock' },
     ],
@@ -49,9 +51,11 @@ const AccessMenu = [
     link: '/user',
     type: MenuType.Master,
     data: DataSource.Master.Users,
+    menuCategory: 'user',
+    menuSubCategory: 'data',
     fields: [
-      { key: 'id', label: 'User ID' },
-      { key: 'username', label: 'Username' },
+      { key: 'id', label: 'User ID', primary: true },
+      { key: 'username', label: 'Username', required: true },
       { key: 'email', label: 'Email' },
       { key: 'role', label: 'Role' },
     ],
@@ -62,6 +66,8 @@ const AccessMenu = [
     link: '/sales',
     type: MenuType.Transaction,
     url: DataSource.Transaction.Sales,
+    menuCategory: 'sales',
+    menuSubCategory: 'transaction',
     fields: [
       { key: 'id', label: 'Transaction ID' },
       { key: 'product_id', label: 'Product ID' },
@@ -75,6 +81,8 @@ const AccessMenu = [
     link: '/purchase',
     type: MenuType.Transaction,
     url: DataSource.Transaction.Purchases,
+    menuCategory: 'purchase',
+    menuSubCategory: 'transaction',
     fields: [
       { key: 'id', label: 'Transaction ID' },
       { key: 'product_id', label: 'Product ID' },
@@ -88,6 +96,8 @@ const AccessMenu = [
     link: '/report/sales-summary',
     type: MenuType.Report,
     url: DataSource.Report.SalesSummary,
+    menuCategory: 'sales',
+    menuSubCategory: 'report',
     fields: [
       { key: 'date', label: 'Date' },
       { key: 'total_sales', label: 'Total Sales' },
@@ -100,6 +110,8 @@ const AccessMenu = [
     link: '/report/inventory-status',
     type: MenuType.Report,
     url: DataSource.Report.InventoryStatus,
+    menuCategory: 'inventory',
+    menuSubCategory: 'report',
     fields: [
       { key: 'product_id', label: 'Product ID' },
       { key: 'product_name', label: 'Product Name' },
@@ -117,7 +129,6 @@ export const UI = {
 //example response data from AccessMenu data source that generated to be used in the UI after user press menu item
 export const response = {
   PRODUCT: {
-    primaryKey: 'id',
     permission: {
       create: true,
       read: true,
@@ -130,7 +141,6 @@ export const response = {
     ],
   },
   USER: {
-    primaryKey: 'id',
     permission: {
       create: true,
       read: true,
@@ -143,7 +153,6 @@ export const response = {
     ],
   },
   SALES: {
-    primaryKey: 'id',
     permission: {
       create: true,
       read: true,
@@ -156,7 +165,6 @@ export const response = {
     ],
   },
   PURCHASE: {
-    primaryKey: 'id',
     permission: {
       create: true,
       read: true,

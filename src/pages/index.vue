@@ -1,26 +1,19 @@
 <script setup lang="ts">
 import { UI } from '@/sample-data'
 definePage({
-    name: 'home',
+    name: 'Login',
     // alias: ['home'],
     meta: {
-        title: 'Home',
-        navOrder: 1,
+        title: 'Login Page',
     },
 })
 
 </script>
 <template>
     <div>
-        <nav>
-            <ul>
-                <li v-for="menu in UI.AccessMenu" :key="menu.key">
-                    <RouterLink :to="menu.link">
-                        {{ menu.name }}
-                    </RouterLink>
-                </li>
-            </ul>
-        </nav>
+        <h1 class="text-2xl font-bold mb-4">Login Page</h1>
+        <p>This is the login page. Implement your login form here.</p>
+        <a href="/dashboard" class="text-blue-500 hover:underline">Go to Dashboard</a>
     </div>
 </template>
 <style scoped></style>

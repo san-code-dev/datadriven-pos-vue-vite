@@ -1,6 +1,6 @@
-import MasterComponent from '@/components/MasterComponent.vue'
-import TransactionComponent from '@/components/TransactionComponent.vue'
-import ReportComponent from '@/components/ReportComponent.vue'
+import MasterComponent from '@/components/dynamic/MasterComponent.vue'
+import TransactionComponent from '@/components/dynamic/TransactionComponent.vue'
+import ReportComponent from '@/components/dynamic/ReportComponent.vue'
 
 // Global configurations
 // App component types
@@ -36,9 +36,11 @@ const AccessMenu = [
     link: '/product',
     type: MenuType.Master,
     data: DataSource.Master.Products,
+    menuCategory: 'product',
+    menuSubCategory: 'data',
     fields: [
-      { key: 'id', label: 'Product ID' },
-      { key: 'name', label: 'Product Name' },
+      { key: 'id', label: 'Product ID', primary: true },
+      { key: 'name', label: 'Product Name', required: true },
       { key: 'price', label: 'Price' },
       { key: 'stock', label: 'Stock' },
     ],
@@ -49,9 +51,11 @@ const AccessMenu = [
     link: '/user',
     type: MenuType.Master,
     data: DataSource.Master.Users,
+    menuCategory: 'user',
+    menuSubCategory: 'data',
     fields: [
-      { key: 'id', label: 'User ID' },
-      { key: 'username', label: 'Username' },
+      { key: 'id', label: 'User ID', primary: true },
+      { key: 'username', label: 'Username', required: true },
       { key: 'email', label: 'Email' },
       { key: 'role', label: 'Role' },
     ],
@@ -61,7 +65,9 @@ const AccessMenu = [
     name: 'Sales transaction',
     link: '/sales',
     type: MenuType.Transaction,
-    data: DataSource.Transaction.Sales,
+    url: DataSource.Transaction.Sales,
+    menuCategory: 'sales',
+    menuSubCategory: 'transaction',
     fields: [
       { key: 'id', label: 'Transaction ID' },
       { key: 'product_id', label: 'Product ID' },
@@ -74,7 +80,9 @@ const AccessMenu = [
     name: 'Purchase transaction',
     link: '/purchase',
     type: MenuType.Transaction,
-    data: DataSource.Transaction.Purchases,
+    url: DataSource.Transaction.Purchases,
+    menuCategory: 'purchase',
+    menuSubCategory: 'transaction',
     fields: [
       { key: 'id', label: 'Transaction ID' },
       { key: 'product_id', label: 'Product ID' },
@@ -87,7 +95,9 @@ const AccessMenu = [
     name: 'Sales summary report',
     link: '/report/sales-summary',
     type: MenuType.Report,
-    data: DataSource.Report.SalesSummary,
+    url: DataSource.Report.SalesSummary,
+    menuCategory: 'sales',
+    menuSubCategory: 'report',
     fields: [
       { key: 'date', label: 'Date' },
       { key: 'total_sales', label: 'Total Sales' },
@@ -99,7 +109,9 @@ const AccessMenu = [
     name: 'Inventory status report',
     link: '/report/inventory-status',
     type: MenuType.Report,
-    data: DataSource.Report.InventoryStatus,
+    url: DataSource.Report.InventoryStatus,
+    menuCategory: 'inventory',
+    menuSubCategory: 'report',
     fields: [
       { key: 'product_id', label: 'Product ID' },
       { key: 'product_name', label: 'Product Name' },
@@ -121,7 +133,7 @@ export const response = {
       create: true,
       read: true,
       update: false,
-      delete: false,
+      delete: true,
     },
     data: [
       { id: 1, name: 'Product A', price: 100, stock: 50 },
@@ -133,7 +145,7 @@ export const response = {
       create: true,
       read: true,
       update: true,
-      delete: false,
+      delete: true,
     },
     data: [
       { id: 1, username: 'user1', email: 'user1@example.com', role: 'admin' },

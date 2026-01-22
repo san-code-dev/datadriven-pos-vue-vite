@@ -10,6 +10,8 @@ const props = defineProps({
 	}
 })
 
+const grid = ref(null)
+const focusedElement = ref(null)
 const columns = ref([])
 const rows = ref([])
 const primaryKey = ref('')
@@ -22,8 +24,6 @@ const openDrawerAdd = ref(false)
 const openDrawerEdit = ref(false)
 
 const selectedKey = ref(null)
-
-
 
 const load = async () => {
 	// REAL API nanti:
@@ -55,18 +55,27 @@ const addData = () => {
 		newData.value
 	]
 }
-const removeData = (key) => {
-	if (key != '') {
-		rows.value = rows.value.filter(row => row[primaryKey.value] !== key)
-		console.log('Data removed with key:', key)
+const removeData = () => {
+	if (selectedKey.value != '') {
+		rows.value = rows.value.filter(row => row[primaryKey.value] !== selectedKey.value)
+		console.log('Data removed with key:', selectedKey.value)
 		openDrawerEdit.value = false
 	}
 }
+
 const showEditForm = (event) => {
+	event.preventDefault()
+	focusedElement.value = grid.value.$el;
+	focusedElement.value.clearFocus()
 	selectedKey.value = event.detail.model[primaryKey.value]
 	editData.value = { ...event.detail.model }
 	openDrawerEdit.value = true
 	openDrawerAdd.value = false
+}
+const showAddForm = () => {
+	grid.value.$el.clearFocus()
+	openDrawerAdd.value = true;
+	openDrawerEdit.value = false
 }
 const updateData = () => {
 	const index = rows.value.findIndex(r => r[primaryKey.value] === editData.value[primaryKey.value])
@@ -85,12 +94,12 @@ const updateData = () => {
 	<div>
 		<!-- display data -->
 		<h2>{{ props.menu.name }}</h2>
-		<ButtonTheme v-if="permission.create" @click="openDrawerAdd = true; openDrawerEdit = false"> add data
+		<ButtonTheme v-if="permission.create" @click="showAddForm"> add data
 		</ButtonTheme>
 		<br />
 		<br />
-		<RevoGrid :columns="columns" :readonly="true" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'"
-			resize="true" @beforecellfocus="showEditForm" />
+		<RevoGrid ref="grid" :columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" resize="true"
+			@beforeeditstart="showEditForm" />
 
 
 
@@ -103,8 +112,8 @@ const updateData = () => {
 					<input :id="f.key" v-model="newData[f.key]" :type="f.type" :placeholder="f.label" />
 				</div>
 				<div>
-					<ButtonTheme @click.prevent="addData()">Add Data</ButtonTheme>
-					<ButtonTheme @click.prevent="openDrawerAdd = false">cancel</ButtonTheme>
+					<ButtonTheme button-type="submit" @click.prevent="addData()"><Kbd>Enter</Kbd> save</ButtonTheme>
+					<ButtonTheme @click.prevent="openDrawerAdd = false"><Kbd>ESC</Kbd> cancel</ButtonTheme>
 				</div>
 			</form>
 		</Drawer>
@@ -114,16 +123,20 @@ const updateData = () => {
 		<Drawer :is-open="openDrawerEdit" @close="openDrawerEdit = false">
 			<form>
 				<h4>Edit {{ props.menu.name }}</h4>
-
-				<div v-for="f in menu.fields" :key="f.key">
+				<br>
+				<div v-for="f in menu.fields" :key="f.key" class="mb-2">
 					<LabelTheme :for="f.key">{{ f.label }}</LabelTheme>
 					<input :id="f.key" v-model="editData[f.key]" :type="f.type" :placeholder="f.label" />
 				</div>
+				<br>
 				<div>
-					<ButtonTheme v-if="permission.update" @click.prevent="updateData()">Update Data</ButtonTheme>
-					<ButtonTheme v-if="permission.delete" @click.prevent="removeData(selectedKey)">Delete
+					<ButtonTheme v-if="permission.update" button-type="submit" @click.prevent="updateData()">
+						<Kbd>Enter</Kbd>
+						update
 					</ButtonTheme>
-					<ButtonTheme @click.prevent="openDrawerEdit = false">[ESC] cancel</ButtonTheme>
+					<ButtonTheme v-if="permission.delete" @click.prevent="removeData()"><Kbd>Del</Kbd> delete
+					</ButtonTheme>
+					<ButtonTheme @click.prevent="openDrawerEdit = false"><Kbd>ESC</Kbd> cancel</ButtonTheme>
 				</div>
 			</form>
 		</Drawer>

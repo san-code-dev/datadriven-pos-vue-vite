@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/first-attribute-linebreak -->
 <template>
     <div class="flex-1 p-6">
 
@@ -71,7 +72,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-
+import { useRouter } from 'vue-router'
 type PrismaField = {
     name: string
     type: string
@@ -86,7 +87,7 @@ type PrismaModelSchema = {
     category: string
     fields: PrismaField[]
 }
-
+const router = useRouter()
 const schema = ref<PrismaModelSchema[]>([])
 const loading = ref(false)
 
@@ -105,6 +106,10 @@ async function loadSchema() {
     const res = await fetch('http://localhost:3000/api/builder/schema', {
         credentials: 'include',
     })
+    if (!res.ok) {
+        await router.push('/')
+        return;
+    }
     const json = await res.json()
 
     schema.value = json.models
@@ -129,6 +134,7 @@ onMounted(loadSchema)
    GENERATOR
 ======================= */
 function generateJS() {
+    console.log(schema.value)
     const accessMenu = schema.value
         .filter((m) => modelSelected.value[m.model])
         .map((m) => ({

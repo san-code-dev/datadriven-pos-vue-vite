@@ -12,7 +12,7 @@ import tailwindForms from '@tailwindcss/forms'
 import tailwindCssPluginPinegrow from '@pinegrow/tailwindcss-plugin'
 
 export default {
-  darkMode: 'class',
+  darkMode: 'media',
   plugins: [
     tailwindTypography,
     tailwindForms,

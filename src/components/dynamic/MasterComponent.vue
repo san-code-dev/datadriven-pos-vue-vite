@@ -93,7 +93,6 @@ const updateData = () => {
 <template>
 	<div>
 		<div class="flex">
-			<Menu />
 			<div class="flex-1 p-6">
 
 				<!-- display data -->

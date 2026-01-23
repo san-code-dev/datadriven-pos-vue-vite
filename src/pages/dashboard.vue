@@ -1,9 +1,11 @@
 <template>
-    <div>
+    <div class="flex">
         <Menu />
+        <div class="flex-1 p-6">
+            <RouterLink to="/builder">Builder</RouterLink>
+        </div>
     </div>
 </template>
 <script setup lang="ts">
-import Menu from '@/components/Menu.vue'
 </script>
 <style scoped></style>

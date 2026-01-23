@@ -13,11 +13,14 @@ const Component = computed(() => menu.value?.type)
 </script>
 
 <template>
-    <div v-if="menu && Component">
-        <component :is="Component" :menu="menu" />
-    </div>
+    <div class="flex">
+        <Menu />
+        <div v-if="menu && Component">
+            <component :is="Component" :menu="menu" />
+        </div>
 
-    <div v-else>
-        ❌ Route not found
+        <div v-else>
+            ❌ Route not found
+        </div>
     </div>
 </template>

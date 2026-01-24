@@ -28,33 +28,27 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
-
-interface Root {
+export interface Root {
     models: Model[]
     enums: Enum[]
 }
 
-interface Model {
+export interface Model {
     name: string
-    type: string
     fields: Field[]
 }
 
-interface Field {
+export interface Field {
     name: string
     type: string
-    kind: string
     isRequired: boolean
-    isList: boolean
     isId: boolean
-    isRelation: boolean
 }
 
-interface Enum {
+export interface Enum {
     name: string
     values: string[]
 }
-
 
 
 const router = useRouter()

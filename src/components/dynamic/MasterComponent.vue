@@ -112,8 +112,7 @@ const updateData = () => {
 						<h4>Add New {{ props.menu.name }}</h4>
 						<div v-for="f in menu.fields" :key="f.key">
 							<LabelTheme :for="f.key">{{ f.label }}</LabelTheme>
-							<input v-model="newData[f.key]" :name="f.key" :type="f.type" :placeholder="f.label"
-								:required="f.required" />
+							<component :is="f.type" v-model="newData[f.key]" :field="f" autocomplete="false" />
 						</div>
 						<div>
 							<ButtonTheme button-type="submit" @click.prevent="addData()"><Kbd>Enter</Kbd> save
@@ -131,12 +130,8 @@ const updateData = () => {
 						<br>
 						<div v-for="f in menu.fields" :key="f.key" class="mb-2">
 							<LabelTheme :for="f.key">{{ f.label }}</LabelTheme>
-							<div v-if="f.primary" class="text-sm text-gray-500 dark:text-gray-400 mb-1">
-								{{ editData[f.key] }}
-							</div>
-							<div v-else>
-								<input v-model="editData[f.key]" :name="f.key" :type="f.type" :placeholder="f.label" />
-
+							<div>
+								<component :is="f.type" v-model="editData[f.key]" :field="f" autocomplete="false" />
 							</div>
 						</div>
 						<br>

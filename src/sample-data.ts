@@ -105,7 +105,7 @@ const AccessMenu = [
     link: '/penjualan',
     type: MenuType.Transaction,
     api: '/api/penjualan',
-    menuCategory: 'product',
+    menuCategory: 'penjualan',
     menuSubCategory: 'transaksi',
     fields: [
       {

@@ -15,10 +15,12 @@
 import { defineProps, defineEmits, watch, onUnmounted, ref } from 'vue'
 
 const props = defineProps({
-    isOpen: Boolean
+    isOpen: Boolean,
+    focusedField: String
+
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'delete'])
 const drawerRef = ref(null)
 
 function close() {
@@ -42,7 +44,7 @@ function handleKey(event) {
 
     if (event.key == 'Delete') {
         event.preventDefault()
-        if (confirm('yakin hapus?')) console.log('dihapus')
+        emit('delete') // ⬅️ kirim ke parent
     }
 }
 
@@ -56,7 +58,7 @@ watch(
 
             // Tunggu sedikit setelah drawer terbuka (untuk memastikan transition selesai)
             await new Promise(resolve => setTimeout(resolve, 300));
-            focusFirstInput()
+            focusTargetInput()
             // Delay 300ms untuk menunggu animasi selesai
         } else {
             // Hapus event listener ketika drawer ditutup
@@ -64,15 +66,33 @@ watch(
         }
     }
 )
+function focusTargetInput() {
+    if (!drawerRef.value) return
 
-function focusFirstInput() {
-    // Cari input pertama di dalam drawer
-    const firstInput = drawerRef.value?.querySelector('input, textarea, select, [tabindex]:not([tabindex="-1"])')
+    let target = null
 
-    if (firstInput) {
-        firstInput.focus()
+    if (props.focusedField) {
+        target = drawerRef.value.querySelector(
+            `[name="${props.focusedField}"]`
+        )
+    }
+
+    if (!target) {
+        target = drawerRef.value.querySelector(
+            'input, textarea, select, [tabindex]:not([tabindex="-1"])'
+        )
+    }
+
+    if (target) {
+        target.focus()
+
+        // SELECT ALL (khusus input & textarea)
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+            target.select()
+        }
     }
 }
+
 
 function moveFocus(direction) {
     const focusableElements = Array.from(drawerRef.value?.querySelectorAll('input, textarea, select, [tabindex]:not([tabindex="-1"])') || [])

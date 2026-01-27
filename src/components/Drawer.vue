@@ -20,7 +20,6 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 const drawerRef = ref(null)
-const focusedElement = document.activeElement;
 
 function close() {
     emit('close')
@@ -39,6 +38,11 @@ function handleKey(event) {
     if (event.key === 'ArrowDown') {
         event.preventDefault()
         moveFocus('next')
+    }
+
+    if (event.key == 'Delete') {
+        event.preventDefault()
+        if (confirm('yakin hapus?')) console.log('dihapus')
     }
 }
 

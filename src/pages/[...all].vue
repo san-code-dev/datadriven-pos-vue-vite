@@ -15,7 +15,7 @@ const Component = computed(() => menu.value?.type)
 <template>
     <div class="flex">
         <Menu />
-        <div v-if="menu && Component">
+        <div v-if="menu && Component" class="flex-1">
             <component :is="Component" :menu="menu" />
         </div>
 

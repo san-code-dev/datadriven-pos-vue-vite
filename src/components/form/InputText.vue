@@ -1,6 +1,6 @@
 <template>
-    <input :name="field.key" :value="modelValue" :placeholder="field.label" :required="field.required" type="text"
-        @input="$emit('update:modelValue', $event.target.value)" />
+    <input :id="field.key" :name="field.key" :value="modelValue" :placeholder="field.label" :required="field.required"
+        type="text" autocomplete="false" @input="$emit('update:modelValue', $event.target.value)" />
 </template>
 
 <script setup>

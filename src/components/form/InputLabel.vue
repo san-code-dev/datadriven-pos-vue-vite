@@ -1,6 +1,7 @@
 <template>
-    <input :name="field.key" :value="modelValue" :required="field.required" type="text" placeholder="default"
-        disabled="" @input="$emit('update:modelValue', $event.target.value)" />
+    <span :id="field.key">
+        {{ modelValue }}
+    </span>
 </template>
 
 <script setup>

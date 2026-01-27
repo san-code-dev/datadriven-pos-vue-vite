@@ -24,6 +24,9 @@ const openDrawerAdd = ref(false)
 const openDrawerEdit = ref(false)
 
 const selectedKey = ref(null)
+const focusedField = ref(null)
+
+
 
 const load = async () => {
 	// REAL API nanti:
@@ -54,12 +57,14 @@ const addData = () => {
 		...rows.value,
 		newData.value
 	]
+	hideAddForm()
 }
-const removeData = () => {
-	if (selectedKey.value != '') {
+const removeData = async () => {
+	const ok = await confirm('yakin hapus data ini?');
+	if (selectedKey.value != '' && ok) {
 		rows.value = rows.value.filter(row => row[primaryKey.value] !== selectedKey.value)
 		console.log('Data removed with key:', selectedKey.value)
-		openDrawerEdit.value = false
+		hideEditForm()
 	}
 }
 
@@ -69,14 +74,28 @@ const showEditForm = (event) => {
 	focusedElement.value.clearFocus()
 	selectedKey.value = event.detail.model[primaryKey.value]
 	editData.value = { ...event.detail.model }
+	focusedField.value = event.detail.prop
 	openDrawerEdit.value = true
-	openDrawerAdd.value = false
+	hideAddForm()
 }
+
+const hideEditForm = () => {
+	openDrawerEdit.value = false
+	editData.value = {}
+}
+
 const showAddForm = () => {
 	grid.value.$el.clearFocus()
 	openDrawerAdd.value = true;
-	openDrawerEdit.value = false
+	hideEditForm()
 }
+
+const hideAddForm = () => {
+	openDrawerAdd.value = false;
+	addData.value = {}
+}
+
+
 const updateData = () => {
 	const index = rows.value.findIndex(r => r[primaryKey.value] === editData.value[primaryKey.value])
 	if (index !== -1) {
@@ -86,9 +105,18 @@ const updateData = () => {
 	} else {
 		console.warn('Data not found for update')
 	}
-	openDrawerEdit.value = false
+	hideEditForm()
+}
+
+const deleteData = (event) => {
+	selectedKey.value = event.detail.model[primaryKey.value]
+	removeData()
 }
 </script>
+
+
+
+
 
 <template>
 	<div>
@@ -102,17 +130,20 @@ const updateData = () => {
 				<br />
 				<br />
 				<RevoGrid ref="grid" :columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'"
-					resize="true" @beforeeditstart="showEditForm" />
+					resize="true" @beforeedit.prevent="deleteData" @beforeeditstart="showEditForm" />
 
 
 
 				<!-- add form -->
-				<Drawer v-if="permission.create" :is-open="openDrawerAdd" @close="openDrawerAdd = false">
+				<Drawer v-if="permission.create" :focused-field="focusedField" :is-open="openDrawerAdd"
+					@close="openDrawerAdd = false">
 					<form>
 						<h4>Add New {{ props.menu.name }}</h4>
-						<div v-for="f in menu.fields" :key="f.key">
-							<LabelTheme :for="f.key">{{ f.label }}</LabelTheme>
-							<component :is="f.type" v-model="newData[f.key]" :field="f" autocomplete="false" />
+						<br>
+						<div v-for="f in menu.fields" :key="f.key" class="mb-2">
+							<LabelTheme v-if="!f.primary" :for="f.key">{{ f.label }}</LabelTheme>
+							<br>
+							<component :is="f.type" v-model="newData[f.key]" :field="f" />
 						</div>
 						<div>
 							<ButtonTheme button-type="submit" @click.prevent="addData()"><Kbd>Enter</Kbd> save
@@ -124,15 +155,16 @@ const updateData = () => {
 
 
 				<!-- update form -->
-				<Drawer :is-open="openDrawerEdit" @close="openDrawerEdit = false">
+				<Drawer :is-open="openDrawerEdit" :focused-field="focusedField" @delete="removeData"
+					@close="openDrawerEdit = false">
 					<form>
 						<h4>Edit {{ props.menu.name }}</h4>
 						<br>
 						<div v-for="f in menu.fields" :key="f.key" class="mb-2">
-							<LabelTheme :for="f.key">{{ f.label }}</LabelTheme>
-							<div>
-								<component :is="f.type" v-model="editData[f.key]" :field="f" autocomplete="false" />
-							</div>
+							<LabelTheme v-if="!f.primary" :for="f.key">{{ f.label }}</LabelTheme>
+							<span v-else>{{ f.label }}</span>
+							<br>
+							<component :is="f.type" v-model="editData[f.key]" :field="f" />
 						</div>
 						<br>
 						<div>

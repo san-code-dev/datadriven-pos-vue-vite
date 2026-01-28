@@ -9,6 +9,7 @@ import InputTel from './components/form/InputTel.vue'
 import InputEmail from './components/form/InputEmail.vue'
 import InputOption from './components/form/InputOption.vue'
 import InputLabel from './components/form/InputLabel.vue'
+import TransactionResto from '@/components/dynamic/transaction/TransactionResto.vue'
 // Global configurations
 // App component types
 const MenuType = {
@@ -26,6 +27,10 @@ const InputType = {
   Email: InputEmail,
   Option: InputOption,
   Label: InputLabel,
+}
+
+const TransactionType = {
+  Resto: TransactionResto,
 }
 
 // Specific user interface configurations not saved in the database new user automaically get this configurations
@@ -115,8 +120,14 @@ const AccessMenu = [
         primary: true,
       },
       { key: 'date', label: 'tanggal', type: InputType.Date },
-      { key: 'idCustomer', label: 'Email' },
-      { key: 'customerName', label: 'WA', type: InputType.Label },
+      {
+        key: 'idUser',
+        label: 'id user',
+        type: InputType.ModalData,
+        refer: 'user.id',
+        preview: 'nmUser',
+      },
+      { key: 'nmUser', label: 'user', type: InputType.Text },
       {
         key: 'idCustomer',
         label: 'id customer',
@@ -124,7 +135,7 @@ const AccessMenu = [
         refer: 'customer.id',
         preview: 'nmCustomer',
       },
-      { key: 'nmCustomer', label: 'customer', type: InputType.Label },
+      { key: 'nmCustomer', label: 'customer', type: InputType.Text },
     ],
   },
 ]
@@ -184,4 +195,59 @@ export const response = {
       },
     ],
   },
+  PENJUALAN: {
+    permission: {
+      create: true,
+      read: true,
+      update: true,
+      delete: true,
+    },
+    data: [
+      {
+        id: 1,
+        idUser: 1,
+        date: '2025-03-05',
+        nmUser: 'user1',
+        idCustomer: 1,
+        nmCustomer: 'customer1',
+      },
+      {
+        id: 2,
+        date: '2025-11-22',
+        idUser: 2,
+        nmUser: 'user2',
+        idCustomer: 2,
+        nmCustomer: 'customer2',
+      },
+    ],
+  },
 }
+
+export const detailTransaction = {
+  PENJUALAN: {
+    transactionType: TransactionType.Resto,
+    fields: [
+      {
+        key: 'id',
+        label: 'Id product',
+        primary: true,
+      },
+      {
+        key: 'harga',
+        label: 'id user',
+      },
+      {
+        key: 'jumlah',
+        label: 'jumlah',
+      },
+    ],
+  },
+}
+
+export const transactionData = [
+  {
+    id: 1,
+    harga: 10000,
+    jumlah: 4,
+  },
+]

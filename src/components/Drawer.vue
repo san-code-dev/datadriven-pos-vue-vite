@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-import { defineProps, defineEmits, watch, onUnmounted, ref } from 'vue'
+import { watch, onUnmounted, ref } from 'vue'
 
 const props = defineProps({
     isOpen: Boolean,

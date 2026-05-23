@@ -36,7 +36,7 @@ const TransactionType = {
 // Specific user interface configurations not saved in the database new user automaically get this configurations
 // UI Builder
 
-const AccessMenu = [
+const AccessMenu = [ //anggap saja ini data yang didapat dari database ketika user login dan disimpan di state management seperti vuex atau pinia, data ini bisa saja berbeda untuk setiap user tergantung permission yang dimiliki
   {
     key: 'PRODUCT',
     name: 'Data product',

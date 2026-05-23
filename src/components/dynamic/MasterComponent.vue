@@ -60,16 +60,14 @@ const loadComponentData = () => {
 	columns.value = (res.schema || []).map(field => ({
 		prop: field.key,
 		name: field.label,
-		size: field.width || 200, // <--- TAMBAHKAN INI (Ganti 200 dengan lebar pixel yang diinginkan)
-		// Handler template jika kolom bertipe relasi objek (seperti User / Customer)
 		cellTemplate: field.type === 'relation'
 			? (h, cellProps) => h('span', {}, cellProps.model[field.key]?.[field.relation.displayField] || '')
 			: undefined
 	}))
 
+
 	// 2. Pasang Baris Data Tabel
 	rows.value = res.data || []
-
 	// 3. Ambil Primary Key dan Hak Akses Role
 	primaryKey.value = (res.schema || []).find(f => f.primary)?.key || 'id'
 	permission.value = res.permissions || {}
@@ -172,7 +170,7 @@ const refreshLocalData = () => {
 				<!-- WRAPPER UNTUK GRID (Mengambil sisa ruang yang ada) -->
 				<div class="flex-1 min-h-0 w-full relative">
 					<!-- class w-full h-full memaksa RevoGrid mengisi penuh sisa kontainer ini -->
-					<RevoGrid ref="grid" class="w-full h-full absolute inset-0" :columns="columns" :source="rows"
+					<RevoGrid ref="grid" class="w-full h-full absolute" :columns="columns" :source="rows"
 						:theme="isDark ? 'darkCompact' : 'compact'" resize="true" @beforeedit.prevent="deleteData"
 						@beforeeditstart="showEditForm" />
 				</div>
@@ -240,3 +238,46 @@ const refreshLocalData = () => {
 		</div>
 	</div>
 </template>
+
+<style>
+/* 1. Targetkan komponen scroll internal bawaan RevoGrid */
+revogr-scroll-virtual {
+	background: transparent !important;
+}
+
+/* 2. Mengatur ukuran ketebalan track scrollbar horizontal dan vertikal */
+revogr-scroll-virtual::-webkit-scrollbar {
+	width: 8px !important;
+	height: 8px !important;
+}
+
+/* 3. Menghilangkan background kotak jalur scrollbar (Bikin Transparan) */
+revogr-scroll-virtual::-webkit-scrollbar-track {
+	background: transparent !important;
+}
+
+/* 4. Mewarnai batang geser (Thumb) menjadi Emerald Kapsul (Light Mode) */
+revogr-scroll-virtual::-webkit-scrollbar-thumb {
+	background-color: rgba(16, 185, 129, 0.4) !important;
+	/* bg-emerald-500/40 */
+	border-radius: 9999px !important;
+	transition: background-color 0.2s ease-in-out !important;
+}
+
+/* 5. Efek saat kursor menyentuh batang geser (Hover Light Mode) */
+revogr-scroll-virtual::-webkit-scrollbar-thumb:hover {
+	background-color: rgb(5, 150, 105) !important;
+	/* bg-emerald-600 */
+}
+
+/* 6. Penyesuaian Otomatis saat Aplikasi masuk ke Tema Gelap (Dark Mode) */
+.dark revogr-scroll-virtual::-webkit-scrollbar-thumb {
+	background-color: rgba(52, 211, 153, 0.3) !important;
+	/* bg-emerald-400/30 */
+}
+
+.dark revogr-scroll-virtual::-webkit-scrollbar-thumb:hover {
+	background-color: rgb(52, 211, 153) !important;
+	/* bg-emerald-400 */
+}
+</style>

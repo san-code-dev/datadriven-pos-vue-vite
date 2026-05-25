@@ -7,7 +7,7 @@ import { AccessMenu } from '@/new-konsep-data'
 const router = useRouter()
 const route = useRoute()
 const openCategory = ref(null)
-
+const category = ref('');
 
 
 // Grouping menu berdasarkan menuCategory
@@ -45,7 +45,7 @@ const handleMenuClick = (menu) => {
             <!-- CONT-ATAS: DAFTAR MENU UTAMA -->
             <div class="space-y-2">
 
-                <li :key="Dashboard" class="relative group" @click="router.push('/dashboard')">
+                <li :key="'Dashboard'" class="relative group" @click="router.push('/dashboard')">
                     <div class="flex items-center justify-between w-full h-12 px-5 transition-all rounded cursor-pointer hover:bg-gradient-to-r hover:from-emerald-200 hover:to-emerald-300 dark:hover:from-emerald-600 dark:hover:to-emerald-700"
                         :class="{ 'bg-gradient-to-r from-emerald-200 to-emerald-300 dark:from-emerald-600 dark:to-emerald-700 shadow-sm': openCategory === category }">
 
@@ -60,7 +60,7 @@ const handleMenuClick = (menu) => {
 
                 </li>
 
-                <li v-for="(menus, category) in menuTree" :key="category" class="relative group"
+                <li v-for="(menus, category) in menuTree" :key="'category'" class="relative group"
                     @mouseenter="openCategory = category" @mouseleave="openCategory = null">
 
                     <div class="flex items-center justify-between w-full h-12 px-5 transition-all rounded cursor-pointer hover:bg-gradient-to-r hover:from-emerald-200 hover:to-emerald-300 dark:hover:from-emerald-600 dark:hover:to-emerald-700"
@@ -99,7 +99,7 @@ const handleMenuClick = (menu) => {
 
 
 
-                <li :key="Setting" class="relative group" @click="router.push('/setting')">
+                <li :key="'Setting'" class="relative group" @click="router.push('/setting')">
                     <div class="flex items-center justify-between w-full h-12 px-5 transition-all rounded cursor-pointer hover:bg-gradient-to-r hover:from-emerald-200 hover:to-emerald-300 dark:hover:from-emerald-600 dark:hover:to-emerald-700"
                         :class="{ 'bg-gradient-to-r from-emerald-200 to-emerald-300 dark:from-emerald-600 dark:to-emerald-700 shadow-sm': openCategory === category }">
 

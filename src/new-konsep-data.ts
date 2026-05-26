@@ -53,10 +53,10 @@ export const Product = {
   },
 
   schema: [
-    { key: 'id', label: 'Product ID', type: 'display', primary: true },
+    { key: 'id', label: 'Product ID', type: 'display', primary: true, readonly: true },
     { key: 'nmProduct', label: 'Product Name', type: 'text' },
     { key: 'price', label: 'Price', type: 'currency' },
-    { key: 'stock', label: 'Stock', type: 'number' },
+    { key: 'stock', label: 'Stock', type: 'number', autoIncrementOnDuplicate: true },
 
   ],
 
@@ -98,13 +98,20 @@ export const Customer = {
     delete: false,
   },
   schema: [
-    { key: 'id', label: 'Customer ID', type: 'display', primary: true },
+    { key: 'id', label: 'Customer ID', type: 'display', primary: true, readonly: true },
     { key: 'nmCustomer', label: 'Customer Name', type: 'text' },
     { key: 'email', label: 'Email', type: 'email' },
+    {
+      key: 'affiliate', label: 'Affiliate', type: 'relation', relation: {
+        entity: 'customer',
+        valueField: 'id',
+        displayField: 'nmCustomer'
+      }, readonly: true
+    }
   ],
   data: [
-    { id: 1, nmCustomer: 'Customer A', email: 'customera@example.com' },
-    { id: 2, nmCustomer: 'Customer B', email: 'customerb@example.com' },
+    { id: 1, nmCustomer: 'Customer A', email: 'customera@example.com', affiliate: { id: 2, nmCustomer: 'Customer B' } },
+    { id: 2, nmCustomer: 'Customer B', email: 'customerb@example.com', affiliate: { id: 1, nmCustomer: 'Customer A' } },
   ]
 }
 

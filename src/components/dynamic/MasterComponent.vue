@@ -67,103 +67,13 @@ const primaryKey = ref('id')
 const permission = ref({})
 const focusedCoordinate = ref({ x: -1, y: -1 })
 const focusedColumn = ref({})
+const focusedRow = ref({})
 
 // State baru untuk fitur pencarian
 const showSearchModal = ref(false)
 const searchQuery = ref('')
 const searchInputRef = ref(null)
 
-// ========================================================
-// EVENT HANDLERS & LOGIC
-// ========================================================
-const beforeEditStart = (event) => {
-	console.log('mencari relasi data..')
-}
-
-const beforeEdit = (event) => {
-	const { model } = event.detail
-	console.log('data sebelum edit:', model)
-}
-
-const afterEdit = (event) => {
-	const { model } = event.detail
-	console.log('data setelah edit:', model)
-}
-
-const afterFocus = (event) => {
-	focusedCoordinate.value = { x: event.detail.colIndex, y: event.detail.rowIndex }
-	focusedColumn.value = event.detail.column
-}
-
-// Fitur Pencarian Baru
-const cariDataDenganKarakter = async (char) => {
-	searchQuery.value = char // Masukkan karakter pertama yang ditekan user ke input
-	showSearchModal.value = true
-
-	// Tunggu DOM selesai dirender, lalu arahkan focus ke kotak input
-	await nextTick()
-	searchInputRef.value?.focus()
-}
-
-const handleSearchSubmit = async () => {
-	if (!searchQuery.value.trim()) return
-
-	console.log('Melakukan pencarian internal untuk ID:', searchQuery.value)
-
-	try {
-		if (focusedColumn.value._primary) {
-			// 1. Cari baris/row yang nilai primary key-nya cocok dengan input user
-			// Menggunakan String() untuk mengantisipasi perbedaan tipe data (string vs number)
-			const targetRowIndex = rows.value.findIndex(
-				row => String(row[primaryKey.value]) === String(searchQuery.value.trim())
-			)
-
-			if (targetRowIndex !== -1) {
-				// 2. Cari properti/key kolom yang memiliki _autoIncrementOnDuplicate: true
-				const incrementColumn = columns.value.find(col => col._autoIncrementOnDuplicate)
-
-				if (incrementColumn) {
-					const propName = incrementColumn.prop
-					// Ambil nilai lama (jika null/undefined, default ke 0)
-					const currentValue = Number(rows.value[targetRowIndex][propName]) || 0
-
-					// Lakukan increment +1 ke row yang bersangkutan
-					rows.value[targetRowIndex][propName] = currentValue + 1
-
-					console.log(`Berhasil increment kolom ${propName} untuk ID ${searchQuery.value}`)
-				} else {
-					// Jika data id ada, tapi struktur tabel tidak mendukung auto increment
-					alert('Data sudah ada!')
-				}
-			} else {
-				// Opsional jika ID tidak ditemukan di rows saat ini
-				// tambahkan data baru dengan ID tersebut dengan, nilai column autoIncrementOnDuplicate di-set ke 1 (atau sesuai kebutuhan)
-
-
-
-			}
-
-		} else if (focusedColumn.value._type === 'relation') {
-			// Logika pencarian untuk kolom relation (misal: cari berdasarkan nama user, bukan ID)
-
-		}
-
-		closeSearchModal()
-	} catch (error) {
-		console.error('Gagal memproses data pencarian:', error)
-	}
-}
-
-const closeSearchModal = () => {
-	showSearchModal.value = false
-	searchQuery.value = ''
-
-	// Kembalikan fokus ke grid setelah modal ditutup
-	nextTick(() => {
-		const grid = gridRef.value?.$el || gridRef.value
-		grid?.focus()
-	})
-}
 
 // ========================================================
 // DATA INITIALIZATION & BEHAVIORS
@@ -231,11 +141,35 @@ const setUpGridBehaviors = () => {
 			grid.setAttribute('tabindex', '0')
 			grid.focus()
 		}
-
-		// Opsional: Jika ingin langsung memfokuskan koordinat cell pertama (0,0) secara otomatis
-		// focusedCoordinate.value = { x: 0, y: 0 }
 	}, 50)
 }
+
+// ========================================================
+// Default event handlers
+// ========================================================
+const beforeEditStart = (event) => {
+	console.log('mencari relasi data..')
+}
+
+const beforeEdit = (event) => {
+	const { model } = event.detail
+	console.log('data sebelum edit:', model)
+}
+
+const afterEdit = (event) => {
+	const { model } = event.detail
+	console.log('data setelah edit:', model)
+}
+
+const afterFocus = (event) => {
+	focusedCoordinate.value = { x: event.detail.colIndex, y: event.detail.rowIndex }
+	focusedColumn.value = event.detail.column
+	focusedRow.value = event.detail.model
+}
+
+// ========================================================
+// Datgrid key & mouse mapping
+// ======================================================== 
 
 const handleKeyDown = (e) => {
 	// Cegah interaksi grid jika modal pencarian sedang terbuka
@@ -243,13 +177,19 @@ const handleKeyDown = (e) => {
 
 	if (e.repeat) return
 	if (e.key === 'Delete') {
-		console.log('DELETE ditekan')
+		handleDeleteKey(e)
 		e.preventDefault()
 		return
 	}
 	if (e.key === 'ArrowDown') {
 		console.log('ARROW DOWN ditekan')
 		handleArrowDown(e)
+		return
+	}
+
+	if (e.key === 'ArrowUp') {
+		console.log('ARROW UP ditekan')
+		handleArrowUp(e)
 		return
 	}
 
@@ -267,6 +207,11 @@ const handleKeyDown = (e) => {
 	}
 }
 
+
+// ========================================================
+// Mouse & key mapping event handlers
+// ========================================================
+
 const handleMouseDown = (e) => {
 	if (e.ctrlKey && e.button === 0) {
 		console.log('CTRL + KLIK KIRI')
@@ -278,6 +223,58 @@ const handleArrowDown = (e) => {
 	if (focusedCoordinate.value.y === rows.value.length - 1) {
 		console.log('ARROW DOWN di baris terakhir')
 	}
+}
+
+const handleArrowUp = (e) => {
+	if (focusedCoordinate.value.y === 0) {
+		console.log('ARROW UP di baris pertama')
+	}
+}
+
+const handleDeleteKey = (e) => {
+	if (!permission.value.delete) {
+		console.log('User tidak memiliki izin untuk menghapus data.')
+		return
+	}
+	if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
+		//api delete
+		if (rows.value = rows.value.filter((_, index) => index !== focusedCoordinate.value.y))
+
+			gridRef.value.$el.setCellsFocus({ x: 0, y: focusedCoordinate.value.y - 1 }, { x: 0, y: focusedCoordinate.value.y - 1 });
+	}
+}
+
+// ========================================================
+// Methods
+// ========================================================
+
+// Fitur Pencarian Baru
+const cariDataDenganKarakter = async (char) => {
+	searchQuery.value = char // Masukkan karakter pertama yang ditekan user ke input
+	showSearchModal.value = true
+
+	// Tunggu DOM selesai dirender, lalu arahkan focus ke kotak input
+	await nextTick()
+	searchInputRef.value?.focus()
+}
+
+
+const handleSearchSubmit = async () => {
+	if (!searchQuery.value.trim()) return
+	console.log('Mengirim permintaan ke server untuk ID:', searchQuery.value)
+	closeSearchModal() // Tutup modal setelah submit
+
+}
+
+const closeSearchModal = () => {
+	showSearchModal.value = false
+	searchQuery.value = ''
+
+	// Kembalikan fokus ke grid setelah modal ditutup
+	nextTick(() => {
+		const grid = gridRef.value?.$el || gridRef.value
+		grid?.focus()
+	})
 }
 
 watch(() => props.schemaData, loadComponentData, { deep: true })

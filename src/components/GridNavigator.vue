@@ -16,17 +16,17 @@
 
     <div v-if="columns.length > 0"
         class="absolute bottom-0 left-0 right-[10px] h-[10px] flex justify-between pointer-events-none z-50">
-        <button @click="scrollToFirstCol"
+        <span @click="scrollToFirstCol"
             class="pointer-events-auto h-full w-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-r-sm"
             title="Ke Kolom Pertama">
             <Icon icon="heroicons:chevron-left-20-solid" class="w-3 h-3 flex-shrink-0" />
-        </button>
+        </span>
 
-        <button @click="scrollToLastCol"
+        <span @click="scrollToLastCol"
             class="pointer-events-auto h-full w-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-l-sm"
             title="Ke Kolom Terakhir">
             <Icon icon="heroicons:chevron-right-20-solid" class="w-3 h-3 flex-shrink-0" />
-        </button>
+        </span>
     </div>
 </template>
 
@@ -112,7 +112,7 @@ const scrollToLastRow = () => {
 // ========================================================
 // FUNGSI JUMP & FOCUS UNTUK KOLOM (HORIZONTAL)
 // ========================================================
-const scrollToFirstCol = () => {
+const scrollToFirstCol = (e) => {
     const grid = getGridInstance()
     if (!grid || props.columns.length === 0) return
 
@@ -121,7 +121,7 @@ const scrollToFirstCol = () => {
     grid.setCellsFocus({ x: 0, y: currentY }, { x: 0, y: currentY })
 }
 
-const scrollToLastCol = () => {
+const scrollToLastCol = (e) => {
     const grid = getGridInstance()
     if (!grid || props.columns.length === 0) return
 

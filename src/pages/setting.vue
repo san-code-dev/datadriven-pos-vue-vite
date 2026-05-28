@@ -19,31 +19,10 @@
             <!-- Layout Grid: Kategori Kiri, Form Kanan -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
 
-                <!-- Menu Kategori (Ikon hanya di sini untuk navigasi) -->
-                <div
-                    class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-2 border border-slate-100 dark:border-slate-700/50 space-y-1">
-                    <button
-                        class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 transition">
-                        <Icon icon="heroicons:banknotes-solid" class="w-5 h-5" />
-                        Format & Mata Uang
-                    </button>
-
-                    <button
-                        class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition">
-                        <Icon icon="heroicons:shopping-bag-solid" class="w-5 h-5 text-slate-400" />
-                        Informasi Toko
-                    </button>
-
-                    <button
-                        class="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition">
-                        <Icon icon="heroicons:printer-solid" class="w-5 h-5 text-slate-400" />
-                        Pengaturan Struk
-                    </button>
-                </div>
 
                 <!-- Form Pengaturan (Sisi Kanan - Bersih & Minimalis) -->
                 <div
-                    class="md:col-span-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700/50 overflow-hidden">
+                    class="md:col-span-3 bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700/50 overflow-hidden">
 
                     <!-- Header Kategori Aktif -->
                     <div
@@ -106,10 +85,13 @@
 
                     <!-- Footer Status Simpan -->
                     <div
-                        class="px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+                        class="flex justify-between px-6 py-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-700 flex justify-end">
                         <span class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                            ✓ Tersimpan otomatis ke sistem
+                            V 0.2.1
                         </span>
+                        <RouterLink to="/version" class="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                            version log
+                        </RouterLink>
                     </div>
 
                 </div>

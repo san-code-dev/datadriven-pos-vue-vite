@@ -49,7 +49,7 @@ export const Product = {
     view: true,
     create: true,
     edit: true,
-    delete: false,
+    delete: true,
   },
 
   schema: [

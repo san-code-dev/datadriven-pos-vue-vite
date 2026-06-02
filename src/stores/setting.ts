@@ -5,7 +5,8 @@ export const useSettingsStore = defineStore('settings', {
         locale: 'id-ID',
         currency: 'IDR',
         decimals: 0,
+        // Tambahkan ini: default true atau false sesuai keinginanmu
     }),
 
-    persist: true,
+    persist: true, // Pengaturan sistem ini selalu tersimpan otomatis
 })

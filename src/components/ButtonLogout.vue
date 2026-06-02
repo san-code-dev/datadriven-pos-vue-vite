@@ -49,7 +49,6 @@ function handleKeyDown(event: KeyboardEvent) {
             closeModal()
         }
     } else if (event.key === 'Escape') {
-        // Tetap izinkan ESC sebagai fallback standar accessibility modal jika diinginkan
         closeModal()
     }
 }
@@ -60,7 +59,6 @@ async function submitLogout() {
     isLoggingOut.value = true
 
     try {
-
         await fetch('http://localhost:3000/api/auth/logout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -98,7 +96,7 @@ async function submitLogout() {
         <Teleport to="body">
             <dialog ref="dialogRef" v-if="showLogoutModal" @cancel.prevent="!isLoggingOut ? closeModal() : null"
                 @keydown.prevent="handleKeyDown"
-                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm w-full h-full max-w-none max-h-none border-none outline-none open:backdrop:bg-transparent">
+                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm w-full h-full max-w-none max-h-none border-none outline-none open:backdrop:bg-transparent">
 
                 <div
                     class="bg-white dark:bg-gray-800 rounded-xl max-w-sm w-full p-6 shadow-xl border border-gray-100 dark:border-gray-700 transform transition-all animate-in fade-in zoom-in-95 duration-150 text-gray-900 dark:text-gray-200">

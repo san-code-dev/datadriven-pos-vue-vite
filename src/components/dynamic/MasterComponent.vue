@@ -1,10 +1,11 @@
 <template>
-	<div class="flex flex-col h-screen">
-		<div class="flex flex-1 min-h-0">
-			<div class="flex-1 flex flex-col min-h-0 w-full">
-				<div class="flex-1 min-h-0 w-full relative group">
+	<div class="flex flex-col h-full max-h-full overflow-hidden min-h-0 bg-transparent w-full">
+		<div class="flex flex-1 min-h-0 w-full overflow-hidden">
+			<div class="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
 
-					<RevoGrid ref="gridRef" class="w-full h-full pb-3 focus:outline-none" :columns="columns"
+				<div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
+
+					<RevoGrid ref="gridRef" class="w-full h-full max-h-full focus:outline-none" :columns="columns"
 						:source="rows" :theme="isDark ? 'darkCompact' : 'compact'" resize="true"
 						@beforeeditstart.once="beforeEditStart" @beforeedit.once="beforeEdit"
 						@afteredit.once="afterEdit" @afterfocus="afterFocus" />
@@ -43,7 +44,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, nextTick, onActivated } from 'vue'
 import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from '@/components/GridNavigator.vue'
@@ -71,7 +72,6 @@ let savedGridEl = null
 let behaviorTimeoutId = null
 let focusTimeoutId = null
 
-// Pindahkan pembuatan fungsi template ke luar agar tidak re-created di memori terus-menerus
 const createRelationTemplate = (displayField, fieldKey) => {
 	return (createElement, props) => {
 		const rowData = props.model[fieldKey]
@@ -80,7 +80,6 @@ const createRelationTemplate = (displayField, fieldKey) => {
 	}
 }
 
-// Fungsi helper untuk mencabut listener dengan aman
 const removeGridListeners = () => {
 	if (savedGridEl) {
 		savedGridEl.removeEventListener('keydown', handleKeyDown)
@@ -127,9 +126,7 @@ const setUpGridBehaviors = () => {
 	const grid = gridRef.value?.$el || gridRef.value
 	if (!grid) return
 
-	// Bersihkan listener lama sebelum memasang yang baru (Mencegah duplikasi akibat balapan async)
 	removeGridListeners()
-
 	savedGridEl = grid
 
 	if (rows.value.length > 0) {
@@ -154,9 +151,6 @@ const setUpGridBehaviors = () => {
 	}, 50)
 }
 
-// ========================================================
-// Event Handlers & Methods
-// ========================================================
 const beforeEditStart = () => { console.log('mencari relasi data..') }
 const beforeEdit = (event) => { console.log('data sebelum edit:', event.detail.model) }
 const afterEdit = (event) => { console.log('data setelah edit:', event.detail.model) }
@@ -248,7 +242,6 @@ const closeSearchModal = () => {
 	})
 }
 
-// Pembersihan Total
 onBeforeUnmount(() => {
 	if (behaviorTimeoutId) clearTimeout(behaviorTimeoutId)
 	if (focusTimeoutId) clearTimeout(focusTimeoutId)
@@ -256,8 +249,18 @@ onBeforeUnmount(() => {
 	console.log('Semua listener dan timer dibersihkan dengan aman.')
 })
 
-// Hapus opsi { deep: true } untuk performa optimal, deteksi referensi baru dari schemaData
 watch(() => props.schemaData, loadComponentData)
 
 onMounted(loadComponentData)
+
+onActivated(async () => {
+	await nextTick()
+	console.log('Tab diaktifkan kembali, memeriksa data dan fokus...')
+})
 </script>
+
+<style scoped>
+:deep(revo-grid) {
+	z-index: 10 !important;
+}
+</style>

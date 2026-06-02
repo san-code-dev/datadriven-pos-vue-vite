@@ -40,17 +40,14 @@ const handleMenuClick = (menu) => {
 </script>
 
 <template>
-    <!-- Lebar nav berubah dinamis berdasarkan state Pinia -->
-    <nav class="relative font-sans text-gray-900 dark:text-gray-200 select-none flex flex-col min-h-screen transition-all duration-300"
+    <nav class="relative z-40 flex-shrink-0 font-sans text-gray-900 dark:text-gray-200 select-none flex flex-col min-h-screen border-r border-gray-200 dark:border-gray-800 transition-all duration-300"
         :class="sidebarStore.isCollapsed ? 'w-20' : 'w-64'">
 
         <ul
-            class="p-2 space-y-2 rounded-lg shadow-md bg-gray-50 dark:bg-gray-900 flex-1 flex flex-col justify-between relative">
+            class="p-2 space-y-2 rounded-r-lg shadow-md bg-white dark:bg-gray-900 flex-1 flex flex-col justify-between relative">
 
-            <!-- CONT-ATAS: DAFTAR MENU UTAMA -->
             <div class="space-y-2">
 
-                <!-- TOMBOL COLLAPSE SIDEBAR -->
                 <li class="flex p-2 mb-2 transition-all duration-300"
                     :class="sidebarStore.isCollapsed ? 'justify-center' : 'justify-end'">
                     <button @click="sidebarStore.toggleCollapse"
@@ -60,14 +57,12 @@ const handleMenuClick = (menu) => {
                     </button>
                 </li>
 
-                <!-- MENU: DASHBOARD -->
                 <li :key="'Dashboard'" class="relative group" @click="router.push('/dashboard')">
                     <div class="flex items-center w-full h-12 px-5 transition-all rounded cursor-pointer hover:bg-gradient-to-r hover:from-emerald-200 hover:to-emerald-300 dark:hover:from-emerald-600 dark:hover:to-emerald-700"
                         :class="[
                             openCategory === category ? 'bg-gradient-to-r from-emerald-200 to-emerald-300 dark:from-emerald-600 dark:to-emerald-700 shadow-sm' : '',
                             sidebarStore.isCollapsed ? 'justify-center px-0' : 'justify-between'
                         ]">
-
                         <div class="flex items-center" :class="sidebarStore.isCollapsed ? 'space-x-0' : 'space-x-3'">
                             <Icon icon="ix:dashboard" class="text-xl opacity-80" />
                             <span v-show="!sidebarStore.isCollapsed"
@@ -78,16 +73,13 @@ const handleMenuClick = (menu) => {
                     </div>
                 </li>
 
-                <!-- MENU: DYNAMIC CATEGORY -->
                 <li v-for="(menus, category) in menuTree" :key="category" class="relative group"
                     @mouseenter="openCategory = category" @mouseleave="openCategory = null">
-
                     <div class="flex items-center w-full h-12 px-5 transition-all rounded cursor-pointer hover:bg-gradient-to-r hover:from-emerald-200 hover:to-emerald-300 dark:hover:from-emerald-600 dark:hover:to-emerald-700"
                         :class="[
                             openCategory === category ? 'bg-gradient-to-r from-emerald-200 to-emerald-300 dark:from-emerald-600 dark:to-emerald-700 shadow-sm' : '',
                             sidebarStore.isCollapsed ? 'justify-center px-0' : 'justify-between'
                         ]">
-
                         <div class="flex items-center" :class="sidebarStore.isCollapsed ? 'space-x-0' : 'space-x-3'">
                             <Icon v-if="menus[0]?.icon" :icon="formatIcon(menus[0].icon)" class="text-xl opacity-80" />
                             <span v-show="!sidebarStore.isCollapsed"
@@ -95,17 +87,15 @@ const handleMenuClick = (menu) => {
                                 {{ category }}
                             </span>
                         </div>
-
                         <Icon v-show="!sidebarStore.isCollapsed" icon="mdi:chevron-down"
                             class="w-5 h-5 text-gray-500 transition-transform duration-200 dark:text-gray-300"
                             :class="{ '-rotate-90': openCategory === category }" />
                     </div>
 
-                    <!-- LEVEL 2: DROPDOWN ITEM MENU -->
-                    <div v-show="openCategory === category" class="absolute top-0 z-10 pl-2 w-48 transition-all"
+                    <div v-show="openCategory === category" class="absolute top-0 z-50 pl-2 w-48 transition-all"
                         :class="sidebarStore.isCollapsed ? 'left-16' : 'left-full'">
                         <ul
-                            class="bg-white border border-gray-200 rounded shadow-lg dark:bg-gray-800 dark:border-gray-700 p-1 space-y-1">
+                            class="bg-white border border-gray-200 rounded shadow-lg shadow-slate-200/50 dark:shadow-none dark:bg-gray-800 dark:border-gray-700 p-1 space-y-1">
                             <li v-for="menu in menus" :key="menu.key">
                                 <button @click="handleMenuClick(menu)" :class="[
                                     route.path === menu.route
@@ -120,14 +110,12 @@ const handleMenuClick = (menu) => {
                     </div>
                 </li>
 
-                <!-- MENU: SETTING -->
                 <li :key="'Setting'" class="relative group" @click="router.push('/setting')">
                     <div class="flex items-center w-full h-12 px-5 transition-all rounded cursor-pointer hover:bg-gradient-to-r hover:from-emerald-200 hover:to-emerald-300 dark:hover:from-emerald-600 dark:hover:to-emerald-700"
                         :class="[
                             openCategory === category ? 'bg-gradient-to-r from-emerald-200 to-emerald-300 dark:from-emerald-600 dark:to-emerald-700 shadow-sm' : '',
                             sidebarStore.isCollapsed ? 'justify-center px-0' : 'justify-between'
                         ]">
-
                         <div class="flex items-center" :class="sidebarStore.isCollapsed ? 'space-x-0' : 'space-x-3'">
                             <Icon icon="uil:setting" class="text-xl opacity-80" />
                             <span v-show="!sidebarStore.isCollapsed"
@@ -140,8 +128,6 @@ const handleMenuClick = (menu) => {
 
             </div>
 
-            <!-- BUTTON LOGOUT -->
-            <!-- Memasukkan state Pinia sebagai props jika komponen Logout membutuhkannya -->
             <ButtonLogout :is-collapsed="sidebarStore.isCollapsed" />
 
         </ul>

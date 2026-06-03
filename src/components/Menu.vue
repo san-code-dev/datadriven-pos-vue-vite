@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { AccessMenu } from '@/new-konsep-data'
+import { AccessMenu } from '@/mock-api/mock-menu'
 import { useSidebarStore } from '@/stores/sideBar' // Sesuaikan path store Anda
 
 const router = useRouter()

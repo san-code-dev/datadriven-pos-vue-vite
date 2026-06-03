@@ -44,10 +44,11 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount, nextTick, onActivated } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from '@/components/GridNavigator.vue'
+import { useTabStore } from '@/stores/tabs'
 
 const props = defineProps({
 	menu: { type: Object, required: true },
@@ -67,17 +68,18 @@ const focusedRow = ref({})
 const showSearchModal = ref(false)
 const searchQuery = ref('')
 const searchInputRef = ref(null)
+const tabStore = useTabStore()
 
 let savedGridEl = null
 let behaviorTimeoutId = null
 let focusTimeoutId = null
+let watchTabTimeoutId = null // <-- Tambahkan ini untuk mengontrol timer di dalam watch
 
-const createRelationTemplate = (displayField, fieldKey) => {
-	return (createElement, props) => {
-		const rowData = props.model[fieldKey]
-		const displayText = rowData ? rowData[displayField] : ''
-		return createElement('span', {}, displayText || '')
-	}
+// PERBAIKAN 1: Optimasi template agar tidak menciptakan closure baru secara liar
+const relationCellRenderer = (createElement, props, displayField, fieldKey) => {
+	const rowData = props.model[fieldKey]
+	const displayText = rowData ? rowData[displayField] : ''
+	return createElement('span', {}, displayText || '')
 }
 
 const removeGridListeners = () => {
@@ -92,6 +94,9 @@ const loadComponentData = async () => {
 	const res = props.schemaData
 	if (!res) return
 
+	// Bersihkan referensi kolom lama terlebih dahulu
+	columns.value = []
+
 	columns.value = (res.schema || []).map(field => {
 		const columnConfig = {
 			prop: field.key,
@@ -104,7 +109,9 @@ const loadComponentData = async () => {
 		}
 
 		if (field.type === 'relation' && field.relation) {
-			columnConfig.cellTemplate = createRelationTemplate(field.relation.displayField, field.key)
+			// Gunakan referensi fungsi statis, melemparkan parameter secara eksplisit
+			columnConfig.cellTemplate = (createElement, linkProps) =>
+				relationCellRenderer(createElement, linkProps, field.relation.displayField, field.key)
 		}
 		return columnConfig
 	})
@@ -116,7 +123,6 @@ const loadComponentData = async () => {
 	await nextTick()
 
 	if (behaviorTimeoutId) clearTimeout(behaviorTimeoutId)
-
 	behaviorTimeoutId = setTimeout(() => {
 		setUpGridBehaviors()
 	}, 100)
@@ -137,7 +143,6 @@ const setUpGridBehaviors = () => {
 	grid.addEventListener('mousedown', handleMouseDown)
 
 	if (focusTimeoutId) clearTimeout(focusTimeoutId)
-
 	focusTimeoutId = setTimeout(() => {
 		const activeGrid = gridRef.value?.$el || gridRef.value
 		if (!activeGrid) return
@@ -242,21 +247,61 @@ const closeSearchModal = () => {
 	})
 }
 
+// PERBAIKAN 2: Pastikan seluruh sisa timer dibersihkan total tanpa celah
 onBeforeUnmount(() => {
 	if (behaviorTimeoutId) clearTimeout(behaviorTimeoutId)
 	if (focusTimeoutId) clearTimeout(focusTimeoutId)
+	if (watchTabTimeoutId) clearTimeout(watchTabTimeoutId) // Bersihkan objek watch timer
 	removeGridListeners()
-	console.log('Semua listener dan timer dibersihkan dengan aman.')
+
+	// Putus referensi array besar agar Garbage Collector langsung mengambilnya
+	rows.value = []
+	columns.value = []
+	savedGridEl = null
+
+	console.log('Semua listener, data referensi, dan timer dibersihkan dengan aman.')
 })
 
 watch(() => props.schemaData, loadComponentData)
 
 onMounted(loadComponentData)
 
-onActivated(async () => {
-	await nextTick()
-	console.log('Tab diaktifkan kembali, memeriksa data dan fokus...')
-})
+// Memantau perubahan Tab Aktif secara Global dari Pinia
+watch(() => tabStore.activeTabId, async (activeTabId) => {
+	if (activeTabId === props.menu?.route) {
+		await nextTick()
+
+		// PERBAIKAN 3: Bersihkan timeout penjelajahan tab sebelumnya jika user klik sangat cepat
+		if (watchTabTimeoutId) clearTimeout(watchTabTimeoutId)
+
+		watchTabTimeoutId = setTimeout(() => {
+			const grid = gridRef.value?.$el || gridRef.value
+			if (!grid) return
+
+			if (typeof grid.requestGridColumnsRedraw === 'function') {
+				grid.requestGridColumnsRedraw()
+			}
+
+			const targetX = focusedCoordinate.value.x >= 0 ? focusedCoordinate.value.x : 0
+			const targetY = focusedCoordinate.value.y >= 0 ? focusedCoordinate.value.y : 0
+
+			if (typeof grid.setCellsFocus === 'function') {
+				grid.setCellsFocus({ x: targetX, y: targetY }, { x: targetX, y: targetY })
+
+				if (typeof grid.scrollToRow === 'function') {
+					grid.scrollToRow(targetY)
+				}
+			}
+
+			const clipboardInput = grid.querySelector('.revo-clipboard, input, [tabindex="0"]')
+			if (clipboardInput) {
+				clipboardInput.focus()
+			} else {
+				grid.focus()
+			}
+		}, 0)
+	}
+}, { immediate: true })
 </script>
 
 <style scoped>

@@ -46,6 +46,13 @@ export const useTabStore = defineStore('tabs', {
         moveTab(fromIndex, toIndex) {
             const element = this.openedTabs.splice(fromIndex, 1)[0]
             this.openedTabs.splice(toIndex, 0, element)
+        },
+        refreshTab(tabId) {
+            const tab = this.openedTabs.find(t => t.id === tabId)
+            if (tab) {
+                // Menaikkan angka akan memaksa :key di template berubah
+                tab.refreshKey = (tab.refreshKey || 0) + 1
+            }
         }
-    }, persist: false
+    }, persist: true
 })

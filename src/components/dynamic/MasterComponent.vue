@@ -1,5 +1,8 @@
 <template>
 	<div class="flex flex-col h-full max-h-full overflow-hidden min-h-0 bg-transparent w-full">
+		<DynamicFilter v-if="props.schemaData?.schema" :schema="props.schemaData.schema"
+			:tabId="props.menu?.route || 'master'" @filter-changed="fetchDataWithPrismaFilter"
+			@escape-filter="focusBackToGrid" />
 		<div class="flex flex-1 min-h-0 w-full overflow-hidden">
 			<div class="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
 
@@ -49,7 +52,7 @@ import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from '@/components/GridNavigator.vue'
 import { useTabStore } from '@/stores/tabs'
-
+import DynamicFilter from '@/components/DynamicFilter.vue'
 const props = defineProps({
 	menu: { type: Object, required: true },
 	schemaData: { type: Object, required: true }
@@ -92,6 +95,7 @@ const removeGridListeners = () => {
 
 const loadComponentData = async () => {
 	const res = props.schemaData
+	console.log('Menerima schemaData baru:', res)
 	if (!res) return
 
 	// Bersihkan referensi kolom lama terlebih dahulu
@@ -210,7 +214,19 @@ const handleArrowUp = () => {
 		console.log('ARROW UP di baris pertama')
 	}
 }
+const handlePreventGridConflict = (e) => {
+	// Jika user menekan Ctrl+K, paksa RevoGrid kehilangan fokus seketika
+	if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+		const activeGrid = gridRef.value?.$el || gridRef.value
+		if (activeGrid) {
+			// Ambil elemen input/clipboard internal RevoGrid yang sedang fokus dan blur
+			const activeInput = activeGrid.querySelector('.revo-clipboard, input, :focus')
+			if (activeInput) activeInput.blur()
 
+			activeGrid.blur()
+		}
+	}
+}
 const handleDeleteKey = () => {
 	if (!permission.value.delete) return
 
@@ -223,6 +239,33 @@ const handleDeleteKey = () => {
 			gridRef.value.$el.setCellsFocus({ x: 0, y: nextY }, { x: 0, y: nextY })
 		}
 	}
+}
+// Parameter prismaWhere dikirim dalam struktur JSON siap saji dari komponen di atas
+const fetchDataWithPrismaFilter = async (prismaWhere = {}) => {
+	try {
+		const response = await fetch(`http://localhost:3000/api/${props.menu.key.toLowerCase()}/query`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ where: prismaWhere }) // Dikirim langsung sebagai JSON object body
+		})
+		console.log(prismaWhere)
+
+		if (response.ok) {
+			const res = await response.json()
+			rows.value = res.data || []
+			await nextTick()
+			gridRef.value?.$el?.requestGridRowsRedraw()
+		}
+	} catch (err) {
+		console.error("Gagal melakukan pencarian database server:", err)
+	}
+}
+
+const focusBackToGrid = () => {
+	nextTick(() => {
+		const grid = gridRef.value?.$el || gridRef.value
+		grid?.focus()
+	})
 }
 
 const cariDataDenganKarakter = async (char) => {
@@ -253,7 +296,7 @@ onBeforeUnmount(() => {
 	if (focusTimeoutId) clearTimeout(focusTimeoutId)
 	if (watchTabTimeoutId) clearTimeout(watchTabTimeoutId) // Bersihkan objek watch timer
 	removeGridListeners()
-
+	window.removeEventListener('keydown', handlePreventGridConflict, true)
 	// Putus referensi array besar agar Garbage Collector langsung mengambilnya
 	rows.value = []
 	columns.value = []
@@ -264,7 +307,10 @@ onBeforeUnmount(() => {
 
 watch(() => props.schemaData, loadComponentData)
 
-onMounted(loadComponentData)
+onMounted(() => {
+	loadComponentData()
+	window.addEventListener('keydown', handlePreventGridConflict, true)
+})
 
 // Memantau perubahan Tab Aktif secara Global dari Pinia
 watch(() => tabStore.activeTabId, async (activeTabId) => {

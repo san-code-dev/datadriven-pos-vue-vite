@@ -3,8 +3,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 // Import menu dan data schema sesuai tempat barunya
-import { AccessMenu } from '@/mock-api/mock-menu'
-import * as MockData from '@/mock-api/mock-data'
+import { AccessMenu } from '@/mock-api/mock-padel-menu'
+import * as MockData from '@/mock-api/mock-padel-data'
 
 import Menu from '@/components/Menu.vue'
 import TabHeader from '@/components/TabHeader.vue' // <-- Komponen baru hasil pecahan
@@ -159,8 +159,9 @@ watch(() => route.path, fetchSchemaFromApi, { immediate: true })
             <div class="flex-1 min-h-0 relative overflow-hidden w-full">
 
                 <keep-alive :max="5">
-                    <div v-for="tab in tabStore.openedTabs" :key="tab.id" v-show="tabStore.activeTabId === tab.id"
-                        :data-tab-id="tab.id" class="w-full h-full">
+                    <div v-for="tab in tabStore.openedTabs" :key="tab.id + (tab.refreshKey || 0)"
+                        v-show="tabStore.activeTabId === tab.id" :data-tab-id="tab.id" class="w-full h-full">
+
                         <component v-if="tab.apiResponse && getComponentByType(tab.apiResponse.type)"
                             :is="getComponentByType(tab.apiResponse.type)" :menu="tab.currentMenu"
                             :schemaData="tab.apiResponse" />

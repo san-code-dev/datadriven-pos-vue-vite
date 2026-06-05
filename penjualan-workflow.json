@@ -1,0 +1,118 @@
+{
+  "version": "1.0",
+  "entities": [
+    {
+      "key": "User",
+      "label": "Data User (Kasir/Sales)",
+      "x": 50,
+      "y": 50,
+      "fields": [
+        { "key": "id", "type": "string", "primary": true },
+        { "key": "nmUser", "type": "string" },
+        { "key": "email", "type": "string" }
+      ]
+    },
+    {
+      "key": "Customer",
+      "label": "Data Customer",
+      "x": 50,
+      "y": 230,
+      "fields": [
+        { "key": "id", "type": "string", "primary": true },
+        { "key": "nmCustomer", "type": "string" },
+        { "key": "email", "type": "string" }
+      ]
+    },
+    {
+      "key": "Product",
+      "label": "Product Master",
+      "x": 50,
+      "y": 410,
+      "fields": [
+        { "key": "id", "type": "string", "primary": true },
+        { "key": "nmProduct", "type": "string" },
+        { "key": "price", "type": "float" },
+        { "key": "stock", "type": "int" }
+      ]
+    },
+    {
+      "key": "Penjualan",
+      "label": "Transaksi Penjualan (Header)",
+      "x": 450,
+      "y": 50,
+      "fields": [
+        { "key": "id", "type": "string", "primary": true, "idGenerator": { "type": "reference-based", "pattern": "TRX-{YYYY}{MM}-", "digits": 4 } },
+        { "key": "date", "type": "datetime" },
+        { "key": "userId", "type": "string" },
+        { "key": "customerId", "type": "string" },
+        { "key": "totalBayar", "type": "float" }
+      ]
+    },
+    {
+      "key": "DetailPenjualan",
+      "label": "Detail Penjualan (Item)",
+      "x": 450,
+      "y": 320,
+      "fields": [
+        { "key": "id", "type": "string", "primary": true },
+        { "key": "penjualanId", "type": "string" },
+        { "key": "productId", "type": "string" },
+        { "key": "quantity", "type": "int" },
+        { "key": "price", "type": "float" },
+        { "key": "subTotal", "type": "float" }
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "type": "relation",
+      "description": "Relasi Transaksi ke Kasir/User",
+      "fromEntity": "User",
+      "fromField": "id",
+      "toEntity": "Penjualan",
+      "toField": "userId"
+    },
+    {
+      "type": "relation",
+      "description": "Relasi Transaksi ke Pembeli/Customer",
+      "fromEntity": "Customer",
+      "fromField": "id",
+      "toEntity": "Penjualan",
+      "toField": "customerId"
+    },
+    {
+      "type": "relation",
+      "description": "Relasi Detail Item ke Header Penjualan",
+      "fromEntity": "Penjualan",
+      "fromField": "id",
+      "toEntity": "DetailPenjualan",
+      "toField": "penjualanId"
+    },
+    {
+      "type": "relation",
+      "description": "Relasi Detail Item ke Master Produk untuk ambil data",
+      "fromEntity": "Product",
+      "fromField": "id",
+      "toEntity": "DetailPenjualan",
+      "toField": "productId"
+    },
+    {
+      "type": "calculation",
+      "description": "Ambil harga produk asli dan beri diskon otomatis 20%",
+      "formula": "Product.price * 0.8",
+      "fromEntity": "Product",
+      "fromField": "price",
+      "toEntity": "DetailPenjualan",
+      "toField": "price"
+    },
+    {
+      "type": "calculation",
+      "description": "Hitung subtotal per item (Harga Diskon * Jumlah Beli)",
+      "formula": "DetailPenjualan.price * DetailPenjualan.quantity",
+      "fromEntity": "DetailPenjualan",
+      "fromField": "price",
+      "toEntity": "DetailPenjualan",
+      "toField": "subTotal"
+    }
+  ]
+}

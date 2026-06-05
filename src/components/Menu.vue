@@ -37,7 +37,6 @@ const menuTree = computed(() => {
 // Flatten menu untuk kebutuhan search list global
 const flatMenus = computed(() => {
     if (!AccessMenu) return []
-    // Tambahkan manual Dashboard & Settings jika ingin masuk ke dalam indexing pencarian
     const extraMenus = [
         { key: 'dashboard', label: 'Dashboard', route: '/dashboard', menuCategory: 'General', icon: 'si:dashboard-vert-line' },
         { key: 'setting', label: 'Settings', route: '/setting', menuCategory: 'General', icon: 'heroicons:cog-6-tooth' }
@@ -47,7 +46,7 @@ const flatMenus = computed(() => {
 
 // Filter hasil pencarian berdasarkan query
 const filteredMenus = computed(() => {
-    if (!searchQuery.value) return flatMenus.value.slice(0, 8) // batasi default max 8 item saat kosong
+    if (!searchQuery.value) return flatMenus.value.slice(0, 8)
     const query = searchQuery.value.toLowerCase().trim()
     return flatMenus.value.filter(menu =>
         menu.label.toLowerCase().includes(query) ||
@@ -93,7 +92,6 @@ const handleKeyDown = (e) => {
     }
 }
 
-// Memastikan item yang terpilih lewat keyboard tetap terlihat di dalam area scroll
 const scrollIntoView = () => {
     nextTick(() => {
         const activeElement = resultItemsRef.value[selectedIndex.value]
@@ -103,12 +101,10 @@ const scrollIntoView = () => {
     })
 }
 
-// Reset index pilihan saat query pencarian berubah
 watch(searchQuery, () => {
     selectedIndex.value = 0
 })
 
-// Auto-focus input saat modal dibuka
 watch(isSearchOpen, (isOpen) => {
     if (isOpen) {
         searchQuery.value = ''
@@ -119,18 +115,16 @@ watch(isSearchOpen, (isOpen) => {
     }
 })
 
-// Menu.vue
 const handleGlobalKeyDown = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault()
-        e.stopPropagation() // <--- Tambahkan ini agar tidak bocor ke RevoGrid
-        e.stopImmediatePropagation() // <--- Tambahkan ini untuk memblokir listener lain di level yang sama
+        e.stopPropagation()
+        e.stopImmediatePropagation()
         isSearchOpen.value = !isSearchOpen.value
     }
 }
-// Menu.vue
+
 onMounted(() => {
-    // Menggunakan true / { capture: true } agar dieksekusi di fase awal (Capture)
     window.addEventListener('keydown', handleGlobalKeyDown, true)
     window.addEventListener('keydown', handleKeyDown, true)
 })
@@ -148,14 +142,15 @@ onUnmounted(() => {
         <div class="p-3 flex-1 flex flex-col justify-between relative h-full">
 
             <div class="space-y-1.5">
-                <div class="flex items-center mb-6 px-2 h-10"
-                    :class="sidebarStore.isCollapsed ? 'justify-center' : 'justify-between'">
-                    <span v-show="!sidebarStore.isCollapsed"
-                        class="text-sm font-bold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase">
+
+                <div class="flex items-center mb-6 px-2 h-10 justify-between">
+                    <span
+                        class="text-sm font-bold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase text-sidebar-label"
+                        :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
                         VUE CORE
                     </span>
                     <button @click="sidebarStore.toggleCollapse"
-                        class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+                        class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 flex-shrink-0">
                         <Icon icon="heroicons:chevron-left-20-solid" class="text-lg transition-transform duration-300"
                             :class="{ 'rotate-180': sidebarStore.isCollapsed }" />
                     </button>
@@ -163,31 +158,34 @@ onUnmounted(() => {
 
                 <div class="px-1 mb-4">
                     <button @click="isSearchOpen = true"
-                        class="w-full flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 rounded-xl transition-all duration-150 text-slate-400 dark:text-slate-500"
-                        :class="sidebarStore.isCollapsed ? 'p-2.5 justify-center' : 'h-10 px-3 justify-between'">
-                        <div class="flex items-center gap-2.5">
+                        class="w-full flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 rounded-xl transition-all duration-200 text-slate-400 dark:text-slate-500 h-10 px-3 justify-between">
+                        <div class="flex items-center gap-2.5 min-w-0 flex-1">
                             <Icon icon="heroicons:magnifying-glass-20-solid" class="text-lg flex-shrink-0" />
-                            <span v-show="!sidebarStore.isCollapsed" class="text-xs tracking-wide">Cari menu...</span>
+                            <span class="text-xs tracking-wide text-sidebar-label"
+                                :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
+                                Cari menu...
+                            </span>
                         </div>
-                        <kbd v-show="!sidebarStore.isCollapsed"
-                            class="text-[10px] font-sans font-medium px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 shadow-sm text-slate-500">
+                        <kbd class="text-[10px] font-sans font-medium px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 shadow-sm text-slate-500 text-sidebar-label flex-shrink-0"
+                            :class="sidebarStore.isCollapsed ? 'collapsed-instant' : 'expanded'">
                             Ctrl K
                         </kbd>
                     </button>
                 </div>
 
                 <div class="relative group" @click="router.push('/dashboard')">
-                    <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative" :class="[
-                        route.path === '/dashboard'
-                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200',
-                        sidebarStore.isCollapsed ? 'justify-center' : 'justify-start gap-3'
-                    ]">
+                    <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative transition-all duration-200 gap-3"
+                        :class="[
+                            route.path === '/dashboard'
+                                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
+                        ]">
                         <div v-if="route.path === '/dashboard'"
                             class="absolute left-0 top-2.5 bottom-2.5 w-1 bg-emerald-500 dark:bg-emerald-400 rounded-r">
                         </div>
                         <Icon icon="si:dashboard-vert-line" class="text-xl flex-shrink-0" />
-                        <span v-show="!sidebarStore.isCollapsed" class="text-sm capitalize">
+                        <span class="text-sm capitalize text-sidebar-label"
+                            :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
                             Dashboard
                         </span>
                     </div>
@@ -196,22 +194,25 @@ onUnmounted(() => {
                 <div v-for="(menus, category) in menuTree" :key="category" class="relative group"
                     @mouseenter="openCategory = category" @mouseleave="openCategory = null">
 
-                    <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative" :class="[
-                        openCategory === category
-                            ? 'bg-slate-50 dark:bg-slate-800/80 text-emerald-600 dark:text-emerald-400'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200',
-                        sidebarStore.isCollapsed ? 'justify-center' : 'justify-start gap-3'
-                    ]">
-                        <div class="flex items-center" :class="sidebarStore.isCollapsed ? 'space-x-0' : 'space-x-3'">
+                    <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative transition-all duration-200 justify-between gap-3"
+                        :class="[
+                            openCategory === category
+                                ? 'bg-slate-50 dark:bg-slate-800/80 text-emerald-600 dark:text-emerald-400'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
+                        ]">
+                        <div class="flex items-center min-w-0 flex-1 gap-3">
                             <Icon v-if="menus[0]?.icon" :icon="formatIcon(menus[0].icon)"
                                 class="text-xl flex-shrink-0" />
-                            <span v-show="!sidebarStore.isCollapsed" class="font-medium capitalize text-sm">
+                            <span class="font-medium capitalize text-sm text-sidebar-label"
+                                :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
                                 {{ category }}
                             </span>
                         </div>
-                        <Icon v-show="!sidebarStore.isCollapsed" icon="heroicons:chevron-right-20-solid"
-                            class="w-4 h-4 ml-auto text-slate-400"
-                            :class="{ 'text-emerald-500': openCategory === category }" />
+                        <Icon icon="heroicons:chevron-right-20-solid"
+                            class="w-4 h-4 text-slate-400 flex-shrink-0 text-sidebar-label" :class="[
+                                sidebarStore.isCollapsed ? 'collapsed-instant' : 'expanded',
+                                { 'text-emerald-500': openCategory === category }
+                            ]" />
                     </div>
 
                     <div v-show="openCategory === category" class="absolute z-50 top-0 w-52 flyout-container"
@@ -237,17 +238,18 @@ onUnmounted(() => {
                 </div>
 
                 <div class="relative group" @click="router.push('/setting')">
-                    <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative" :class="[
-                        route.path === '/setting'
-                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
-                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200',
-                        sidebarStore.isCollapsed ? 'justify-center' : 'justify-start gap-3'
-                    ]">
+                    <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative transition-all duration-200 gap-3"
+                        :class="[
+                            route.path === '/setting'
+                                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
+                        ]">
                         <div v-if="route.path === '/setting'"
                             class="absolute left-0 top-2.5 bottom-2.5 w-1 bg-emerald-500 dark:bg-emerald-400 rounded-r">
                         </div>
                         <Icon icon="heroicons:cog-6-tooth" class="text-xl flex-shrink-0" />
-                        <span v-show="!sidebarStore.isCollapsed" class="text-sm capitalize">
+                        <span class="text-sm capitalize text-sidebar-label"
+                            :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
                             Settings
                         </span>
                     </div>
@@ -364,5 +366,46 @@ onUnmounted(() => {
 .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+/* ==========================================================================
+   SISTEM TRANSISI MURNI CSS (ANTI-MELOMPAT & FLYOUT-SAFE)
+   ========================================================================== */
+
+.text-sidebar-label {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    /* Sifat pemotong ditaruh di sini agar aman */
+    transition: max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.2s ease-in-out,
+        transform 0.25s ease-out;
+}
+
+/* Keadaan Saat Sidebar Terbuka (Expanded) */
+.text-sidebar-label.expanded {
+    max-width: 180px;
+    /* Batas lebar aman untuk menampung teks */
+    opacity: 1;
+    transform: translateX(0);
+    transition-delay: 120ms, 120ms, 120ms;
+    /* Tunda teks sedikit agar layout melebar dulu */
+}
+
+/* Keadaan Saat Sidebar Mengecil (Collapsed) */
+.text-sidebar-label.collapsed {
+    max-width: 0px;
+    opacity: 0;
+    transform: translateX(-10px);
+    transition-delay: 0ms;
+    /* Hilang langsung tanpa delay saat mengecil */
+}
+
+/* Khusus elemen ikon kecil/chevron/kbd agar hilang cepat tanpa merusak layout */
+.text-sidebar-label.collapsed-instant {
+    opacity: 0;
+    max-width: 0px;
+    pointer-events: none;
+    transition: opacity 0.08s ease-in, max-width 0.08s ease-in;
 }
 </style>

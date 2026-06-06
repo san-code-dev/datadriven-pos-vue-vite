@@ -107,6 +107,7 @@ const loadComponentData = async () => {
 			name: field.label,
 			readonly: field.readonly || false,
 			size: field.label.length * 15,
+			columnType: field.type === 'relation' ? 'display' : field.type,
 			_type: field.type || 'text',
 			_autoIncrementOnDuplicate: field.autoIncrementOnDuplicate || false,
 			_primary: field.primary || false,
@@ -168,6 +169,7 @@ const afterFocus = (event) => {
 	focusedCoordinate.value = { x: event.detail.colIndex, y: event.detail.rowIndex }
 	focusedColumn.value = event.detail.column
 	focusedRow.value = event.detail.model
+	console.log('Sel fokus berubah ke koordinat:', focusedCoordinate.value, 'Kolom:', focusedColumn.value, 'Baris:', focusedRow.value)
 }
 
 const handleKeyDown = (e) => {

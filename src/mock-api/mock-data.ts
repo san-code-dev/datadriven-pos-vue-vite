@@ -65,53 +65,32 @@ const Customer = {
     data: [] as readonly any[]
 }
 
+
 const Penjualan = {
     key: 'Penjualan',
-    label: 'Data penjualan',
+    label: 'Penjualan',
     type: 'transaction',
-    permissions: {
-        view: true,
-        create: true,
-        edit: false,
-        delete: false,
-    },
-    schema: [
-        { key: 'id', label: 'Id Penjualan', type: 'display', primary: true },
-        { key: 'date', label: 'tanggal', type: 'date' },
-        {
-            key: 'user', label: 'user', type: 'relation', relation: {
-                entity: 'user',
-                valueField: 'id',
-                displayField: 'nmUser',
-                api: '/api/user',
-            }, validation: { required: true }
-        },
-        {
-            key: 'customer', label: 'customer', type: 'relation', relation: {
-                entity: 'customer',
-                valueField: 'id',
-                displayField: 'nmCustomer',
-                api: '/api/customer',
-            }, validation: { required: true }
-        },
-        { key: 'total', label: 'total', type: 'currency', readonly: true },
-    ],
-    data: [] as readonly any[]
-}
-
-const DetailPenjualan = {
-    key: 'DetailPenjualan',
-    label: 'Detail penjualan',
-    type: 'transaction-detail',
     permissions: {
         view: true,
         create: true,
         edit: true,
         delete: false,
     },
+    actions: [
+        { key: 'export', label: 'Export Data', type: 'export' },
+        { key: 'print', label: 'Print Data', type: 'printer' },
+        { key: 'pay', label: 'Bayar', type: 'payment' },
+    ],
+
+    highlight: [
+        { key: 'customer', label: 'Customer', type: 'text', field: 'customer' },
+        { key: 'total', label: 'Total', type: 'currency', field: 'total' },
+    ],
+
     header: {
+        label: 'ANTRIAN PENJUALAN',
         schema: [
-            { key: 'id', label: 'Id Penjualan', type: 'display', primary: true },
+            { key: 'id', label: 'antrian', type: 'display', primary: true, readonly: true },
             { key: 'date', label: 'tanggal', type: 'date' },
             {
                 key: 'user', label: 'user', type: 'relation', relation: {
@@ -129,13 +108,20 @@ const DetailPenjualan = {
                     api: '/api/customer',
                 }, validation: { required: true }
             },
+            { key: 'discount', label: 'diskon', type: 'text' },
             { key: 'total', label: 'total', type: 'currency', readonly: true },
         ],
-        data: [] as readonly any[],
+        data: [
+            { id: 1, date: '2023-01-01', user: { id: 1, nmUser: 'John Doe' }, customer: { id: 1, nmCustomer: 'Jane Smith' }, discount: 10, total: 410 },
+            { id: 2, date: '2023-01-02', user: { id: 2, nmUser: 'Alice' }, customer: { id: 2, nmCustomer: 'Bob' }, discount: 20, total: 340 },
+            { id: 3, date: '2023-01-03', user: { id: 1, nmUser: 'John Doe' }, customer: { id: 3, nmCustomer: 'Charlie' }, discount: 30, total: 1200 },
+        ],
     },
     details: {
+        label: 'ITEM KERANJANG BELANJA',
         schema: [
-            { key: 'id', label: 'Id Detail Penjualan', type: 'display', primary: true },
+            { key: 'id', label: 'Id', type: 'display', primary: true, readonly: true },
+            { key: 'penjualanId', label: 'Penjualan ID', type: 'display', readonly: true },
             {
                 key: 'product', label: 'Product', type: 'relation', relation: {
                     entity: 'product',
@@ -147,49 +133,26 @@ const DetailPenjualan = {
             { key: 'quantity', label: 'Quantity', type: 'number', validation: { required: true, min: 1 } },
             { key: 'price', label: 'Price', type: 'currency' },
         ],
-        data: [] as readonly any[],
+        data: [
+            { id: 1, penjualanId: 1, product: { id: 1, nmProduct: 'Product A' }, quantity: 2, price: 100 },
+            { id: 2, penjualanId: 1, product: { id: 2, nmProduct: 'Product B' }, quantity: 1, price: 200 },
+            { id: 3, penjualanId: 2, product: { id: 1, nmProduct: 'Product A' }, quantity: 1, price: 100 },
+            { id: 4, penjualanId: 2, product: { id: 3, nmProduct: 'Product C' }, quantity: 3, price: 80 },
+            { id: 5, penjualanId: 3, product: { id: 2, nmProduct: 'Product B' }, quantity: 4, price: 200 },
+            { id: 6, penjualanId: 3, product: { id: 3, nmProduct: 'Product C' }, quantity: 5, price: 80 },
+            { id: 7, penjualanId: 3, product: { id: 4, nmProduct: 'Product D' }, quantity: 2, price: 150 },
+            { id: 8, penjualanId: 3, product: { id: 5, nmProduct: 'Product E' }, quantity: 1, price: 300 },
+        ],
     }
 }
 
-const ProductAuditHistory = {
-    key: 'ProductAuditHistory',
-    label: 'Audit History Product',
-    type: 'audit-history',
-    permissions: {
-        view: true,
-    },
-    schema: [
-        { key: 'id', label: 'Id', type: 'display', primary: true, readonly: true },
-        { key: 'action', label: 'Action', type: 'display' },
-        {
-            key: 'user', label: 'User', type: 'relation', relation: {
-                entity: 'user',
-                valueField: 'id',
-                displayField: 'nmUser',
-                api: '/api/user',
-            }, validation: { required: true }
-        },
-        { key: 'datetime', label: 'Datetime', type: 'display' },
-        { key: 'oldData', label: 'Old Data', type: 'json' },
-        { key: 'newData', label: 'New Data', type: 'json' },
-    ],
-    data: [] as readonly any[],
-}
-
-// ==========================================
-// ASSIGNMENT DATA (SEMUA DI BAWAH)
 // ==========================================
 
-Product.data = Object.freeze(generateDynamicData(Product.schema, 5000));
-User.data = Object.freeze(generateDynamicData(User.schema, 5000));
-Customer.data = Object.freeze(generateDynamicData(Customer.schema, 5000));
-Penjualan.data = Object.freeze(generateDynamicData(Penjualan.schema, 5000));
-DetailPenjualan.header.data = Object.freeze(generateDynamicData(DetailPenjualan.header.schema, 1)[0]);
-DetailPenjualan.details.data = Object.freeze(generateDynamicData(DetailPenjualan.details.schema, 5000));
-
-ProductAuditHistory.data = Object.freeze(generateDynamicData(ProductAuditHistory.schema, 5000));
+Product.data = Object.freeze(generateDynamicData(Product.schema, 1000));
+User.data = Object.freeze(generateDynamicData(User.schema, 1000));
+Customer.data = Object.freeze(generateDynamicData(Customer.schema, 1000));
 
 // ==========================================
 // EXPORT MODULES
 // ==========================================
-export { Product, User, Customer, Penjualan, DetailPenjualan, ProductAuditHistory };
+export { Product, User, Customer, Penjualan };

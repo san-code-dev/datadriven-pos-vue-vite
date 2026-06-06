@@ -2,7 +2,7 @@
 import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { AccessMenu } from '@/mock-api/mock-padel-menu'
+import { AccessMenu } from '@/mock-api/mock-menu'
 import { useSidebarStore } from '@/stores/sideBar'
 
 const router = useRouter()

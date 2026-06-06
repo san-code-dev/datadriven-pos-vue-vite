@@ -3,8 +3,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 // Import menu dan data schema sesuai tempat barunya
-import { AccessMenu } from '@/mock-api/mock-padel-menu'
-import * as MockData from '@/mock-api/mock-padel-data'
+import { AccessMenu } from '@/mock-api/mock-menu'
+import * as MockData from '@/mock-api/mock-data'
 
 import Menu from '@/components/Menu.vue'
 import TabHeader from '@/components/TabHeader.vue' // <-- Komponen baru hasil pecahan
@@ -23,6 +23,7 @@ const componentsMap = {
     'dashboard': DashboardContent,
     'master': MasterComponent,
     'transaction': TransactionComponent,
+    'transaction-detail': TransactionComponent,
 }
 
 const getComponentByType = (type) => {

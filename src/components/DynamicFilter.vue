@@ -1,7 +1,7 @@
 <template>
     <div ref="filterContainerRef"
         class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-4 transition-colors outline-none focus:ring-2 focus:ring-emerald-500/50 select-none"
-        tabindex="-1" @keydown="handleGlobalComponentKey" @mousedown="handleContainerMouseDown">
+        tabindex="1" @keydown="handleGlobalComponentKey" @mousedown="handleContainerMouseDown">
 
         <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-2 text-slate-700 dark:text-slate-200">
@@ -41,7 +41,7 @@
                 class="flex flex-wrap items-center gap-2 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 transition-all focus-within:border-emerald-500/40">
 
                 <div class="relative flex items-center h-full">
-                    <select v-model="item.field" @change="onFieldChange(index)" @keydown.enter="handleSelectEnter"
+                    <select v-model="item.field" @change="onFieldChange(index)"
                         class="filter-input data-field text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[140px]">
                         <option value="" disabled>-- Pilih Kolom --</option>
                         <option v-for="field in allowedSchema" :key="field.key" :value="field.key">
@@ -55,7 +55,7 @@
                 </div>
 
                 <div class="relative flex items-center h-full">
-                    <select v-model="item.operator" @keydown.enter="handleSelectEnter"
+                    <select v-model="item.operator"
                         class="filter-input data-operator text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[110px]">
                         <option v-for="op in getAvailableOperators(item.field)" :key="op.value" :value="op.value">
                             {{ op.label }}
@@ -69,16 +69,14 @@
 
                 <div class="flex items-center gap-2">
                     <input v-if="item.operator !== 'between'" v-model="item.value" :type="getInputType(item.field)"
-                        placeholder="Ketik nilai..." @keydown.enter="applyFilters"
+                        placeholder="Ketik nilai..."
                         class="filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
 
                     <template v-if="item.operator === 'between'">
                         <input v-model="item.value" :type="getInputType(item.field)" placeholder="Min"
-                            @keydown.enter="applyFilters"
                             class="filter-input data-val-min w-24 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
                         <span class="text-xs text-slate-400">s/d</span>
                         <input v-model="item.valueTo" :type="getInputType(item.field)" placeholder="Max"
-                            @keydown.enter="applyFilters"
                             class="filter-input data-val-max w-24 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
                     </template>
                 </div>
@@ -95,7 +93,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { Icon } from '@iconify/vue' // <-- Import komponen Iconify
+import { Icon } from '@iconify/vue'
 import { useFilterStore } from '@/stores/filter'
 
 const props = defineProps({
@@ -195,16 +193,14 @@ const removeFilterRow = async (index) => {
     }
 }
 
-const handleSelectEnter = (e) => {
-    const currentSelect = e.target
-    const rowEl = currentSelect.closest('[ref]')
+const handleSelectEnter = (targetElement) => {
+    const rowEl = targetElement.closest('[ref]')
     if (!rowEl) return
 
     const inputsInRow = Array.from(rowEl.querySelectorAll('.filter-input'))
-    const currentIndex = inputsInRow.indexOf(currentSelect)
+    const currentIndex = inputsInRow.indexOf(targetElement)
 
     if (currentIndex !== -1 && inputsInRow[currentIndex + 1]) {
-        e.preventDefault()
         inputsInRow[currentIndex + 1].focus()
     }
 }
@@ -290,8 +286,10 @@ const handleGlobalComponentKey = (e) => {
 }
 
 const handleWindowKeyDown = (e) => {
+    // 1. Cegat Shortcut Alt + F secepat mungkin di level teratas
     if (e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
+        e.stopPropagation()
         if (localFilters.value.length === 0) {
             addFilterRow()
         } else {
@@ -300,8 +298,26 @@ const handleWindowKeyDown = (e) => {
         return
     }
 
+    // 2. Jika fokus saat ini berada di dalam form filter
     if (filterContainerRef.value?.contains(document.activeElement)) {
         const activeEl = document.activeElement
+
+        // 3. Tangkap dan Isolasi Event Tombol ENTER
+        if (e.key === 'Enter') {
+
+
+            if (activeEl.tagName === 'SELECT') {
+                handleSelectEnter(activeEl)
+            } else if (activeEl.classList.contains('filter-input')) {
+                e.preventDefault()
+                e.stopPropagation()
+                applyFilters()
+            } else {
+                e.preventDefault()
+                e.stopPropagation()
+            }
+            return
+        }
 
         const currentY = rowRefs.value.findIndex(el => el && el.contains(activeEl))
 
@@ -309,6 +325,7 @@ const handleWindowKeyDown = (e) => {
             if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                 if (localFilters.value.length > 0) {
                     e.preventDefault()
+                    e.stopPropagation()
                     focusInputAtRow(0, 0)
                 }
             }
@@ -322,37 +339,118 @@ const handleWindowKeyDown = (e) => {
         if (e.key === 'Delete') {
             if (activeEl.tagName === 'SELECT' || activeEl.value === '') {
                 e.preventDefault()
+                e.stopPropagation()
                 removeFilterRow(currentY)
                 return
             }
         }
 
+        // 4. Isolasi Event Tombol ARROW Keys (stopPropagation diletakkan sebelum pengecekan IF)
         switch (e.key) {
             case 'ArrowDown':
+                e.preventDefault()
+                e.stopPropagation()
                 if (rowRefs.value[currentY + 1]) {
-                    e.preventDefault()
-                    focusInputAtRow(currentY + 1, currentX)
-                }
-                break
-            case 'ArrowUp':
-                if (rowRefs.value[currentY - 1]) {
-                    e.preventDefault()
-                    focusInputAtRow(currentY - 1, currentX)
-                }
-                break
-            case 'ArrowRight':
-                if (activeEl.tagName === 'SELECT' || activeEl.selectionEnd === activeEl.value.length) {
-                    if (inputsInRow[currentX + 1]) {
-                        e.preventDefault()
-                        inputsInRow[currentX + 1].focus()
+                    // Ambil semua input di baris bawahnya
+                    const nextRowEl = rowRefs.value[currentY + 1]
+                    const inputsInNextRow = Array.from(nextRowEl.querySelectorAll('.filter-input'))
+                    // Sesuaikan kolom indeks (currentX) agar sejajar secara vertikal
+                    const targetInput = inputsInNextRow[Math.min(currentX, inputsInNextRow.length - 1)]
+
+                    if (targetInput) {
+                        targetInput.focus()
+                        if (targetInput.tagName === 'INPUT') {
+                            targetInput.select() // Otomatis block semua isi teks/angka
+                        }
                     }
                 }
                 break
+
+            case 'ArrowUp':
+                e.preventDefault()
+                e.stopPropagation()
+                if (rowRefs.value[currentY - 1]) {
+                    // Ambil semua input di baris atasnya
+                    const prevRowEl = rowRefs.value[currentY - 1]
+                    const inputsInPrevRow = Array.from(prevRowEl.querySelectorAll('.filter-input'))
+                    // Sesuaikan kolom indeks (currentX) agar sejajar secara vertikal
+                    const targetInput = inputsInPrevRow[Math.min(currentX, inputsInPrevRow.length - 1)]
+
+                    if (targetInput) {
+                        targetInput.focus()
+                        if (targetInput.tagName === 'INPUT') {
+                            targetInput.select() // Otomatis block semua isi teks/angka
+                        }
+                    }
+                }
+                break
+            case 'ArrowRight':
+                e.stopPropagation()
+                {
+                    if (activeEl.tagName === 'SELECT') {
+                        if (inputsInRow[currentX + 1]) {
+                            e.preventDefault()
+                            inputsInRow[currentX + 1].focus()
+                            // Otomatis select semua isi jika element setelahnya adalah INPUT
+                            if (inputsInRow[currentX + 1].tagName === 'INPUT') {
+                                inputsInRow[currentX + 1].select()
+                            }
+                        }
+                    } else if (activeEl.classList.contains('filter-input')) {
+                        let selectionEnd = 0
+                        if (activeEl.type === 'number') {
+                            const originalType = activeEl.type
+                            activeEl.type = 'text'
+                            selectionEnd = activeEl.selectionEnd
+                            activeEl.type = originalType
+                        } else {
+                            selectionEnd = activeEl.selectionEnd
+                        }
+
+                        if (selectionEnd === activeEl.value?.length || activeEl.value === '') {
+                            if (inputsInRow[currentX + 1]) {
+                                e.preventDefault()
+                                inputsInRow[currentX + 1].focus()
+                                if (inputsInRow[currentX + 1].tagName === 'INPUT') {
+                                    inputsInRow[currentX + 1].select()
+                                }
+                            }
+                        }
+                    }
+                }
+                break
+
             case 'ArrowLeft':
-                if (activeEl.tagName === 'SELECT' || activeEl.selectionStart === 0) {
-                    if (inputsInRow[currentX - 1]) {
-                        e.preventDefault()
-                        inputsInRow[currentX - 1].focus()
+                e.stopPropagation()
+                {
+                    if (activeEl.tagName === 'SELECT') {
+                        if (inputsInRow[currentX - 1]) {
+                            e.preventDefault()
+                            inputsInRow[currentX - 1].focus()
+                            if (inputsInRow[currentX - 1].tagName === 'INPUT') {
+                                inputsInRow[currentX - 1].select()
+                            }
+                        }
+                    } else if (activeEl.classList.contains('filter-input')) {
+                        let selectionStart = 0
+                        if (activeEl.type === 'number') {
+                            const originalType = activeEl.type
+                            activeEl.type = 'text'
+                            selectionStart = activeEl.selectionStart
+                            activeEl.type = originalType
+                        } else {
+                            selectionStart = activeEl.selectionStart
+                        }
+
+                        if (selectionStart === 0 || activeEl.value === '') {
+                            if (inputsInRow[currentX - 1]) {
+                                e.preventDefault()
+                                inputsInRow[currentX - 1].focus()
+                                if (inputsInRow[currentX - 1].tagName === 'INPUT') {
+                                    inputsInRow[currentX - 1].select()
+                                }
+                            }
+                        }
                     }
                 }
                 break
@@ -360,6 +458,7 @@ const handleWindowKeyDown = (e) => {
     }
 }
 
-onMounted(() => window.addEventListener('keydown', handleWindowKeyDown))
-onBeforeUnmount(() => window.removeEventListener('keydown', handleWindowKeyDown))
+// 5. Daftarkan event listener global menggunakan Capture Phase (opsi 'true')
+onMounted(() => window.addEventListener('keydown', handleWindowKeyDown, true))
+onBeforeUnmount(() => window.removeEventListener('keydown', handleWindowKeyDown, true))
 </script>

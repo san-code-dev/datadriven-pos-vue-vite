@@ -91,22 +91,27 @@ const getGridInstance = () => {
 // FUNGSI JUMP & FOCUS UNTUK BARIS (VERTIKAL)
 // ========================================================
 const scrollToFirstRow = () => {
-    const grid = getGridInstance()
-    if (!grid || props.rows.length === 0) return
+    nextTick(() => {
+        const grid = getGridInstance()
+        if (!grid || props.rows.length === 0) return
 
-    const currentX = props.focusedCoordinate.x >= 0 ? props.focusedCoordinate.x : 0
-    grid.scrollToRow(0)
-    grid.setCellsFocus({ x: currentX, y: 0 }, { x: currentX, y: 0 })
+        const currentX = props.focusedCoordinate.x >= 0 ? props.focusedCoordinate.x : 0
+        grid.setCellsFocus({ x: currentX, y: 0 }, { x: currentX, y: 0 })
+        grid.scrollToRow(0)
+
+    })
 }
 
 const scrollToLastRow = () => {
-    const grid = getGridInstance()
-    if (!grid || props.rows.length === 0) return
+    nextTick(() => {
+        const grid = getGridInstance()
+        if (!grid || props.rows.length === 0) return
 
-    const lastRowIndex = props.rows.length - 1
-    const currentX = props.focusedCoordinate.x >= 0 ? props.focusedCoordinate.x : 0
-    grid.scrollToRow(lastRowIndex)
-    grid.setCellsFocus({ x: currentX, y: lastRowIndex }, { x: currentX, y: lastRowIndex })
+        const lastRowIndex = props.rows.length - 1
+        const currentX = props.focusedCoordinate.x >= 0 ? props.focusedCoordinate.x : 0
+        grid.setCellsFocus({ x: currentX, y: lastRowIndex }, { x: currentX, y: lastRowIndex })
+        grid.scrollToRow(lastRowIndex)
+    })
 }
 
 // ========================================================
@@ -132,5 +137,5 @@ const scrollToLastCol = (e) => {
 }
 
 // Expose fungsi scrollToLastRow agar bisa dipanggil Parent saat inisialisasi awal data
-defineExpose({ scrollToLastRow, scrollToLastCol })
+defineExpose({ scrollToLastRow, scrollToLastCol, scrollToFirstRow, scrollToFirstCol })
 </script>

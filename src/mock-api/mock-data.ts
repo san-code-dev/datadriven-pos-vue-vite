@@ -83,7 +83,6 @@ const Penjualan = {
     ],
 
     highlight: [
-        { key: 'customer', label: 'Customer', type: 'text', field: 'customer' },
         { key: 'total', label: 'Total', type: 'currency', field: 'total' },
     ],
 

@@ -169,7 +169,6 @@ const afterFocus = (event) => {
 	focusedCoordinate.value = { x: event.detail.colIndex, y: event.detail.rowIndex }
 	focusedColumn.value = event.detail.column
 	focusedRow.value = event.detail.model
-	console.log('Sel fokus berubah ke koordinat:', focusedCoordinate.value, 'Kolom:', focusedColumn.value, 'Baris:', focusedRow.value)
 }
 
 const handleKeyDown = (e) => {
@@ -178,6 +177,27 @@ const handleKeyDown = (e) => {
 
 	if (e.key === 'Delete') {
 		handleDeleteKey(e)
+		e.preventDefault()
+		return
+	}
+
+	if (e.altKey && e.key === 'ArrowLeft') {
+		navigatorRef.value?.scrollToFirstCol()
+		e.preventDefault()
+		return
+	}
+	if (e.altKey && e.key === 'ArrowRight') {
+		navigatorRef.value?.scrollToLastCol()
+		e.preventDefault()
+		return
+	}
+	if (e.altKey && e.key === 'ArrowDown') {
+		navigatorRef.value?.scrollToLastRow()
+		e.preventDefault()
+		return
+	}
+	if (e.altKey && e.key === 'ArrowUp') {
+		navigatorRef.value?.scrollToFirstRow()
 		e.preventDefault()
 		return
 	}
@@ -266,10 +286,26 @@ const fetchDataWithPrismaFilter = async (prismaWhere = {}) => {
 const focusBackToGrid = () => {
 	nextTick(() => {
 		const grid = gridRef.value?.$el || gridRef.value
-		grid?.focus()
+		if (!grid) return
+
+		// 1. Ambil koordinat terakhir, jika belum pernah fokus (-1) set ke baris & kolom pertama (0)
+		const targetX = focusedCoordinate.value.x >= 0 ? focusedCoordinate.value.x : 0
+		const targetY = focusedCoordinate.value.y >= 0 ? focusedCoordinate.value.y : 0
+
+		// 2. Paksa RevoGrid untuk menyorot sel internal berdasarkan koordinat tersebut
+		if (typeof grid.setCellsFocus === 'function') {
+			grid.setCellsFocus({ x: targetX, y: targetY }, { x: targetX, y: targetY })
+		}
+
+		// 3. Arahkan fokus ke clipboard internal RevoGrid agar siap menerima input keyboard
+		const internalInput = grid.querySelector('.revo-clipboard, input, [tabindex="0"]')
+		if (internalInput) {
+			internalInput.focus()
+		} else {
+			grid.focus()
+		}
 	})
 }
-
 const cariDataDenganKarakter = async (char) => {
 	searchQuery.value = char
 	showSearchModal.value = true

@@ -3,9 +3,11 @@ import { ref, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useSidebarStore } from '@/stores/sideBar'
-
+import { useAuthStore } from '@/stores/auth' // 1. Import Auth Store Pinia
+import api from "@/lib/axios"
 const router = useRouter()
 const sidebarStore = useSidebarStore()
+const authStore = useAuthStore() // 2. Inisialisasi Auth Store
 
 // State kontrol Modal & Loading
 const showLogoutModal = ref(false)
@@ -18,7 +20,6 @@ const activeButton = ref<'cancel' | 'confirm'>('cancel')
 // Fungsi buka modal dengan auto-focus native
 async function openModal() {
     showLogoutModal.value = true
-    // Reset pilihan default ke tombol 'Batal' setiap kali modal dibuka
     activeButton.value = 'cancel'
     await nextTick()
     if (dialogRef.value) {
@@ -39,10 +40,8 @@ function handleKeyDown(event: KeyboardEvent) {
     if (isLoggingOut.value) return
 
     if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-        // Berpindah antar tombol 'cancel' dan 'confirm'
         activeButton.value = activeButton.value === 'cancel' ? 'confirm' : 'cancel'
     } else if (event.key === 'Enter') {
-        // Eksekusi aksi berdasarkan tombol yang aktif saat ini
         if (activeButton.value === 'confirm') {
             submitLogout()
         } else {
@@ -59,20 +58,20 @@ async function submitLogout() {
     isLoggingOut.value = true
 
     try {
-        await fetch('http://localhost:3000/api/auth/logout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-        })
+        // 3. Panggil API logout backend Anda
+        await api.post('auth/logout/')
+    } catch (err) {
+        console.error('Logout API failed:', err)
+    } finally {
+        // 4. DI SINI KUNCINYA: Hapus data di Pinia & Local Storage secara total!
+        // Taruh di luar blok try agar meskipun API backend down, aplikasi di browser Anda tetap bersih dan keluar.
+        authStore.clearAuth()
 
         closeModal()
-        await router.push('/')
-    } catch (err) {
-        console.error('Logout failed:', err)
-        closeModal()
-        await router.push('/')
-    } finally {
         isLoggingOut.value = false
+
+        // 5. Tendang user kembali ke halaman Login awal
+        await router.push('/')
     }
 }
 </script>

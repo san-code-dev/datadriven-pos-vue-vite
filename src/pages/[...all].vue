@@ -2,12 +2,12 @@
 import { useRoute, useRouter } from 'vue-router'
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
-// Import menu dan data schema sesuai tempat barunya
-import { AccessMenu } from '@/mock-api/mock-menu'
-import * as MockData from '@/mock-api/mock-data'
+// 1. Ganti import MockData dengan instance Axios global Anda
+import api from '@/lib/axios'
+import { useAuthStore } from '@/stores/auth'
 
 import Menu from '@/components/Menu.vue'
-import TabHeader from '@/components/TabHeader.vue' // <-- Komponen baru hasil pecahan
+import TabHeader from '@/components/TabHeader.vue'
 import { useTabStore } from '@/stores/tabs'
 import DashboardContent from '@/components/DashboardContent.vue'
 import MasterComponent from '@/components/dynamic/MasterComponent.vue'
@@ -16,6 +16,7 @@ import TransactionComponent from '@/components/dynamic/TransactionComponent.vue'
 const route = useRoute()
 const router = useRouter()
 const tabStore = useTabStore()
+const authStore = useAuthStore() // Gunakan authStore untuk mencocokkan menu yang diizinkan
 const isError = ref(false)
 
 // MAPPING KOMPONEN SECARA STATIS
@@ -30,7 +31,6 @@ const getComponentByType = (type) => {
     return componentsMap[type] || null
 }
 
-// Fungsi jangkar: Jamin dashboard selalu ada di list tab
 const ensureDashboardTabExists = () => {
     const hasDashboard = tabStore.openedTabs.some(t => t.id === '/dashboard')
     if (!hasDashboard) {
@@ -44,7 +44,8 @@ const ensureDashboardTabExists = () => {
     }
 }
 
-const fetchSchemaFromApi = () => {
+// 2. Ubah fungsi sinkronisasi dari MockData menjadi HIT API ASYNC ke Express Backend
+const fetchSchemaFromApi = async () => {
     const currentPath = route.path
     ensureDashboardTabExists()
 
@@ -64,31 +65,35 @@ const fetchSchemaFromApi = () => {
     const pathSegments = currentPath.split('/').filter(Boolean)
     const rootPath = pathSegments.length ? `/${pathSegments[0]}` : '/'
 
-    const matchedMenu = AccessMenu.find(m => m.route === rootPath)
+    // Ambil menu dari data real Pinia (bukan mock file)
+    const matchedMenu = authStore.menus.find(m => m.route === rootPath)
 
     if (!matchedMenu) {
         isError.value = true
         return
     }
 
-    let targetVariableKey = matchedMenu.key
-    if (currentPath.endsWith('/audit') || currentPath.includes('/audit-history')) {
-        targetVariableKey = `${matchedMenu.key}AuditHistory`
-    } else if (currentPath !== matchedMenu.route) {
-        targetVariableKey = `Detail${matchedMenu.key}`
-    }
-
-    const responseData = MockData[targetVariableKey]
-
-    if (responseData) {
-        tabStore.addTab({
-            id: currentPath,
-            label: responseData.label || matchedMenu.label,
-            route: currentPath,
-            apiResponse: responseData,
-            currentMenu: matchedMenu
-        })
-    } else {
+    try {
+        // 🔥 DI SINI KUNCINYA: Tembak endpoint Express secara dinamis.
+        // Jika currentPath adalah '/product', maka url-nya menjadi '/product/'
+        const response = await api.get(`${currentPath}/`)
+        const responseData = response.data
+        console.log('API Response for', currentPath, ':', responseData)
+        if (responseData) {
+            tabStore.addTab({
+                id: currentPath,
+                label: responseData.label || matchedMenu.label,
+                route: currentPath,
+                apiResponse: responseData, // Otomatis berisi schema, permissions, dan data dari Prisma
+                currentMenu: matchedMenu
+            })
+        } else {
+            isError.value = true
+        }
+    } catch (err) {
+        // Jika API error atau token expired (401), Interceptor akan menangani redirect keluar.
+        // Kita cukup set UI error jika terjadi kegagalan jaringan biasa selain 401.
+        console.error('Fetch metadata failed:', err)
         isError.value = true
     }
 }
@@ -131,7 +136,7 @@ const handleKeyDown = (event) => {
         }
 
         const targetTab = tabs[nextIndex]
-        router.push(targetTab.route) // Mengganti switchTab lokal dengan router.push langsung
+        router.push(targetTab.route)
         focusGridInActiveTab()
     }
 }
@@ -145,6 +150,7 @@ onBeforeUnmount(() => {
     window.removeEventListener('keydown', handleKeyDown)
 })
 
+// Pasang watcher untuk mendeteksi perubahan rute
 watch(() => route.path, fetchSchemaFromApi, { immediate: true })
 </script>
 

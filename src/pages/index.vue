@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue' // Tambahkan onMounted
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
+import { useAuthStore } from '@/stores/auth' // 1. Import Store Pinia Anda
+import api from "@/lib/axios"
 
 definePage({
     name: 'Login',
@@ -11,13 +13,13 @@ definePage({
 })
 
 const router = useRouter()
+const authStore = useAuthStore() // 2. Inisialisasi Store
+
 const loading = ref(false)
 const error = ref('')
 
-// 1. Buat template ref untuk element input username
 const usernameInput = ref<HTMLInputElement | null>(null)
 
-// 2. Pemicu focus saat komponen berhasil dimuat (mounted)
 onMounted(() => {
     if (usernameInput.value) {
         usernameInput.value.focus()
@@ -30,7 +32,7 @@ const form = reactive({
 })
 
 /* ======================
-   LOGIN
+    LOGIN
 ====================== */
 async function login() {
     if (loading.value) return
@@ -38,18 +40,12 @@ async function login() {
     error.value = ''
 
     try {
-        const res = await fetch('http://localhost:3000/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(form),
-        })
+        const response = await api.post('auth/login', form)
 
-        if (!res.ok) {
-            const data = await res.json()
-            throw new Error(data.message || 'Login gagal. Periksa kembali akun Anda.')
-        }
+        // Simpan menu hasil login ke Pinia (otomatis tersinkron ke local storage)
+        authStore.setMenus(response.data.menu)
 
+        // Redirect ke dashboard setelah sukses
         await router.push('/dashboard')
     } catch (err: any) {
         error.value = err.message
@@ -58,7 +54,6 @@ async function login() {
     }
 }
 </script>
-
 <template>
     <div
         class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-950 px-4 transition-colors font-sans select-none">

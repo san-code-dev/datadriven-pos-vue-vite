@@ -82,9 +82,18 @@ const Penjualan = {
         { key: 'pay', label: 'Bayar', type: 'payment' },
     ],
 
-    highlight: [
-        { key: 'total', label: 'Total', type: 'currency', field: 'total' },
-    ],
+    queue: {
+        schema: [
+            { key: 'id', label: 'antrian', type: 'display', primary: true, readonly: true },
+            { key: 'customer', label: 'customer', type: 'text' },
+        ],
+        data: [
+            { id: 1, customer: 'Jane Smith' },
+            { id: 2, customer: 'Bob' },
+            { id: 3, customer: 'Charlie' },
+        ]
+    },
+    // antrian
 
     header: {
         label: 'ANTRIAN PENJUALAN',
@@ -108,13 +117,11 @@ const Penjualan = {
                 }, validation: { required: true }
             },
             { key: 'discount', label: 'diskon', type: 'text' },
-            { key: 'total', label: 'total', type: 'currency', readonly: true },
+            { key: 'total', label: 'total', type: 'currency', readonly: true, highlight: true },
         ],
-        data: [
-            { id: 1, date: '2023-01-01', user: { id: 1, nmUser: 'John Doe' }, customer: { id: 1, nmCustomer: 'Jane Smith' }, discount: 10, total: 410 },
-            { id: 2, date: '2023-01-02', user: { id: 2, nmUser: 'Alice' }, customer: { id: 2, nmCustomer: 'Bob' }, discount: 20, total: 340 },
-            { id: 3, date: '2023-01-03', user: { id: 1, nmUser: 'John Doe' }, customer: { id: 3, nmCustomer: 'Charlie' }, discount: 30, total: 1200 },
-        ],
+        data: {
+            id: 3, date: '2023-01-03', user: { id: 1, nmUser: 'John Doe' }, customer: { id: 3, nmCustomer: 'Charlie' }, discount: 30, total: 1200
+        },
     },
     details: {
         label: 'ITEM KERANJANG BELANJA',
@@ -133,10 +140,6 @@ const Penjualan = {
             { key: 'price', label: 'Price', type: 'currency' },
         ],
         data: [
-            { id: 1, penjualanId: 1, product: { id: 1, nmProduct: 'Product A' }, quantity: 2, price: 100 },
-            { id: 2, penjualanId: 1, product: { id: 2, nmProduct: 'Product B' }, quantity: 1, price: 200 },
-            { id: 3, penjualanId: 2, product: { id: 1, nmProduct: 'Product A' }, quantity: 1, price: 100 },
-            { id: 4, penjualanId: 2, product: { id: 3, nmProduct: 'Product C' }, quantity: 3, price: 80 },
             { id: 5, penjualanId: 3, product: { id: 2, nmProduct: 'Product B' }, quantity: 4, price: 200 },
             { id: 6, penjualanId: 3, product: { id: 3, nmProduct: 'Product C' }, quantity: 5, price: 80 },
             { id: 7, penjualanId: 3, product: { id: 4, nmProduct: 'Product D' }, quantity: 2, price: 150 },

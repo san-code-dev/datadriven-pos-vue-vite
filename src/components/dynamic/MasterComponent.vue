@@ -1,48 +1,58 @@
 <template>
 	<div class="flex flex-col h-full max-h-full overflow-hidden min-h-0 bg-transparent w-full">
-		<DynamicFilter v-if="props.schemaData?.schema" :schema="props.schemaData.schema"
-			:tabId="props.menu?.route || 'master'" @filter-changed="fetchDataWithPrismaFilter"
-			@escape-filter="focusBackToGrid" />
+
+		<div
+			class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
+
+			<div class="flex-1 min-w-0">
+				<DynamicFilter v-if="props.schemaData?.schema" :schema="props.schemaData.schema"
+					:tabId="props.menu?.route || 'master'" @filter-changed="fetchDataWithPrismaFilter"
+					@escape-filter="focusBackToGrid" />
+			</div>
+
+			<div class="flex items-center justify-end shrink-0">
+				<button v-if="permission.create" @click="handleAddNewRow" type="button"
+					class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium text-sm rounded-xl shadow-md shadow-blue-500/10 hover:shadow-lg hover:shadow-blue-500/20 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5"
+						stroke="currentColor" class="w-4 h-4">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+					</svg>
+					Tambah Baris Baru
+				</button>
+
+				<button v-else disabled type="button"
+					class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 font-medium text-sm rounded-xl cursor-not-allowed border border-slate-200 dark:border-slate-700">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+						stroke="currentColor" class="w-4 h-4">
+						<path stroke-linecap="round" stroke-linejoin="round"
+							d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+					</svg>
+					Akses Terkunci
+				</button>
+			</div>
+
+		</div>
+
 		<div class="flex flex-1 min-h-0 w-full overflow-hidden">
 			<div class="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
-
 				<div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
 
 					<RevoGrid ref="gridRef" class="w-full h-full max-h-full focus:outline-none" :columns="columns"
 						:source="rows" :theme="isDark ? 'darkCompact' : 'compact'" resize="true"
-						@beforeeditstart.once="beforeEditStart" @beforeedit.once="beforeEdit"
-						@afteredit.once="afterEdit" @afterfocus="afterFocus" />
+						@beforeeditstart.once="beforeEditStart" @beforeedit.once="beforeEdit" @afteredit="afterEdit"
+						@afterfocus="afterFocus" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns"
 						:focused-coordinate="focusedCoordinate" />
 
 					<div v-if="showSearchModal" @click.self="closeSearchModal"
 						class="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-
-						<div
-							class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-lg mx-4">
-							<label
-								class="block text-sm font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
-								Pencarian Cepat
-							</label>
-							<input ref="searchInputRef" v-model="searchQuery" type="text"
-								placeholder="Ketik sesuatu lalu tekan Enter..."
-								class="w-full text-2xl font-medium px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-slate-800 dark:text-slate-100 transition-all"
-								@keydown.enter="handleSearchSubmit" @keydown.esc="closeSearchModal" />
-							<div class="flex justify-between items-center mt-4 text-xs text-slate-400">
-								<span>Tekan <kbd
-										class="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded shadow">Enter</kbd>
-									untuk mencari</span>
-								<span>Tekan <kbd
-										class="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 rounded shadow">ESC</kbd>
-									untuk batal</span>
-							</div>
-						</div>
 					</div>
 
 				</div>
 			</div>
 		</div>
+
 	</div>
 </template>
 
@@ -51,8 +61,12 @@ import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from '@/components/GridNavigator.vue'
-import { useTabStore } from '@/stores/tabs'
 import DynamicFilter from '@/components/DynamicFilter.vue'
+
+// 🔥 Hubungkan ke global Axios instance (Pencegat 401) dan Pinia Tab Store
+import api from '@/lib/axios'
+import { useTabStore } from '@/stores/tabs'
+
 const props = defineProps({
 	menu: { type: Object, required: true },
 	schemaData: { type: Object, required: true }
@@ -76,9 +90,9 @@ const tabStore = useTabStore()
 let savedGridEl = null
 let behaviorTimeoutId = null
 let focusTimeoutId = null
-let watchTabTimeoutId = null // <-- Tambahkan ini untuk mengontrol timer di dalam watch
+let watchTabTimeoutId = null
 
-// PERBAIKAN 1: Optimasi template agar tidak menciptakan closure baru secara liar
+// Renderer relasi data statis (Optimasi reaktivitas)
 const relationCellRenderer = (createElement, props, displayField, fieldKey) => {
 	const rowData = props.model[fieldKey]
 	const displayText = rowData ? rowData[displayField] : ''
@@ -93,13 +107,13 @@ const removeGridListeners = () => {
 	}
 }
 
+// Memuat data & skema dinamis dari backend Prisma ke dalam tabel RevoGrid
 const loadComponentData = async () => {
 	const res = props.schemaData
 	console.log('Menerima schemaData baru:', res)
 	if (!res) return
 
-	// Bersihkan referensi kolom lama terlebih dahulu
-	columns.value = []
+	columns.value = [] // Bersihkan kolom lama
 
 	columns.value = (res.schema || []).map(field => {
 		const columnConfig = {
@@ -114,14 +128,14 @@ const loadComponentData = async () => {
 		}
 
 		if (field.type === 'relation' && field.relation) {
-			// Gunakan referensi fungsi statis, melemparkan parameter secara eksplisit
 			columnConfig.cellTemplate = (createElement, linkProps) =>
 				relationCellRenderer(createElement, linkProps, field.relation.displayField, field.key)
 		}
 		return columnConfig
 	})
 
-	rows.value = res.data || []
+	// 🔥 Spread array agar melepaskan sisa cache data dari localStorage lama
+	rows.value = res.data ? [...res.data] : []
 	primaryKey.value = (res.schema || []).find(f => f.primary)?.key || 'id'
 	permission.value = res.permissions || {}
 
@@ -163,7 +177,38 @@ const setUpGridBehaviors = () => {
 
 const beforeEditStart = () => { console.log('mencari relasi data..') }
 const beforeEdit = (event) => { console.log('data sebelum edit:', event.detail.model) }
-const afterEdit = (event) => { console.log('data setelah edit:', event.detail.model) }
+
+// 🔥 1. FUNGSI UPDATE / AUTO-SAVE (Selesai edit cell, langsung simpan ke database Prisma)
+// Optimasi fungsi afterEdit di <script setup>
+const afterEdit = async (event) => {
+	// Jika nilai lama sama dengan nilai baru, batalkan hit API (mencegah double hit)
+	if (event.detail.oldValue === event.detail.value) return;
+
+	const updatedModel = event.detail.model;
+	const recordId = updatedModel[primaryKey.value];
+
+	if (!recordId) return;
+
+	try {
+		const endpoint = `${props.menu.route || `/${props.menu.key.toLowerCase()}`}/${recordId}`;
+		const response = await api.put(endpoint, updatedModel);
+
+		if (response.status === 200) {
+			console.log('Auto-save berhasil dijalankan.');
+
+			// Sinkronisasi ke Pinia Tab Store
+			const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId);
+			if (currentTab && currentTab.apiResponse) {
+				const targetIdx = currentTab.apiResponse.data.findIndex(item => item[primaryKey.value] === recordId);
+				if (targetIdx !== -1) {
+					currentTab.apiResponse.data[targetIdx] = { ...updatedModel };
+				}
+			}
+		}
+	} catch (err) {
+		console.error('Gagal auto-save:', err);
+	}
+};
 
 const afterFocus = (event) => {
 	focusedCoordinate.value = { x: event.detail.colIndex, y: event.detail.rowIndex }
@@ -181,34 +226,13 @@ const handleKeyDown = (e) => {
 		return
 	}
 
-	if (e.altKey && e.key === 'ArrowLeft') {
-		navigatorRef.value?.scrollToFirstCol()
-		e.preventDefault()
-		return
-	}
-	if (e.altKey && e.key === 'ArrowRight') {
-		navigatorRef.value?.scrollToLastCol()
-		e.preventDefault()
-		return
-	}
-	if (e.altKey && e.key === 'ArrowDown') {
-		navigatorRef.value?.scrollToLastRow()
-		e.preventDefault()
-		return
-	}
-	if (e.altKey && e.key === 'ArrowUp') {
-		navigatorRef.value?.scrollToFirstRow()
-		e.preventDefault()
-		return
-	}
-	if (e.key === 'ArrowDown') {
-		handleArrowDown(e)
-		return
-	}
-	if (e.key === 'ArrowUp') {
-		handleArrowUp(e)
-		return
-	}
+	if (e.altKey && e.key === 'ArrowLeft') { navigatorRef.value?.scrollToFirstCol(); e.preventDefault(); return; }
+	if (e.altKey && e.key === 'ArrowRight') { navigatorRef.value?.scrollToLastCol(); e.preventDefault(); return; }
+	if (e.altKey && e.key === 'ArrowDown') { navigatorRef.value?.scrollToLastRow(); e.preventDefault(); return; }
+	if (e.altKey && e.key === 'ArrowUp') { navigatorRef.value?.scrollToFirstRow(); e.preventDefault(); return; }
+
+	if (e.key === 'ArrowDown') { handleArrowDown(e); return; }
+	if (e.key === 'ArrowUp') { handleArrowUp(e); return; }
 
 	if (!focusedColumn.value?._primary && focusedColumn.value?._type !== 'relation') return
 
@@ -236,47 +260,136 @@ const handleArrowUp = () => {
 		console.log('ARROW UP di baris pertama')
 	}
 }
+
 const handlePreventGridConflict = (e) => {
-	// Jika user menekan Ctrl+K, paksa RevoGrid kehilangan fokus seketika
 	if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
 		const activeGrid = gridRef.value?.$el || gridRef.value
 		if (activeGrid) {
-			// Ambil elemen input/clipboard internal RevoGrid yang sedang fokus dan blur
 			const activeInput = activeGrid.querySelector('.revo-clipboard, input, :focus')
 			if (activeInput) activeInput.blur()
-
 			activeGrid.blur()
 		}
 	}
 }
-const handleDeleteKey = () => {
+
+// Tambahkan fungsi ini di dalam <script setup> MasterComponent.vue Anda:
+const handleAddNewRow = async () => {
+	if (!permission.value.create) {
+		alert('Anda tidak memiliki akses untuk menambah data!')
+		return
+	}
+
+	try {
+		// 1. Tembak endpoint POST ke backend (misal: /api/product)
+		const endpoint = props.menu.route || `/${props.menu.key.toLowerCase()}`
+		const response = await api.post(endpoint)
+
+		if (response.status === 201) {
+			const serverNewData = response.data.data // Data produk kosong + ID dari backend
+
+			// 2. Gabungkan ke dalam data tabel lokal di baris paling atas (index ke-0)
+			rows.value = [serverNewData, ...rows.value]
+
+			// 3. Update juga ke Pinia Tab Store agar sinkron dengan Local Storage Persist
+			const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
+			if (currentTab && currentTab.apiResponse) {
+				currentTab.apiResponse.data = [serverNewData, ...currentTab.apiResponse.data]
+			}
+
+			await nextTick()
+
+			// 4. Redraw RevoGrid agar baris baru langsung muncul di layar
+			if (gridRef.value) {
+				if (typeof gridRef.value.requestGridRowsRedraw === 'function') {
+					gridRef.value.requestGridRowsRedraw()
+				} else if (typeof gridRef.value.$el?.requestGridRowsRedraw === 'function') {
+					gridRef.value.$el.requestGridRowsRedraw()
+				}
+			}
+
+			// 5. Otomatis fokuskan keyboard ke sel baru tersebut (Baris ke-0, Kolom ke-1 / Product Name)
+			// Ini memudahkan user agar bisa langsung mengetik tanpa perlu klik manual lagi!
+			if (gridRef.value && typeof gridRef.value.setCellsFocus === 'function') {
+				gridRef.value.setCellsFocus({ x: 1, y: 0 }, { x: 1, y: 0 })
+			} else if (gridRef.value?.$el && typeof gridRef.value.$el.setCellsFocus === 'function') {
+				gridRef.value.$el.setCellsFocus({ x: 1, y: 0 }, { x: 1, y: 0 })
+			}
+
+			console.log('Baris kosong baru dengan ID dari PostgreSQL berhasil disuntikkan.')
+		}
+	} catch (err) {
+		console.error("Gagal menambahkan baris baru ke server:", err)
+		alert('Gagal membuat baris baru di database.')
+	}
+}
+// 🔥 2. FUNGSI DELETE (Hit backend Prisma + Update Sinkronisasi Pinia Persist)
+const handleDeleteKey = async () => {
 	if (!permission.value.delete) return
 
-	if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
-		const targetIndex = focusedCoordinate.value.y
-		rows.value = rows.value.filter((_, index) => index !== targetIndex)
+	const targetIndex = focusedCoordinate.value.y
+	const selectedData = rows.value[targetIndex]
+	const recordId = selectedData?.[primaryKey.value]
 
-		if (gridRef.value?.$el && typeof gridRef.value.$el.setCellsFocus === 'function') {
-			const nextY = Math.max(0, targetIndex - 1)
-			gridRef.value.$el.setCellsFocus({ x: 0, y: nextY }, { x: 0, y: nextY })
+	if (!recordId) {
+		alert('Gagal mendeteksi ID Data untuk dihapus')
+		return
+	}
+
+	if (confirm('Apakah Anda yakin ingin menghapus data ini secara permanen dari sistem?')) {
+		try {
+			const endpoint = `${props.menu.route || `/${props.menu.key.toLowerCase()}`}/${recordId}`
+			const response = await api.delete(endpoint)
+
+			if (response.status === 200 || response.status === 204) {
+				// Ambil data yang tersisa setelah di-filter
+				const updatedRows = rows.value.filter((_, index) => index !== targetIndex)
+
+				// 🔥 UPDATE PINIA STORE LANGSUNG: Ini agar Local Storage ikut terhapus datanya!
+				const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
+				if (currentTab && currentTab.apiResponse) {
+					currentTab.apiResponse.data = [...updatedRows]
+				}
+
+				// Jalankan mutasi array ke variabel lokal
+				rows.value = [...updatedRows]
+				await nextTick()
+
+				// Redraw RevoGrid secara aman
+				if (gridRef.value) {
+					if (typeof gridRef.value.requestGridRowsRedraw === 'function') {
+						gridRef.value.requestGridRowsRedraw()
+					} else if (typeof gridRef.value.$el?.requestGridRowsRedraw === 'function') {
+						gridRef.value.$el.requestGridRowsRedraw()
+					}
+				}
+
+				// Kembalikan sel fokus ke baris terdekat
+				if (gridRef.value && typeof gridRef.value.setCellsFocus === 'function') {
+					const nextY = Math.max(0, targetIndex - 1)
+					gridRef.value.setCellsFocus({ x: 0, y: nextY }, { x: 0, y: nextY })
+				}
+			}
+		} catch (err) {
+			console.error("Gagal menghapus data dari database server:", err)
+			alert('Gagal menghapus data. Silakan periksa koneksi atau hak akses Anda.')
 		}
 	}
 }
-// Parameter prismaWhere dikirim dalam struktur JSON siap saji dari komponen di atas
+
+// Filter Pencarian Server-Side via Prisma Builder Objek JSON
 const fetchDataWithPrismaFilter = async (prismaWhere = {}) => {
 	try {
-		const response = await fetch(`http://localhost:3000/api/${props.menu.key.toLowerCase()}/query`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ where: prismaWhere }) // Dikirim langsung sebagai JSON object body
+		const response = await api.post(`${props.menu.route || `/${props.menu.key.toLowerCase()}`}/query`, {
+			where: prismaWhere
 		})
-		console.log(prismaWhere)
 
-		if (response.ok) {
-			const res = await response.json()
-			rows.value = res.data || []
+		if (response.status === 200) {
+			rows.value = response.data?.data ? [...response.data.data] : []
 			await nextTick()
-			gridRef.value?.$el?.requestGridRowsRedraw()
+
+			if (gridRef.value && typeof gridRef.value.requestGridRowsRedraw === 'function') {
+				gridRef.value.requestGridRowsRedraw()
+			}
 		}
 	} catch (err) {
 		console.error("Gagal melakukan pencarian database server:", err)
@@ -288,16 +401,13 @@ const focusBackToGrid = () => {
 		const grid = gridRef.value?.$el || gridRef.value
 		if (!grid) return
 
-		// 1. Ambil koordinat terakhir, jika belum pernah fokus (-1) set ke baris & kolom pertama (0)
 		const targetX = focusedCoordinate.value.x >= 0 ? focusedCoordinate.value.x : 0
 		const targetY = focusedCoordinate.value.y >= 0 ? focusedCoordinate.value.y : 0
 
-		// 2. Paksa RevoGrid untuk menyorot sel internal berdasarkan koordinat tersebut
 		if (typeof grid.setCellsFocus === 'function') {
 			grid.setCellsFocus({ x: targetX, y: targetY }, { x: targetX, y: targetY })
 		}
 
-		// 3. Arahkan fokus ke clipboard internal RevoGrid agar siap menerima input keyboard
 		const internalInput = grid.querySelector('.revo-clipboard, input, [tabindex="0"]')
 		if (internalInput) {
 			internalInput.focus()
@@ -306,6 +416,7 @@ const focusBackToGrid = () => {
 		}
 	})
 }
+
 const cariDataDenganKarakter = async (char) => {
 	searchQuery.value = char
 	showSearchModal.value = true
@@ -313,10 +424,32 @@ const cariDataDenganKarakter = async (char) => {
 	searchInputRef.value?.focus()
 }
 
+// 🔥 3. FUNGSI QUICK SEARCH (Menyusun operator OR dinamis untuk query Prisma di Backend)
 const handleSearchSubmit = async () => {
-	if (!searchQuery.value.trim()) return
-	console.log('Mengirim permintaan ke server untuk ID:', searchQuery.value)
-	closeSearchModal()
+	const value = searchQuery.value.trim()
+	if (!value) return
+
+	try {
+		// Kumpulkan kolom bertipe teks dari skema UI
+		const textFields = (props.schemaData?.schema || [])
+			.filter(f => f.type === 'text' || f.key === 'name' || f.key === 'nmProduct')
+			.map(f => f.key)
+
+		// Bentuk objek filter OR Case-Insensitive ala Prisma ORM
+		const prismaWhere = {
+			OR: textFields.map(field => ({
+				[field]: {
+					contains: value,
+					mode: 'insensitive'
+				}
+			}))
+		}
+
+		await fetchDataWithPrismaFilter(prismaWhere)
+		closeSearchModal()
+	} catch (err) {
+		console.error("Quick search server failed:", err)
+	}
 }
 
 const closeSearchModal = () => {
@@ -328,18 +461,17 @@ const closeSearchModal = () => {
 	})
 }
 
-// PERBAIKAN 2: Pastikan seluruh sisa timer dibersihkan total tanpa celah
+// Bersihkan memori dan timer
 onBeforeUnmount(() => {
 	if (behaviorTimeoutId) clearTimeout(behaviorTimeoutId)
 	if (focusTimeoutId) clearTimeout(focusTimeoutId)
-	if (watchTabTimeoutId) clearTimeout(watchTabTimeoutId) // Bersihkan objek watch timer
+	if (watchTabTimeoutId) clearTimeout(watchTabTimeoutId)
 	removeGridListeners()
 	window.removeEventListener('keydown', handlePreventGridConflict, true)
-	// Putus referensi array besar agar Garbage Collector langsung mengambilnya
+
 	rows.value = []
 	columns.value = []
 	savedGridEl = null
-
 	console.log('Semua listener, data referensi, dan timer dibersihkan dengan aman.')
 })
 
@@ -350,12 +482,11 @@ onMounted(() => {
 	window.addEventListener('keydown', handlePreventGridConflict, true)
 })
 
-// Memantau perubahan Tab Aktif secara Global dari Pinia
+// Memantau perpindahan Tab Aktif secara global dari Pinia
 watch(() => tabStore.activeTabId, async (activeTabId) => {
 	if (activeTabId === props.menu?.route) {
 		await nextTick()
 
-		// PERBAIKAN 3: Bersihkan timeout penjelajahan tab sebelumnya jika user klik sangat cepat
 		if (watchTabTimeoutId) clearTimeout(watchTabTimeoutId)
 
 		watchTabTimeoutId = setTimeout(() => {
@@ -371,7 +502,6 @@ watch(() => tabStore.activeTabId, async (activeTabId) => {
 
 			if (typeof grid.setCellsFocus === 'function') {
 				grid.setCellsFocus({ x: targetX, y: targetY }, { x: targetX, y: targetY })
-
 				if (typeof grid.scrollToRow === 'function') {
 					grid.scrollToRow(targetY)
 				}

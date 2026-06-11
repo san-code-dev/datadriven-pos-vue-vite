@@ -2,8 +2,8 @@
 import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { AccessMenu } from '@/mock-api/mock-menu'
 import { useSidebarStore } from '@/stores/sideBar'
+import { useAuthStore } from '@/stores/auth' // 1. Import Auth Store Pinia
 
 const router = useRouter()
 const route = useRoute()
@@ -18,13 +18,15 @@ const resultItemsRef = ref([])
 
 // Inisialisasi Pinia Store
 const sidebarStore = useSidebarStore()
+const authStore = useAuthStore() // 2. Inisialisasi Auth Store
 
-// Grouping menu berdasarkan menuCategory
+// Grouping menu berdasarkan menuCategory dari Pinia Store
 const menuTree = computed(() => {
     const tree = {}
-    if (!AccessMenu) return tree
+    // Menggunakan authStore.menus menggantikan AccessMenu
+    if (!authStore.menus || authStore.menus.length === 0) return tree
 
-    AccessMenu.forEach(menu => {
+    authStore.menus.forEach(menu => {
         const category = menu.menuCategory || 'general'
         if (!tree[category]) {
             tree[category] = []
@@ -36,12 +38,13 @@ const menuTree = computed(() => {
 
 // Flatten menu untuk kebutuhan search list global
 const flatMenus = computed(() => {
-    if (!AccessMenu) return []
+    // Menggunakan authStore.menus menggantikan AccessMenu
+    if (!authStore.menus) return []
     const extraMenus = [
         { key: 'dashboard', label: 'Dashboard', route: '/dashboard', menuCategory: 'General', icon: 'si:dashboard-vert-line' },
         { key: 'setting', label: 'Settings', route: '/setting', menuCategory: 'General', icon: 'heroicons:cog-6-tooth' }
     ]
-    return [...extraMenus, ...AccessMenu]
+    return [...extraMenus, ...authStore.menus]
 })
 
 // Filter hasil pencarian berdasarkan query
@@ -334,6 +337,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Style CSS bawaan Anda dipertahankan utuh */
 .flyout-container::before {
     content: '';
     position: absolute;
@@ -368,40 +372,29 @@ onUnmounted(() => {
     scrollbar-width: none;
 }
 
-/* ==========================================================================
-   SISTEM TRANSISI MURNI CSS (ANTI-MELOMPAT & FLYOUT-SAFE)
-   ========================================================================== */
-
 .text-sidebar-label {
     display: inline-block;
     white-space: nowrap;
     overflow: hidden;
-    /* Sifat pemotong ditaruh di sini agar aman */
     transition: max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
         opacity 0.2s ease-in-out,
         transform 0.25s ease-out;
 }
 
-/* Keadaan Saat Sidebar Terbuka (Expanded) */
 .text-sidebar-label.expanded {
     max-width: 180px;
-    /* Batas lebar aman untuk menampung teks */
     opacity: 1;
     transform: translateX(0);
     transition-delay: 120ms, 120ms, 120ms;
-    /* Tunda teks sedikit agar layout melebar dulu */
 }
 
-/* Keadaan Saat Sidebar Mengecil (Collapsed) */
 .text-sidebar-label.collapsed {
     max-width: 0px;
     opacity: 0;
     transform: translateX(-10px);
     transition-delay: 0ms;
-    /* Hilang langsung tanpa delay saat mengecil */
 }
 
-/* Khusus elemen ikon kecil/chevron/kbd agar hilang cepat tanpa merusak layout */
 .text-sidebar-label.collapsed-instant {
     opacity: 0;
     max-width: 0px;

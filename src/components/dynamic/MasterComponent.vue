@@ -280,25 +280,24 @@ const handleAddNewRow = async () => {
 	}
 
 	try {
-		// 1. Tembak endpoint POST ke backend (misal: /api/product)
 		const endpoint = props.menu.route || `/${props.menu.key.toLowerCase()}`
 		const response = await api.post(endpoint)
 
 		if (response.status === 201) {
-			const serverNewData = response.data.data // Data produk kosong + ID dari backend
+			const serverNewData = response.data.data
 
-			// 2. Gabungkan ke dalam data tabel lokal di baris paling atas (index ke-0)
-			rows.value = [serverNewData, ...rows.value]
+			// 1. 🔥 UBAH DI SINI: Letakkan data baru di belakang array lama (Bawah)
+			rows.value = [...rows.value, serverNewData]
 
-			// 3. Update juga ke Pinia Tab Store agar sinkron dengan Local Storage Persist
+			// 2. 🔥 UBAH DI SINI: Samakan urutan untuk data di Pinia Store
 			const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
 			if (currentTab && currentTab.apiResponse) {
-				currentTab.apiResponse.data = [serverNewData, ...currentTab.apiResponse.data]
+				currentTab.apiResponse.data = [...currentTab.apiResponse.data, serverNewData]
 			}
 
 			await nextTick()
 
-			// 4. Redraw RevoGrid agar baris baru langsung muncul di layar
+			// 3. Redraw RevoGrid
 			if (gridRef.value) {
 				if (typeof gridRef.value.requestGridRowsRedraw === 'function') {
 					gridRef.value.requestGridRowsRedraw()
@@ -307,15 +306,17 @@ const handleAddNewRow = async () => {
 				}
 			}
 
-			// 5. Otomatis fokuskan keyboard ke sel baru tersebut (Baris ke-0, Kolom ke-1 / Product Name)
-			// Ini memudahkan user agar bisa langsung mengetik tanpa perlu klik manual lagi!
-			if (gridRef.value && typeof gridRef.value.setCellsFocus === 'function') {
-				gridRef.value.setCellsFocus({ x: 1, y: 0 }, { x: 1, y: 0 })
-			} else if (gridRef.value?.$el && typeof gridRef.value.$el.setCellsFocus === 'function') {
-				gridRef.value.$el.setCellsFocus({ x: 1, y: 0 }, { x: 1, y: 0 })
-			}
+			// 4. 🔥 UBAH DI SINI: Hitung indeks baris terakhir yang baru saja dibuat
+			const lastRowIndex = rows.value.length - 1
 
-			console.log('Baris kosong baru dengan ID dari PostgreSQL berhasil disuntikkan.')
+			// 5. 🔥 UBAH DI SINI: Alihkan sel fokus ke baris paling bawah (lastRowIndex)
+			if (gridRef.value && typeof gridRef.value.setCellsFocus === 'function') {
+				gridRef.value.setCellsFocus({ x: 1, y: lastRowIndex }, { x: 1, y: lastRowIndex })
+			} else if (gridRef.value?.$el && typeof gridRef.value.$el.setCellsFocus === 'function') {
+				gridRef.value.$el.setCellsFocus({ x: 1, y: lastRowIndex }, { x: 1, y: lastRowIndex })
+			}
+			await nextTick()
+			navigatorRef.scrollToLastRow;
 		}
 	} catch (err) {
 		console.error("Gagal menambahkan baris baru ke server:", err)

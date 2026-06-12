@@ -55,4 +55,5 @@ export const useTabStore = defineStore('tabs', {
             }
         }
     }, persist: true
+
 })

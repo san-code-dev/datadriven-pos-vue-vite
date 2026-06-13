@@ -315,8 +315,11 @@ const handleAddNewRow = async () => {
 			} else if (gridRef.value?.$el && typeof gridRef.value.$el.setCellsFocus === 'function') {
 				gridRef.value.$el.setCellsFocus({ x: 1, y: lastRowIndex }, { x: 1, y: lastRowIndex })
 			}
-			await nextTick()
-			navigatorRef.scrollToLastRow;
+			setTimeout(() => {
+				if (navigatorRef.value && typeof navigatorRef.value.scrollToLastRow === 'function') {
+					navigatorRef.value.scrollToLastRow() // 🔥 DIUBAH: Ditambahkan `.value` dan tanda kurung `()`
+				}
+			}, 50)
 		}
 	} catch (err) {
 		console.error("Gagal menambahkan baris baru ke server:", err)
@@ -424,7 +427,27 @@ const cariDataDenganKarakter = async (char) => {
 	await nextTick()
 	searchInputRef.value?.focus()
 }
+const syncFreshDataFromServer = async () => {
+	// Pastikan hanya berjalan jika tab menu ini yang sedang aktif dilihat user
+	if (tabStore.activeTabId !== props.menu?.route) return
 
+	try {
+		const endpoint = props.menu.route || `/${props.menu.key.toLowerCase()}`
+		const response = await api.get(endpoint)
+		const freshData = response.data?.schema?.data || response.data?.data
+
+		if (freshData) {
+			rows.value = [...freshData]
+			const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
+			if (currentTab && currentTab.apiResponse) {
+				currentTab.apiResponse.data = [...freshData]
+			}
+			gridRef.value?.$el?.requestGridRowsRedraw?.()
+		}
+	} catch (err) {
+		console.error("Gagal otomatis revalidate data:", err)
+	}
+}
 // 🔥 3. FUNGSI QUICK SEARCH (Menyusun operator OR dinamis untuk query Prisma di Backend)
 const handleSearchSubmit = async () => {
 	const value = searchQuery.value.trim()
@@ -462,6 +485,12 @@ const closeSearchModal = () => {
 	})
 }
 
+const handleWindowFocus = () => {
+	if (document.visibilityState === 'visible') {
+		syncFreshDataFromServer()
+	}
+}
+
 // Bersihkan memori dan timer
 onBeforeUnmount(() => {
 	if (behaviorTimeoutId) clearTimeout(behaviorTimeoutId)
@@ -469,7 +498,7 @@ onBeforeUnmount(() => {
 	if (watchTabTimeoutId) clearTimeout(watchTabTimeoutId)
 	removeGridListeners()
 	window.removeEventListener('keydown', handlePreventGridConflict, true)
-
+	document.removeEventListener('visibilitychange', handleWindowFocus)
 	rows.value = []
 	columns.value = []
 	savedGridEl = null
@@ -481,6 +510,7 @@ watch(() => props.schemaData, loadComponentData)
 onMounted(() => {
 	loadComponentData()
 	window.addEventListener('keydown', handlePreventGridConflict, true)
+	document.addEventListener('visibilitychange', handleWindowFocus)
 })
 
 // Memantau perpindahan Tab Aktif secara global dari Pinia
@@ -490,13 +520,40 @@ watch(() => tabStore.activeTabId, async (activeTabId) => {
 
 		if (watchTabTimeoutId) clearTimeout(watchTabTimeoutId)
 
-		watchTabTimeoutId = setTimeout(() => {
+		watchTabTimeoutId = setTimeout(async () => { // Tambahkan async di sini
 			const grid = gridRef.value?.$el || gridRef.value
 			if (!grid) return
 
 			if (typeof grid.requestGridColumnsRedraw === 'function') {
-				grid.requestGridColumnsRedraw()
+				grid.requestColumnsRedraw()
 			}
+
+			// --- 🔥 SILENT BACKGROUND REVALIDATE DIMULAI ---
+			try {
+				// Tembak endpoint murni menu untuk mendapatkan data paling fresh
+				const endpoint = props.menu.route || `/${props.menu.key.toLowerCase()}`
+				const response = await api.get(endpoint)
+
+				// Ambil data array dari response struktur Prisma kamu
+				// Sesuaikan response.data.schema.data / response.data.data berdasarkan API-mu
+				const freshData = response.data?.schema?.data || response.data?.data
+
+				if (freshData) {
+					rows.value = [...freshData]
+
+					// Update cache di Pinia Store agar tetap sinkron
+					const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
+					if (currentTab && currentTab.apiResponse) {
+						currentTab.apiResponse.data = [...freshData]
+					}
+
+					// Redraw baris jika diperlukan
+					grid.requestGridRowsRedraw?.()
+				}
+			} catch (err) {
+				console.error("Gagal sinkronisasi data eksternal saat pindah tab:", err)
+			}
+			// --- 🔥 SILENT BACKGROUND REVALIDATE SELESAI ---
 
 			const targetX = focusedCoordinate.value.x >= 0 ? focusedCoordinate.value.x : 0
 			const targetY = focusedCoordinate.value.y >= 0 ? focusedCoordinate.value.y : 0

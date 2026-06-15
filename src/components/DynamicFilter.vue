@@ -1,7 +1,7 @@
 <template>
     <div ref="filterContainerRef"
         class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 transition-colors outline-none focus:ring-2 focus:ring-emerald-500/50 select-none rounded-xl"
-        tabindex="1" @keydown="handleGlobalComponentKey" @mousedown="handleContainerMouseDown">
+        tabindex="1" @keydown.stop="handleComponentKey" @mousedown="handleContainerMouseDown">
 
         <div class="flex items-center justify-between" :class="{ isExpanded }">
             <div class="flex items-center gap-2 text-slate-700 dark:text-slate-200">
@@ -84,14 +84,18 @@
 
                     <div class="flex items-center gap-2">
                         <input v-if="item.operator !== 'between'" v-model="item.value" :type="getInputType(item.field)"
-                            placeholder="Ketik nilai..."
+                            placeholder="Ketik nilai..." @focus="handleFocus"
                             class="filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
 
                         <template v-if="item.operator === 'between'">
                             <input v-model="item.value" :type="getInputType(item.field)" placeholder="Min"
+                                @focus="handleFocus"
                                 class="filter-input data-val-min w-24 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+
                             <span class="text-xs text-slate-400">s/d</span>
+
                             <input v-model="item.valueTo" :type="getInputType(item.field)" placeholder="Max"
+                                @focus="handleFocus"
                                 class="filter-input data-val-max w-24 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
                         </template>
                     </div>
@@ -270,30 +274,13 @@ const focusInputAtRow = (rowIndex, inputIndex = 0) => {
     }
 }
 
-const handleGlobalComponentKey = (e) => {
+const handleComponentKey = (e) => {
     if (e.key === 'Escape') {
         emit('escape-filter')
-        e.preventDefault()
     }
     if (e.key === 'Insert') {
         addFilterRow()
         e.preventDefault()
-    }
-}
-
-const handleWindowKeyDown = (e) => {
-    if (e.altKey && e.key.toLowerCase() === 'f') {
-        e.preventDefault()
-        e.stopPropagation()
-
-        if (!isExpanded.value) isExpanded.value = true
-
-        if (localFilters.value.length === 0) {
-            addFilterRow()
-        } else {
-            focusInputAtRow(0, 0)
-        }
-        return
     }
 
     if (!isExpanded.value) return
@@ -348,21 +335,19 @@ const handleWindowKeyDown = (e) => {
                 }
                 break
             case 'ArrowRight':
-                if (activeEl.tagName === 'SELECT' || activeEl.selectionEnd === activeEl.value?.length || activeEl.value === '') {
+                e.preventDefault()
+                e.stopPropagation()
+                if (activeEl.tagName === 'SELECT' || activeEl.tagName === 'INPUT' || activeEl.selectionEnd === activeEl.value?.length || activeEl.value === '') {
                     if (inputsInRow[currentX + 1]) {
-                        e.preventDefault()
-                        e.stopPropagation()
-
                         inputsInRow[currentX + 1].focus()
                     }
                 }
                 break
             case 'ArrowLeft':
-                if (activeEl.tagName === 'SELECT' || activeEl.selectionStart === 0 || activeEl.value === '') {
+                e.preventDefault()
+                e.stopPropagation()
+                if (activeEl.tagName === 'SELECT' || activeEl.tagName === 'INPUT' || activeEl.selectionStart === 0 || activeEl.value === '') {
                     if (inputsInRow[currentX - 1]) {
-                        e.preventDefault()
-                        e.stopPropagation()
-
                         inputsInRow[currentX - 1].focus()
                     }
                 }
@@ -371,6 +356,30 @@ const handleWindowKeyDown = (e) => {
     }
 }
 
+const handleWindowKeyDown = (e) => {
+    if (e.altKey && e.key.toLowerCase() === 'f') {
+
+        e.preventDefault()
+        e.stopPropagation()
+
+        if (!isExpanded.value) isExpanded.value = true
+
+        if (localFilters.value.length === 0) {
+            addFilterRow()
+        } else {
+            focusInputAtRow(0, 0)
+        }
+        return
+    }
+}
+const handleFocus = (e) => {
+    // Menggunakan setTimeout menjamin selection berjalan setelah browser selesai memproses event focus bawaan
+    setTimeout(() => {
+        if (e.target) {
+            e.target.select()
+        }
+    }, 0)
+}
 onMounted(() => window.addEventListener('keydown', handleWindowKeyDown, true))
 onBeforeUnmount(() => window.removeEventListener('keydown', handleWindowKeyDown, true))
 

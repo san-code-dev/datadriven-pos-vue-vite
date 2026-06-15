@@ -63,7 +63,7 @@
 					<RevoGrid ref="gridRef" class="w-full h-full max-h-full focus:outline-none" :columns="columns"
 						:source="rows" :theme="isDark ? 'darkCompact' : 'compact'" resize="true"
 						@beforeeditstart.once="beforeEditStart" @beforeedit.once="beforeEdit" @afteredit="afterEdit"
-						@afterfocus="afterFocus" @keydown="console.log('revo-grid')" />
+						@afterfocus="afterFocus" @keydown="handleKeyDown" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns"
 						:focused-coordinate="focusedCoordinate" />
@@ -210,7 +210,6 @@ const setUpGridBehaviors = () => {
 		navigatorRef.value?.scrollToLastRow()
 	}
 
-	grid.addEventListener('keydown', handleKeyDown)
 	grid.addEventListener('mousedown', handleMouseDown)
 
 	if (focusTimeoutId) clearTimeout(focusTimeoutId)
@@ -265,14 +264,6 @@ const afterFocus = (event) => {
 }
 
 const handleKeyDown = (e) => {
-	if (showSearchModal.value) {
-		if (e.key === 'Escape') {
-			closeSearchModal()
-			e.preventDefault()
-		}
-		return
-	}
-
 	if (e.repeat) return
 
 	if (e.key === 'Delete') {
@@ -313,17 +304,6 @@ const handleArrowDown = () => {
 const handleArrowUp = () => {
 	if (focusedCoordinate.value.y === 0) {
 		console.log('ARROW UP di baris pertama')
-	}
-}
-
-const handlePreventGridConflict = (e) => {
-	if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-		const activeGrid = gridRef.value?.$el || gridRef.value
-		if (activeGrid) {
-			const activeInput = activeGrid.querySelector('.revo-clipboard, input, :focus')
-			if (activeInput) activeInput.blur()
-			activeGrid.blur()
-		}
 	}
 }
 
@@ -442,8 +422,6 @@ const fetchDataWithFilter = async (filter = {}) => {
 
 		if (response.status === 200) {
 			rows.value = response.data?.data ? [...response.data.data] : []
-			focusBackToGrid()
-
 		} else {
 			console.log(response)
 		}
@@ -549,7 +527,6 @@ onBeforeUnmount(() => {
 	if (focusTimeoutId) clearTimeout(focusTimeoutId)
 	if (watchTabTimeoutId) clearTimeout(watchTabTimeoutId)
 	removeGridListeners()
-	window.removeEventListener('keydown', handlePreventGridConflict, true)
 	document.removeEventListener('visibilitychange', handleWindowFocus)
 	rows.value = []
 	columns.value = []
@@ -561,7 +538,6 @@ watch(() => props.schemaData, loadComponentData)
 
 onMounted(() => {
 	loadComponentData()
-	window.addEventListener('keydown', handlePreventGridConflict, true)
 	document.addEventListener('visibilitychange', handleWindowFocus)
 })
 

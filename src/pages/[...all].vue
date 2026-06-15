@@ -12,14 +12,16 @@ import { useTabStore } from '@/stores/tabs'
 import DashboardContent from '@/components/DashboardContent.vue'
 import MasterComponent from '@/components/dynamic/MasterComponent.vue'
 import TransactionComponent from '@/components/dynamic/TransactionComponent.vue'
-
+import { useFilterStore } from '@/stores/filter'
 const route = useRoute()
 const router = useRouter()
 const tabStore = useTabStore()
 const authStore = useAuthStore() // Gunakan authStore untuk mencocokkan menu yang diizinkan
+const filterStore = useFilterStore()
 const isError = ref(false)
 
-// MAPPING KOMPONEN SECARA STATIS
+
+
 const componentsMap = {
     'dashboard': DashboardContent,
     'master': MasterComponent,
@@ -44,7 +46,6 @@ const ensureDashboardTabExists = () => {
     }
 }
 
-// 2. Ubah fungsi sinkronisasi dari MockData menjadi HIT API ASYNC ke Express Backend
 const fetchSchemaFromApi = async () => {
     const currentPath = route.path
     ensureDashboardTabExists()
@@ -54,18 +55,11 @@ const fetchSchemaFromApi = async () => {
         return
     }
 
-    const existingTab = tabStore.openedTabs.find(t => t.id === currentPath)
-    if (existingTab && existingTab.apiResponse) {
-        tabStore.activeTabId = currentPath
-        return
-    }
-
     isError.value = false
 
     const pathSegments = currentPath.split('/').filter(Boolean)
     const rootPath = pathSegments.length ? `/${pathSegments[0]}` : '/'
 
-    // Ambil menu dari data real Pinia (bukan mock file)
     const matchedMenu = authStore.menus.find(m => m.route === rootPath)
 
     if (!matchedMenu) {
@@ -74,25 +68,40 @@ const fetchSchemaFromApi = async () => {
     }
 
     try {
-        // 🔥 DI SINI KUNCINYA: Tembak endpoint Express secara dinamis.
-        // Jika currentPath adalah '/product', maka url-nya menjadi '/product/'
-        const response = await api.get(`${currentPath}/`)
+        // 🟢 Ambil filter aktif dari Pinia Store sebelum menembak API
+        const activeFilters = filterStore.getFiltersByTab(currentPath)
+
+        const response = await api.get(`${currentPath}/`, {
+            params: {
+                where: JSON.stringify(activeFilters) // Amankan filter ke query string URL
+            }
+        })
+
         const responseData = response.data
         console.log('API Response for', currentPath, ':', responseData)
+
         if (responseData) {
-            tabStore.addTab({
-                id: currentPath,
-                label: responseData.label || matchedMenu.label,
-                route: currentPath,
-                apiResponse: responseData, // Otomatis berisi schema, permissions, dan data dari Prisma
-                currentMenu: matchedMenu
-            })
+            const existingTab = tabStore.openedTabs.find(t => t.id === currentPath)
+
+            if (existingTab) {
+                // 🟢 Jika tab sudah ada, perbarui data responsnya saja dengan hasil filter terbaru
+                existingTab.apiResponse = responseData
+            } else {
+                // Jika belum ada, buat tab baru seperti biasa
+                tabStore.addTab({
+                    id: currentPath,
+                    label: responseData.label || matchedMenu.label,
+                    route: currentPath,
+                    apiResponse: responseData,
+                    currentMenu: matchedMenu
+                })
+            }
+
+            tabStore.activeTabId = currentPath
         } else {
             isError.value = true
         }
     } catch (err) {
-        // Jika API error atau token expired (401), Interceptor akan menangani redirect keluar.
-        // Kita cukup set UI error jika terjadi kegagalan jaringan biasa selain 401.
         console.error('Fetch metadata failed:', err)
         isError.value = true
     }

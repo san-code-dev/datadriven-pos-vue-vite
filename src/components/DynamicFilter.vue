@@ -1,9 +1,9 @@
 <template>
     <div ref="filterContainerRef"
-        class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 mb-4 transition-colors outline-none focus:ring-2 focus:ring-emerald-500/50 select-none"
+        class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 transition-colors outline-none focus:ring-2 focus:ring-emerald-500/50 select-none rounded-xl"
         tabindex="1" @keydown="handleGlobalComponentKey" @mousedown="handleContainerMouseDown">
 
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center justify-between" :class="{ isExpanded }">
             <div class="flex items-center gap-2 text-slate-700 dark:text-slate-200">
                 <h3
                     class="text-xs font-bold uppercase mb-0 tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center h-5">
@@ -13,8 +13,21 @@
                     class="text-[10px] bg-emerald-500 text-white px-2 py-1 rounded shadow-sm font-bold tracking-wide inline-flex items-center justify-center h-5 box-border">
                     Alt + F
                 </span>
+
+                <span v-if="localFilters.length > 0"
+                    class="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-semibold border border-slate-200 dark:border-slate-600">
+                    {{ localFilters.length }} Aturan Aktif
+                </span>
+
+                <button v-if="localFilters.length > 0" @click="toggleCollapse" type="button"
+                    class="text-[10px] text-slate-600 dark:text-slate-300  font-semibold dark:border-slate-600">
+                    <span class="flex items-center gap-1">
+                        {{ isExpanded ? 'sembunyikan' : 'tampilkan..' }}
+                    </span>
+                </button>
             </div>
-            <div class="flex space-x-2 text-xs">
+
+            <div class=" flex items-center space-x-2 text-xs">
                 <button @click="addFilterRow"
                     class="px-3 py-1.5 font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm transition-all flex items-center gap-1 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
                     <span>+ Aturan</span> <kbd class="opacity-60 text-[10px]">[Ins]</kbd>
@@ -30,67 +43,70 @@
             </div>
         </div>
 
-        <div v-if="localFilters.length === 0"
-            class="text-center py-5 text-xs text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
-            Belum ada filter aktif. Tekan tombol atau <kbd
-                class="px-1 bg-slate-100 dark:bg-slate-700 rounded shadow">Insert</kbd> untuk menyaring data.
-        </div>
+        <div v-show="isExpanded">
 
-        <div class="space-y-3">
-            <div v-for="(item, index) in localFilters" :key="index" :ref="el => { if (el) rowRefs[index] = el }"
-                class="flex flex-wrap items-center gap-2 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 transition-all focus-within:border-emerald-500/40">
-
-                <div class="relative flex items-center h-full">
-                    <select v-model="item.field" @change="onFieldChange(index)"
-                        class="filter-input data-field text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[140px]">
-                        <option value="" disabled>-- Pilih Kolom --</option>
-                        <option v-for="field in allowedSchema" :key="field.key" :value="field.key">
-                            {{ field.label }}
-                        </option>
-                    </select>
-                    <div
-                        class="absolute right-2.5 pointer-events-none text-slate-400 dark:text-slate-500 flex items-center justify-center">
-                        <Icon icon="heroicons:chevron-down-20-solid" class="w-4 h-4" />
-                    </div>
-                </div>
-
-                <div class="relative flex items-center h-full">
-                    <select v-model="item.operator"
-                        class="filter-input data-operator text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[110px]">
-                        <option v-for="op in getAvailableOperators(item.field)" :key="op.value" :value="op.value">
-                            {{ op.label }}
-                        </option>
-                    </select>
-                    <div
-                        class="absolute right-2.5 pointer-events-none text-slate-400 dark:text-slate-500 flex items-center justify-center">
-                        <Icon icon="heroicons:chevron-down-20-solid" class="w-4 h-4" />
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <input v-if="item.operator !== 'between'" v-model="item.value" :type="getInputType(item.field)"
-                        placeholder="Ketik nilai..."
-                        class="filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
-
-                    <template v-if="item.operator === 'between'">
-                        <input v-model="item.value" :type="getInputType(item.field)" placeholder="Min"
-                            class="filter-input data-val-min w-24 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
-                        <span class="text-xs text-slate-400">s/d</span>
-                        <input v-model="item.valueTo" :type="getInputType(item.field)" placeholder="Max"
-                            class="filter-input data-val-max w-24 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
-                    </template>
-                </div>
-
-                <button @click="removeFilterRow(index)"
-                    class="ml-auto p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 rounded transition-colors focus:outline-none focus:ring-1 focus:ring-red-500 flex items-center justify-center"
-                    tabindex="-1" title="Hapus Aturan (Delete)">
-                    <Icon icon="heroicons:x-mark-20-solid" class="w-4 h-4" />
-                </button>
+            <div v-if="localFilters.length === 0"
+                class="text-center py-3 text-xs text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg my-2">
+                Belum ada filter aktif. Tekan tombol atau <kbd
+                    class="px-1 bg-slate-100 dark:bg-slate-700 rounded shadow">Insert</kbd> untuk menyaring data.
             </div>
+
+            <div v-else class="space-y-3 pt-2">
+                <div v-for="(item, index) in localFilters" :key="index" :ref="el => { if (el) rowRefs[index] = el }"
+                    class="flex flex-wrap items-center gap-2 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 focus-within:border-emerald-500/40">
+
+                    <div class="relative flex items-center h-full">
+                        <select v-model="item.field" @change="onFieldChange(index)"
+                            class="filter-input data-field text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[140px]">
+                            <option value="" disabled>-- Pilih Kolom --</option>
+                            <option v-for="field in allowedSchema" :key="field.key" :value="field.key">
+                                {{ field.label }}
+                            </option>
+                        </select>
+                        <div
+                            class="absolute right-2.5 pointer-events-none text-slate-400 dark:text-slate-500 flex items-center justify-center">
+                            <Icon icon="heroicons:chevron-down-20-solid" class="w-4 h-4" />
+                        </div>
+                    </div>
+
+                    <div class="relative flex items-center h-full">
+                        <select v-model="item.operator"
+                            class="filter-input data-operator text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[110px]">
+                            <option v-for="op in getAvailableOperators(item.field)" :key="op.value" :value="op.value">
+                                {{ op.label }}
+                            </option>
+                        </select>
+                        <div
+                            class="absolute right-2.5 pointer-events-none text-slate-400 dark:text-slate-500 flex items-center justify-center">
+                            <Icon icon="heroicons:chevron-down-20-solid" class="w-4 h-4" />
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <input v-if="item.operator !== 'between'" v-model="item.value" :type="getInputType(item.field)"
+                            placeholder="Ketik nilai..."
+                            class="filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+
+                        <template v-if="item.operator === 'between'">
+                            <input v-model="item.value" :type="getInputType(item.field)" placeholder="Min"
+                                class="filter-input data-val-min w-24 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                            <span class="text-xs text-slate-400">s/d</span>
+                            <input v-model="item.valueTo" :type="getInputType(item.field)" placeholder="Max"
+                                class="filter-input data-val-max w-24 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                        </template>
+                    </div>
+
+                    <button @click="removeFilterRow(index)"
+                        class="ml-auto p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 rounded transition-colors focus:outline-none focus:ring-1 focus:ring-red-500 flex items-center justify-center"
+                        tabindex="-1" title="Hapus Aturan (Delete)">
+                        <Icon icon="heroicons:x-mark-20-solid" class="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+
         </div>
     </div>
 </template>
-
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -108,22 +124,37 @@ const localFilters = ref([])
 const filterContainerRef = ref(null)
 const rowRefs = ref([])
 
+const isExpanded = computed({
+    get: () => {
+        if (filterStore.filterCollapseStates === undefined) return true
+        return filterStore.filterCollapseStates[props.tabId] !== false
+    },
+    set: (val) => {
+        filterStore.setCollapseState(props.tabId, val)
+    }
+})
+
+const toggleCollapse = () => {
+    isExpanded.value = !isExpanded.value
+}
+
 const allowedSchema = computed(() => {
     return props.schema.filter(f => f.type !== 'json' && f.key !== 'action')
 })
 
-watch(() => props.tabId, (newTabId) => {
-    localFilters.value = JSON.parse(JSON.stringify(filterStore.getFiltersByTab(newTabId)))
-}, { immediate: true })
-
-
 const getFieldConfig = (fieldKey) => props.schema.find(f => f.key === fieldKey)
 
-const getAvailableOperators = (fieldKey) => {
+const isNumericField = (fieldKey) => {
     const config = getFieldConfig(fieldKey)
-    if (!config) return [{ value: 'equals', label: '=' }]
+    if (!config) return false
+    return ['number', 'currency'].includes(config.type) || fieldKey === 'id'
+}
 
-    if (['number', 'currency'].includes(config.type)) {
+const getAvailableOperators = (fieldKey) => {
+    if (!fieldKey) return [{ value: 'contains', label: 'Mengandung kata' }]
+    const config = getFieldConfig(fieldKey)
+
+    if (isNumericField(fieldKey)) {
         return [
             { value: 'equals', label: '=' },
             { value: 'greater_than', label: '>' },
@@ -131,7 +162,7 @@ const getAvailableOperators = (fieldKey) => {
             { value: 'between', label: 'Rentang Angka' }
         ]
     }
-    if (config.type === 'date') {
+    if (config?.type === 'date') {
         return [
             { value: 'equals', label: 'Sama Dengan' },
             { value: 'between', label: 'Rentang Tanggal' }
@@ -146,7 +177,7 @@ const getAvailableOperators = (fieldKey) => {
 const getInputType = (fieldKey) => {
     const config = getFieldConfig(fieldKey)
     if (!config) return 'text'
-    if (['number', 'currency'].includes(config.type)) return 'number'
+    if (isNumericField(fieldKey)) return 'number'
     if (config.type === 'date') return 'date'
     return 'text'
 }
@@ -159,16 +190,20 @@ const handleContainerMouseDown = (e) => {
 }
 
 const addFilterRow = async () => {
+    if (!isExpanded.value) isExpanded.value = true
+
     if (allowedSchema.value.length > 0) {
         const firstField = allowedSchema.value[0]
+        const isNumeric = isNumericField(firstField.key)
         localFilters.value.push({
             field: firstField.key,
-            operator: ['number', 'currency'].includes(firstField.type) ? 'equals' : 'contains',
+            operator: isNumeric ? 'equals' : 'contains',
             value: '',
             valueTo: ''
         })
         await nextTick()
         focusInputAtRow(localFilters.value.length - 1, 0)
+        triggerFilterUpdate()
     }
 }
 
@@ -178,6 +213,12 @@ const onFieldChange = (index) => {
     item.operator = ops[0].value
     item.value = ''
     item.valueTo = ''
+    triggerFilterUpdate()
+}
+
+const triggerFilterUpdate = () => {
+    filterStore.setFilters(props.tabId, localFilters.value)
+    emit('filter-changed', localFilters.value)
 }
 
 const removeFilterRow = async (index) => {
@@ -185,11 +226,14 @@ const removeFilterRow = async (index) => {
     rowRefs.value.splice(index, 1)
 
     await nextTick()
+
     if (localFilters.value.length > 0) {
+        filterStore.setFilters(props.tabId, localFilters.value)
+        emit('filter-changed', localFilters.value)
         const nextFocusIndex = index === 0 ? 0 : index - 1
         focusInputAtRow(nextFocusIndex, 0)
     } else {
-        filterContainerRef.value?.focus()
+        resetFilters()
     }
 }
 
@@ -205,67 +249,19 @@ const handleSelectEnter = (targetElement) => {
     }
 }
 
-const generatePrismaWhereJSON = (filters) => {
-    const where = {}
-    filters.forEach(f => {
-        const { field, operator, value, valueTo } = f
-        if (value === '' || value === null || value === undefined) return
-
-        const schemaField = props.schema.find(s => s.key === field)
-        const isRelation = schemaField?.type === 'relation'
-        const isNumber = ['number', 'currency'].includes(schemaField?.type)
-
-        let target = where
-        let targetField = field
-
-        if (isRelation && schemaField.relation) {
-            const entity = field
-            where[entity] = where[entity] || {}
-            target = where[entity]
-            targetField = schemaField.relation.displayField
-        }
-
-        switch (operator) {
-            case 'contains':
-                target[targetField] = { contains: value, mode: 'insensitive' }
-                break
-            case 'equals':
-                target[targetField] = { equals: isNumber ? Number(value) : value }
-                break
-            case 'greater_than':
-                target[targetField] = { gt: Number(value) }
-                break
-            case 'less_than':
-                target[targetField] = { lt: Number(value) }
-                break
-            case 'between':
-                if (value && valueTo) {
-                    if (schemaField?.type === 'date') {
-                        target[targetField] = { gte: new Date(value), lte: new Date(valueTo) }
-                    } else {
-                        target[targetField] = { gte: Number(value), lte: Number(valueTo) }
-                    }
-                }
-                break
-        }
-    })
-    return where
-}
-
 const applyFilters = () => {
     filterStore.setFilters(props.tabId, localFilters.value)
-    const prismaWhereJSON = generatePrismaWhereJSON(localFilters.value)
-    emit('filter-changed', prismaWhereJSON)
-    emit('escape-filter')
+    emit('filter-changed', localFilters.value)
 }
 
 const resetFilters = () => {
     localFilters.value = []
     filterStore.clearFilters(props.tabId)
-    emit('filter-changed', {})
+    emit('filter-changed', [])
 }
 
 const focusInputAtRow = (rowIndex, inputIndex = 0) => {
+    if (!isExpanded.value) return
     const rowEl = rowRefs.value[rowIndex]
     if (rowEl) {
         const inputsInRow = Array.from(rowEl.querySelectorAll('.filter-input'))
@@ -286,10 +282,12 @@ const handleGlobalComponentKey = (e) => {
 }
 
 const handleWindowKeyDown = (e) => {
-    // 1. Cegat Shortcut Alt + F secepat mungkin di level teratas
     if (e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         e.stopPropagation()
+
+        if (!isExpanded.value) isExpanded.value = true
+
         if (localFilters.value.length === 0) {
             addFilterRow()
         } else {
@@ -298,14 +296,12 @@ const handleWindowKeyDown = (e) => {
         return
     }
 
-    // 2. Jika fokus saat ini berada di dalam form filter
+    if (!isExpanded.value) return
+
     if (filterContainerRef.value?.contains(document.activeElement)) {
         const activeEl = document.activeElement
 
-        // 3. Tangkap dan Isolasi Event Tombol ENTER
         if (e.key === 'Enter') {
-
-
             if (activeEl.tagName === 'SELECT') {
                 handleSelectEnter(activeEl)
             } else if (activeEl.classList.contains('filter-input')) {
@@ -320,137 +316,54 @@ const handleWindowKeyDown = (e) => {
         }
 
         const currentY = rowRefs.value.findIndex(el => el && el.contains(activeEl))
-
-        if (currentY === -1) {
-            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-                if (localFilters.value.length > 0) {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    focusInputAtRow(0, 0)
-                }
-            }
-            return
-        }
+        if (currentY === -1) return
 
         const rowEl = rowRefs.value[currentY]
         const inputsInRow = Array.from(rowEl.querySelectorAll('.filter-input'))
         const currentX = inputsInRow.indexOf(activeEl)
 
-        if (e.key === 'Delete') {
-            if (activeEl.tagName === 'SELECT' || activeEl.value === '') {
-                e.preventDefault()
-                e.stopPropagation()
-                removeFilterRow(currentY)
-                return
-            }
+        if (e.key === 'Delete' && (activeEl.tagName === 'SELECT' || activeEl.value === '')) {
+            e.preventDefault()
+            e.stopPropagation()
+            removeFilterRow(currentY)
+            return
         }
 
-        // 4. Isolasi Event Tombol ARROW Keys (stopPropagation diletakkan sebelum pengecekan IF)
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault()
                 e.stopPropagation()
                 if (rowRefs.value[currentY + 1]) {
-                    // Ambil semua input di baris bawahnya
-                    const nextRowEl = rowRefs.value[currentY + 1]
-                    const inputsInNextRow = Array.from(nextRowEl.querySelectorAll('.filter-input'))
-                    // Sesuaikan kolom indeks (currentX) agar sejajar secara vertikal
-                    const targetInput = inputsInNextRow[Math.min(currentX, inputsInNextRow.length - 1)]
-
-                    if (targetInput) {
-                        targetInput.focus()
-                        if (targetInput.tagName === 'INPUT') {
-                            targetInput.select() // Otomatis block semua isi teks/angka
-                        }
-                    }
+                    const nextInputs = Array.from(rowRefs.value[currentY + 1].querySelectorAll('.filter-input'))
+                    nextInputs[Math.min(currentX, nextInputs.length - 1)]?.focus()
                 }
                 break
-
             case 'ArrowUp':
                 e.preventDefault()
                 e.stopPropagation()
-                if (rowRefs.value[currentY - 1]) {
-                    // Ambil semua input di baris atasnya
-                    const prevRowEl = rowRefs.value[currentY - 1]
-                    const inputsInPrevRow = Array.from(prevRowEl.querySelectorAll('.filter-input'))
-                    // Sesuaikan kolom indeks (currentX) agar sejajar secara vertikal
-                    const targetInput = inputsInPrevRow[Math.min(currentX, inputsInPrevRow.length - 1)]
 
-                    if (targetInput) {
-                        targetInput.focus()
-                        if (targetInput.tagName === 'INPUT') {
-                            targetInput.select() // Otomatis block semua isi teks/angka
-                        }
-                    }
+                if (rowRefs.value[currentY - 1]) {
+                    const prevInputs = Array.from(rowRefs.value[currentY - 1].querySelectorAll('.filter-input'))
+                    prevInputs[Math.min(currentX, prevInputs.length - 1)]?.focus()
                 }
                 break
             case 'ArrowRight':
-                e.stopPropagation()
-                {
-                    if (activeEl.tagName === 'SELECT') {
-                        if (inputsInRow[currentX + 1]) {
-                            e.preventDefault()
-                            inputsInRow[currentX + 1].focus()
-                            // Otomatis select semua isi jika element setelahnya adalah INPUT
-                            if (inputsInRow[currentX + 1].tagName === 'INPUT') {
-                                inputsInRow[currentX + 1].select()
-                            }
-                        }
-                    } else if (activeEl.classList.contains('filter-input')) {
-                        let selectionEnd = 0
-                        if (activeEl.type === 'number') {
-                            const originalType = activeEl.type
-                            activeEl.type = 'text'
-                            selectionEnd = activeEl.selectionEnd
-                            activeEl.type = originalType
-                        } else {
-                            selectionEnd = activeEl.selectionEnd
-                        }
+                if (activeEl.tagName === 'SELECT' || activeEl.selectionEnd === activeEl.value?.length || activeEl.value === '') {
+                    if (inputsInRow[currentX + 1]) {
+                        e.preventDefault()
+                        e.stopPropagation()
 
-                        if (selectionEnd === activeEl.value?.length || activeEl.value === '') {
-                            if (inputsInRow[currentX + 1]) {
-                                e.preventDefault()
-                                inputsInRow[currentX + 1].focus()
-                                if (inputsInRow[currentX + 1].tagName === 'INPUT') {
-                                    inputsInRow[currentX + 1].select()
-                                }
-                            }
-                        }
+                        inputsInRow[currentX + 1].focus()
                     }
                 }
                 break
-
             case 'ArrowLeft':
-                e.stopPropagation()
-                {
-                    if (activeEl.tagName === 'SELECT') {
-                        if (inputsInRow[currentX - 1]) {
-                            e.preventDefault()
-                            inputsInRow[currentX - 1].focus()
-                            if (inputsInRow[currentX - 1].tagName === 'INPUT') {
-                                inputsInRow[currentX - 1].select()
-                            }
-                        }
-                    } else if (activeEl.classList.contains('filter-input')) {
-                        let selectionStart = 0
-                        if (activeEl.type === 'number') {
-                            const originalType = activeEl.type
-                            activeEl.type = 'text'
-                            selectionStart = activeEl.selectionStart
-                            activeEl.type = originalType
-                        } else {
-                            selectionStart = activeEl.selectionStart
-                        }
+                if (activeEl.tagName === 'SELECT' || activeEl.selectionStart === 0 || activeEl.value === '') {
+                    if (inputsInRow[currentX - 1]) {
+                        e.preventDefault()
+                        e.stopPropagation()
 
-                        if (selectionStart === 0 || activeEl.value === '') {
-                            if (inputsInRow[currentX - 1]) {
-                                e.preventDefault()
-                                inputsInRow[currentX - 1].focus()
-                                if (inputsInRow[currentX - 1].tagName === 'INPUT') {
-                                    inputsInRow[currentX - 1].select()
-                                }
-                            }
-                        }
+                        inputsInRow[currentX - 1].focus()
                     }
                 }
                 break
@@ -458,7 +371,30 @@ const handleWindowKeyDown = (e) => {
     }
 }
 
-// 5. Daftarkan event listener global menggunakan Capture Phase (opsi 'true')
 onMounted(() => window.addEventListener('keydown', handleWindowKeyDown, true))
 onBeforeUnmount(() => window.removeEventListener('keydown', handleWindowKeyDown, true))
+
+watch(
+    () => filterStore.activeFilters[props.tabId],
+    async (newFilters) => {
+        await nextTick()
+        if (newFilters && Array.isArray(newFilters)) {
+            localFilters.value = newFilters.map(item => {
+                const availableOps = getAvailableOperators(item.field)
+                const isOpValid = availableOps.some(o => o.value === item.operator)
+                const defaultOp = isNumericField(item.field) ? 'equals' : 'contains'
+
+                return {
+                    field: item.field || '',
+                    operator: item.operator && isOpValid ? item.operator : defaultOp,
+                    value: item.value !== undefined ? item.value : '',
+                    valueTo: item.valueTo !== undefined ? item.valueTo : ''
+                }
+            })
+        } else {
+            localFilters.value = []
+        }
+    },
+    { deep: true, immediate: true }
+)
 </script>

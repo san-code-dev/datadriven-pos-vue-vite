@@ -9,9 +9,13 @@ export interface FilterItem {
 }
 
 export const useFilterStore = defineStore('filter', () => {
+    // STATE
     const activeFilters = ref<Record<string, FilterItem[]>>({})
     const searchQueries = ref<Record<string, string>>({})
+    // Menggunakan Record<string, boolean> agar TypeScript tahu key berupa string dan value berupa boolean
+    const filterCollapseStates = ref<Record<string, boolean>>({})
 
+    // ACTIONS
     const setFilters = (tabId: string, filters: FilterItem[]) => {
         activeFilters.value[tabId] = filters
     }
@@ -24,13 +28,21 @@ export const useFilterStore = defineStore('filter', () => {
         return activeFilters.value[tabId] || []
     }
 
+    // Perbaikan: Ubah ke format standard arrow function di Setup Store & gunakan .value
+    const setCollapseState = (tabId: string, isExpanded: boolean) => {
+        filterCollapseStates.value[tabId] = isExpanded
+    }
+
+    // Pastikan semua state dan function yang ingin dipakai di komponen di-return di sini
     return {
         activeFilters,
         searchQueries,
+        filterCollapseStates,
         setFilters,
         clearFilters,
-        getFiltersByTab
+        getFiltersByTab,
+        setCollapseState
     }
 }, {
-    persist: true // <-- Cukup tambahkan flag ini di parameter ketiga
+    persist: true // Flag persistensi Pinia
 })

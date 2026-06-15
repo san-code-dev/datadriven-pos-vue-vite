@@ -1,38 +1,61 @@
 <template>
 	<div class="flex flex-col h-full max-h-full overflow-hidden min-h-0 bg-transparent w-full">
 
+		<!-- KONTEN ATAS: FILTER & ACTION BAR -->
 		<div
-			class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
+			class="flex flex-col p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors gap-4">
 
-			<div class="flex-1 min-w-0">
+			<!-- 1. Area Full Width untuk Dynamic Filter -->
+			<div class="w-full">
 				<DynamicFilter v-if="props.schemaData?.schema" :schema="props.schemaData.schema"
-					:tabId="props.menu?.route || 'master'" @filter-changed="fetchDataWithPrismaFilter"
+					:tabId="props.menu?.route || 'master'" @filter-changed="handleFilterChanged"
 					@escape-filter="focusBackToGrid" />
 			</div>
 
-			<div class="flex items-center justify-end shrink-0">
-				<button v-if="permission.create" @click="handleAddNewRow" type="button"
-					class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium text-sm rounded-xl shadow-md shadow-blue-500/10 hover:shadow-lg hover:shadow-blue-500/20 active:scale-95 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900">
-					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5"
-						stroke="currentColor" class="w-4 h-4">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-					</svg>
-					Tambah Baris Baru
-				</button>
+			<!-- 2. Action Toolbar (Tempat Tombol-Tombol Aksi) -->
+			<div
+				class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
 
-				<button v-else disabled type="button"
-					class="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 font-medium text-sm rounded-xl cursor-not-allowed border border-slate-200 dark:border-slate-700">
-					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-						stroke="currentColor" class="w-4 h-4">
-						<path stroke-linecap="round" stroke-linejoin="round"
-							d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-					</svg>
-					Akses Terkunci
-				</button>
+				<!-- Sisi Kiri Toolbar: Tempat status info data jika diperlukan -->
+				<div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+					<!-- Stat/info opsional -->
+					awawawa
+				</div>
+
+				<!-- Sisi Kanan Toolbar: Kumpulan Tombol Aksi -->
+				<div class="flex flex-wrap items-center gap-2">
+
+					<!-- TOMBOL: TAMBAH BARIS -->
+					<button v-if="permission.create" @click="handleAddNewRow" type="button"
+						class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-lg shadow-sm shadow-emerald-600/10 hover:shadow-emerald-600/20 active:scale-95 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900">
+						<Icon icon="heroicons:plus-20-solid" class="w-4 h-4" />
+						<span>Tambah Baris</span>
+						<kbd
+							class="opacity-60 text-[9px] font-sans tracking-wide bg-emerald-700 px-1 py-0.5 rounded ml-0.5">F2</kbd>
+					</button>
+
+					<!-- TOMBOL: AKSES TERKUNCI -->
+					<button v-else disabled type="button"
+						class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 font-medium text-xs rounded-lg border border-slate-200/60 dark:border-slate-700/60 cursor-not-allowed">
+						<Icon icon="heroicons:lock-closed-20-solid" class="w-4 h-4" />
+						<span>Akses Terkunci</span>
+					</button>
+
+					<!-- ⏳ CONTOH TOMBOL AKSI BARU LAINNYA DI MASA DEPAN -->
+					<!-- Tombol Export Excel -->
+					<!-- 
+                    <button type="button" class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 text-slate-700 dark:text-slate-200 font-medium text-xs rounded-lg shadow-sm transition-all">
+                        <Icon icon="heroicons:document-arrow-down-20-solid" class="w-4 h-4 text-slate-500" />
+                        <span>Export Excel</span>
+                    </button> 
+                    -->
+
+				</div>
 			</div>
 
 		</div>
 
+		<!-- AREA GRID & MODAL DATA -->
 		<div class="flex flex-1 min-h-0 w-full overflow-hidden">
 			<div class="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
 				<div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
@@ -40,13 +63,36 @@
 					<RevoGrid ref="gridRef" class="w-full h-full max-h-full focus:outline-none" :columns="columns"
 						:source="rows" :theme="isDark ? 'darkCompact' : 'compact'" resize="true"
 						@beforeeditstart.once="beforeEditStart" @beforeedit.once="beforeEdit" @afteredit="afterEdit"
-						@afterfocus="afterFocus" />
+						@afterfocus="afterFocus" @keydown="console.log('revo-grid')" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns"
 						:focused-coordinate="focusedCoordinate" />
 
+					<!-- MODAL PENCARIAN -->
 					<div v-if="showSearchModal" @click.self="closeSearchModal"
-						class="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+						class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-start justify-center pt-20 z-50 transition-all">
+						<div class="bg-white dark:bg-slate-800 w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden p-3 mx-4"
+							@keydown.stop>
+							<form @submit.prevent="handleSearchSubmit" class="relative flex items-center">
+
+								<div
+									class="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
+									<Icon icon="heroicons:magnifying-glass-20-solid" class="w-5 h-5" />
+								</div>
+
+								<input ref="searchInputRef" v-model="searchQuery" type="text"
+									placeholder="Lanjutkan mengetik untuk mencari data..."
+									class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-slate-400 transition-all" />
+
+								<div class="absolute right-3 flex items-center gap-1.5 pointer-events-none">
+									<kbd
+										class="px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-600 rounded shadow-sm">Enter
+										↩</kbd>
+									<button type="button" @click="closeSearchModal"
+										class="pointer-events-auto text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">Esc</button>
+								</div>
+							</form>
+						</div>
 					</div>
 
 				</div>
@@ -57,20 +103,27 @@
 </template>
 
 <script setup>
+import { Icon } from '@iconify/vue'
+
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from '@/components/GridNavigator.vue'
 import DynamicFilter from '@/components/DynamicFilter.vue'
 
-// 🔥 Hubungkan ke global Axios instance (Pencegat 401) dan Pinia Tab Store
 import api from '@/lib/axios'
 import { useTabStore } from '@/stores/tabs'
+import { useFilterStore } from '@/stores/filter' // 🟢 1. Import Filter Store Pinia
+import { useRoute } from 'vue-router'            // 🟢 2. Import useRoute
 
 const props = defineProps({
 	menu: { type: Object, required: true },
 	schemaData: { type: Object, required: true }
 })
+
+const route = useRoute()                         // 🟢 3. Definisikan instance route
+const tabStore = useTabStore()
+const filterStore = useFilterStore()             // 🟢 4. Definisikan instance filterStore
 
 const gridRef = ref(null)
 const navigatorRef = ref(null)
@@ -85,14 +138,16 @@ const focusedRow = ref({})
 const showSearchModal = ref(false)
 const searchQuery = ref('')
 const searchInputRef = ref(null)
-const tabStore = useTabStore()
+
+// 🟢 5. ISI DATA AWAL dari Pinia Store, jangan biarkan {} kosong melompong agar first load aman
+const activeFilters = ref(filterStore.getFiltersByTab(props.menu?.route || route.path) || {})
 
 let savedGridEl = null
 let behaviorTimeoutId = null
 let focusTimeoutId = null
 let watchTabTimeoutId = null
 
-// Renderer relasi data statis (Optimasi reaktivitas)
+
 const relationCellRenderer = (createElement, props, displayField, fieldKey) => {
 	const rowData = props.model[fieldKey]
 	const displayText = rowData ? rowData[displayField] : ''
@@ -107,13 +162,11 @@ const removeGridListeners = () => {
 	}
 }
 
-// Memuat data & skema dinamis dari backend Prisma ke dalam tabel RevoGrid
 const loadComponentData = async () => {
 	const res = props.schemaData
-	console.log('Menerima schemaData baru:', res)
 	if (!res) return
 
-	columns.value = [] // Bersihkan kolom lama
+	columns.value = []
 
 	columns.value = (res.schema || []).map(field => {
 		const columnConfig = {
@@ -134,7 +187,6 @@ const loadComponentData = async () => {
 		return columnConfig
 	})
 
-	// 🔥 Spread array agar melepaskan sisa cache data dari localStorage lama
 	rows.value = res.data ? [...res.data] : []
 	primaryKey.value = (res.schema || []).find(f => f.primary)?.key || 'id'
 	permission.value = res.permissions || {}
@@ -178,10 +230,7 @@ const setUpGridBehaviors = () => {
 const beforeEditStart = () => { console.log('mencari relasi data..') }
 const beforeEdit = (event) => { console.log('data sebelum edit:', event.detail.model) }
 
-// 🔥 1. FUNGSI UPDATE / AUTO-SAVE (Selesai edit cell, langsung simpan ke database Prisma)
-// Optimasi fungsi afterEdit di <script setup>
 const afterEdit = async (event) => {
-	// Jika nilai lama sama dengan nilai baru, batalkan hit API (mencegah double hit)
 	if (event.detail.oldValue === event.detail.value) return;
 
 	const updatedModel = event.detail.model;
@@ -196,7 +245,6 @@ const afterEdit = async (event) => {
 		if (response.status === 200) {
 			console.log('Auto-save berhasil dijalankan.');
 
-			// Sinkronisasi ke Pinia Tab Store
 			const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId);
 			if (currentTab && currentTab.apiResponse) {
 				const targetIdx = currentTab.apiResponse.data.findIndex(item => item[primaryKey.value] === recordId);
@@ -217,7 +265,14 @@ const afterFocus = (event) => {
 }
 
 const handleKeyDown = (e) => {
-	if (showSearchModal.value) return
+	if (showSearchModal.value) {
+		if (e.key === 'Escape') {
+			closeSearchModal()
+			e.preventDefault()
+		}
+		return
+	}
+
 	if (e.repeat) return
 
 	if (e.key === 'Delete') {
@@ -272,7 +327,6 @@ const handlePreventGridConflict = (e) => {
 	}
 }
 
-// Tambahkan fungsi ini di dalam <script setup> MasterComponent.vue Anda:
 const handleAddNewRow = async () => {
 	if (!permission.value.create) {
 		alert('Anda tidak memiliki akses untuk menambah data!')
@@ -286,10 +340,8 @@ const handleAddNewRow = async () => {
 		if (response.status === 201) {
 			const serverNewData = response.data.data
 
-			// 1. 🔥 UBAH DI SINI: Letakkan data baru di belakang array lama (Bawah)
 			rows.value = [...rows.value, serverNewData]
 
-			// 2. 🔥 UBAH DI SINI: Samakan urutan untuk data di Pinia Store
 			const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
 			if (currentTab && currentTab.apiResponse) {
 				currentTab.apiResponse.data = [...currentTab.apiResponse.data, serverNewData]
@@ -297,7 +349,6 @@ const handleAddNewRow = async () => {
 
 			await nextTick()
 
-			// 3. Redraw RevoGrid
 			if (gridRef.value) {
 				if (typeof gridRef.value.requestGridRowsRedraw === 'function') {
 					gridRef.value.requestGridRowsRedraw()
@@ -306,10 +357,8 @@ const handleAddNewRow = async () => {
 				}
 			}
 
-			// 4. 🔥 UBAH DI SINI: Hitung indeks baris terakhir yang baru saja dibuat
 			const lastRowIndex = rows.value.length - 1
 
-			// 5. 🔥 UBAH DI SINI: Alihkan sel fokus ke baris paling bawah (lastRowIndex)
 			if (gridRef.value && typeof gridRef.value.setCellsFocus === 'function') {
 				gridRef.value.setCellsFocus({ x: 1, y: lastRowIndex }, { x: 1, y: lastRowIndex })
 			} else if (gridRef.value?.$el && typeof gridRef.value.$el.setCellsFocus === 'function') {
@@ -317,7 +366,7 @@ const handleAddNewRow = async () => {
 			}
 			setTimeout(() => {
 				if (navigatorRef.value && typeof navigatorRef.value.scrollToLastRow === 'function') {
-					navigatorRef.value.scrollToLastRow() // 🔥 DIUBAH: Ditambahkan `.value` dan tanda kurung `()`
+					navigatorRef.value.scrollToLastRow()
 				}
 			}, 50)
 		}
@@ -326,10 +375,12 @@ const handleAddNewRow = async () => {
 		alert('Gagal membuat baris baru di database.')
 	}
 }
-// 🔥 2. FUNGSI DELETE (Hit backend Prisma + Update Sinkronisasi Pinia Persist)
-const handleDeleteKey = async () => {
-	if (!permission.value.delete) return
 
+const handleDeleteKey = async () => {
+	if (!permission.value.delete) {
+		console.log('delete data not allowed')
+		return
+	}
 	const targetIndex = focusedCoordinate.value.y
 	const selectedData = rows.value[targetIndex]
 	const recordId = selectedData?.[primaryKey.value]
@@ -345,20 +396,16 @@ const handleDeleteKey = async () => {
 			const response = await api.delete(endpoint)
 
 			if (response.status === 200 || response.status === 204) {
-				// Ambil data yang tersisa setelah di-filter
 				const updatedRows = rows.value.filter((_, index) => index !== targetIndex)
 
-				// 🔥 UPDATE PINIA STORE LANGSUNG: Ini agar Local Storage ikut terhapus datanya!
 				const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
 				if (currentTab && currentTab.apiResponse) {
 					currentTab.apiResponse.data = [...updatedRows]
 				}
 
-				// Jalankan mutasi array ke variabel lokal
 				rows.value = [...updatedRows]
 				await nextTick()
 
-				// Redraw RevoGrid secara aman
 				if (gridRef.value) {
 					if (typeof gridRef.value.requestGridRowsRedraw === 'function') {
 						gridRef.value.requestGridRowsRedraw()
@@ -367,7 +414,6 @@ const handleDeleteKey = async () => {
 					}
 				}
 
-				// Kembalikan sel fokus ke baris terdekat
 				if (gridRef.value && typeof gridRef.value.setCellsFocus === 'function') {
 					const nextY = Math.max(0, targetIndex - 1)
 					gridRef.value.setCellsFocus({ x: 0, y: nextY }, { x: 0, y: nextY })
@@ -380,20 +426,26 @@ const handleDeleteKey = async () => {
 	}
 }
 
-// Filter Pencarian Server-Side via Prisma Builder Objek JSON
-const fetchDataWithPrismaFilter = async (prismaWhere = {}) => {
+// 🔥 PERBAIKAN: Tangkap filter dan simpan ke state global komponen agar bisa dipakai fungsi refresh
+const handleFilterChanged = (filter) => {
+	activeFilters.value = filter
+	fetchDataWithFilter(filter)
+}
+
+const fetchDataWithFilter = async (filter = {}) => {
 	try {
-		const response = await api.post(`${props.menu.route || `/${props.menu.key.toLowerCase()}`}/query`, {
-			where: prismaWhere
+		const response = await api.get(`${props.menu.route || `/${props.menu.key.toLowerCase()}`}/`, {
+			params: {
+				where: JSON.stringify(filter)
+			}
 		})
 
 		if (response.status === 200) {
 			rows.value = response.data?.data ? [...response.data.data] : []
-			await nextTick()
+			focusBackToGrid()
 
-			if (gridRef.value && typeof gridRef.value.requestGridRowsRedraw === 'function') {
-				gridRef.value.requestGridRowsRedraw()
-			}
+		} else {
+			console.log(response)
 		}
 	} catch (err) {
 		console.error("Gagal melakukan pencarian database server:", err)
@@ -403,7 +455,10 @@ const fetchDataWithPrismaFilter = async (prismaWhere = {}) => {
 const focusBackToGrid = () => {
 	nextTick(() => {
 		const grid = gridRef.value?.$el || gridRef.value
-		if (!grid) return
+		if (!grid) {
+			focusBackToGrid()
+			return;
+		}
 
 		const targetX = focusedCoordinate.value.x >= 0 ? focusedCoordinate.value.x : 0
 		const targetY = focusedCoordinate.value.y >= 0 ? focusedCoordinate.value.y : 0
@@ -427,13 +482,18 @@ const cariDataDenganKarakter = async (char) => {
 	await nextTick()
 	searchInputRef.value?.focus()
 }
+
+// 🔥 PERBAIKAN: Fungsi sinkronisasi menyertakan filter aktif jika ada
 const syncFreshDataFromServer = async () => {
-	// Pastikan hanya berjalan jika tab menu ini yang sedang aktif dilihat user
 	if (tabStore.activeTabId !== props.menu?.route) return
 
 	try {
 		const endpoint = props.menu.route || `/${props.menu.key.toLowerCase()}`
-		const response = await api.get(endpoint)
+		const response = await api.get(endpoint, {
+			params: {
+				where: JSON.stringify(activeFilters.value)
+			}
+		})
 		const freshData = response.data?.schema?.data || response.data?.data
 
 		if (freshData) {
@@ -448,32 +508,25 @@ const syncFreshDataFromServer = async () => {
 		console.error("Gagal otomatis revalidate data:", err)
 	}
 }
-// 🔥 3. FUNGSI QUICK SEARCH (Menyusun operator OR dinamis untuk query Prisma di Backend)
-const handleSearchSubmit = async () => {
+const handleSearchSubmit = () => {
 	const value = searchQuery.value.trim()
 	if (!value) return
 
-	try {
-		// Kumpulkan kolom bertipe teks dari skema UI
-		const textFields = (props.schemaData?.schema || [])
-			.filter(f => f.type === 'text' || f.key === 'name' || f.key === 'nmProduct')
-			.map(f => f.key)
-
-		// Bentuk objek filter OR Case-Insensitive ala Prisma ORM
-		const prismaWhere = {
-			OR: textFields.map(field => ({
-				[field]: {
-					contains: value,
-					mode: 'insensitive'
-				}
-			}))
-		}
-
-		await fetchDataWithPrismaFilter(prismaWhere)
-		closeSearchModal()
-	} catch (err) {
-		console.error("Quick search server failed:", err)
+	const quickFilterRow = {
+		field: primaryKey.value || 'id',
+		operator: 'contains',
+		value: value,
+		valueTo: ''
 	}
+
+	const currentRoute = props.menu?.route || route.path
+
+	// 🟢 Tetap pakai setFilters bawaan store kamu
+	filterStore.setFilters(currentRoute, [quickFilterRow])
+
+	// Sinkronkan ke tabel utama dan jalankan API request
+	handleFilterChanged([quickFilterRow])
+	closeSearchModal()
 }
 
 const closeSearchModal = () => {
@@ -491,7 +544,6 @@ const handleWindowFocus = () => {
 	}
 }
 
-// Bersihkan memori dan timer
 onBeforeUnmount(() => {
 	if (behaviorTimeoutId) clearTimeout(behaviorTimeoutId)
 	if (focusTimeoutId) clearTimeout(focusTimeoutId)
@@ -513,14 +565,13 @@ onMounted(() => {
 	document.addEventListener('visibilitychange', handleWindowFocus)
 })
 
-// Memantau perpindahan Tab Aktif secara global dari Pinia
 watch(() => tabStore.activeTabId, async (activeTabId) => {
 	if (activeTabId === props.menu?.route) {
 		await nextTick()
 
 		if (watchTabTimeoutId) clearTimeout(watchTabTimeoutId)
 
-		watchTabTimeoutId = setTimeout(async () => { // Tambahkan async di sini
+		watchTabTimeoutId = setTimeout(async () => {
 			const grid = gridRef.value?.$el || gridRef.value
 			if (!grid) return
 
@@ -528,32 +579,34 @@ watch(() => tabStore.activeTabId, async (activeTabId) => {
 				grid.requestColumnsRedraw()
 			}
 
-			// --- 🔥 SILENT BACKGROUND REVALIDATE DIMULAI ---
-			try {
-				// Tembak endpoint murni menu untuk mendapatkan data paling fresh
-				const endpoint = props.menu.route || `/${props.menu.key.toLowerCase()}`
-				const response = await api.get(endpoint)
+			// --- 🔥 PERBAIKAN SILENT BACKGROUND REVALIDATE DENGAN FILTER ---
+			const currentRoute = props.menu?.route || route.path;
+			activeFilters.value = filterStore.getFiltersByTab(currentRoute) || {};
 
-				// Ambil data array dari response struktur Prisma kamu
-				// Sesuaikan response.data.schema.data / response.data.data berdasarkan API-mu
+			try {
+				const endpoint = props.menu.route || `/${props.menu.key.toLowerCase()}`
+				const response = await api.get(endpoint, {
+					params: {
+						where: JSON.stringify(activeFilters.value)
+					}
+				})
+
 				const freshData = response.data?.schema?.data || response.data?.data
 
 				if (freshData) {
 					rows.value = [...freshData]
 
-					// Update cache di Pinia Store agar tetap sinkron
 					const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
 					if (currentTab && currentTab.apiResponse) {
 						currentTab.apiResponse.data = [...freshData]
 					}
 
-					// Redraw baris jika diperlukan
 					grid.requestGridRowsRedraw?.()
 				}
 			} catch (err) {
 				console.error("Gagal sinkronisasi data eksternal saat pindah tab:", err)
 			}
-			// --- 🔥 SILENT BACKGROUND REVALIDATE SELESAI ---
+			// --- SILENT BACKGROUND REVALIDATE SELESAI ---
 
 			const targetX = focusedCoordinate.value.x >= 0 ? focusedCoordinate.value.x : 0
 			const targetY = focusedCoordinate.value.y >= 0 ? focusedCoordinate.value.y : 0

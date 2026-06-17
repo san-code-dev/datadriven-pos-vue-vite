@@ -3,27 +3,60 @@
 @tailwind utilities;
 
 @layer components {
-  .btn-blue {
-    @apply bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded;
+
+  .btn-action {
+    @apply px-3 py-1.5 font-medium text-xs rounded-lg shadow-sm transition-all flex items-center gap-1 focus:ring-2 select-none focus:outline-none;
+  }
+
+  /* 1. Tombol Utama (Hijau Pekat / Seperti '+ Aturan' & 'Tambah Baris') */
+  .btn-action-emerald-600 {
+    @apply btn-action bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500;
+  }
+
+  /* 2. Tombol Sukses/Konfirmasi (Hijau Terang / Seperti 'Terapkan' & 'Cetak' jika ingin hijau) */
+  .btn-action-emerald-500 {
+    @apply btn-action bg-emerald-500 hover:bg-emerald-600 text-white focus:ring-emerald-400;
+  }
+
+  /* 3. Tombol Netral/Sekunder (Abu-abu / Seperti 'Reset' & 'Cetak Netral') */
+  .btn-action-slate {
+    @apply btn-action bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 focus:ring-slate-400 shadow-none;
+  }
+
+  /* 4. Tombol Akses Terkunci (Disabled State) */
+  .btn-action-disabled {
+    @apply px-3 py-1.5 font-medium text-xs rounded-lg border border-slate-200/60 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-600 cursor-not-allowed select-none flex items-center gap-1 shadow-none;
+  }
+
+  /* ==========================================================================
+     KEYBOARD BADGE (kbd) STYLING INSIDE BUTTONS
+     ========================================================================== */
+  .btn-kbd {
+    @apply opacity-60 text-[10px] font-sans tracking-wide ml-0.5;
   }
 }
 
 @layer base {
   h1 {
-    @apply text-4xl font-bold md:text-5xl lg:text-6xl  tracking-tight;
+    @apply text-4xl font-bold md:text-5xl lg:text-6xl tracking-tight;
   }
+
   h2 {
     @apply text-3xl md:text-4xl lg:text-5xl font-bold mb-4 scroll-mt-28;
   }
+
   h3 {
     @apply text-2xl md:text-3xl lg:text-4xl font-bold mb-2 scroll-mt-28;
   }
+
   h4 {
     @apply text-xl md:text-2xl lg:text-3xl font-semibold mb-2 scroll-mt-28;
   }
+
   h5 {
     @apply text-base md:text-lg lg:text-xl font-medium mb-2 scroll-mt-28;
   }
+
   h6 {
     @apply text-sm md:text-base lg:text-lg font-medium mb-2 scroll-mt-28;
   }

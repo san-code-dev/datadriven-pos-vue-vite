@@ -14,42 +14,43 @@
 
 			<!-- 2. Action Toolbar (Tempat Tombol-Tombol Aksi) -->
 			<div
-				class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+				class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800/60">
 
 				<!-- Sisi Kiri Toolbar: Tempat status info data jika diperlukan -->
 				<div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-					<!-- Stat/info opsional -->
-					awawawa
+					<!-- Stat/info items -->
+					<span>
+						{{ rows.length }} items,
+
+					</span>
+					<span>
+						terakhir diubah <span class="text-slate-500">2 menit lalu</span>
+
+					</span>
 				</div>
 
 				<!-- Sisi Kanan Toolbar: Kumpulan Tombol Aksi -->
 				<div class="flex flex-wrap items-center gap-2">
 
-					<!-- TOMBOL: TAMBAH BARIS -->
-					<button v-if="permission.create" @click="handleAddNewRow" type="button"
-						class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-lg shadow-sm shadow-emerald-600/10 hover:shadow-emerald-600/20 active:scale-95 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-slate-900">
-						<Icon icon="heroicons:plus-20-solid" class="w-4 h-4" />
-						<span>Tambah Baris</span>
-						<kbd
-							class="opacity-60 text-[9px] font-sans tracking-wide bg-emerald-700 px-1 py-0.5 rounded ml-0.5">F2</kbd>
+
+
+					<button v-if="permission.create" @click="handleAddNewRow" type="button" class="btn-action-slate">
+						<span>+ Tambah Baris</span>
+						<kbd class="btn-kbd">[F2]</kbd>
 					</button>
 
-					<!-- TOMBOL: AKSES TERKUNCI -->
-					<button v-else disabled type="button"
-						class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 font-medium text-xs rounded-lg border border-slate-200/60 dark:border-slate-700/60 cursor-not-allowed">
+					<button v-else disabled type="button" class="btn-action-disabled">
 						<Icon icon="heroicons:lock-closed-20-solid" class="w-4 h-4" />
 						<span>Akses Terkunci</span>
 					</button>
-
-					<!-- ⏳ CONTOH TOMBOL AKSI BARU LAINNYA DI MASA DEPAN -->
-					<!-- Tombol Export Excel -->
-					<!-- 
-                    <button type="button" class="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 text-slate-700 dark:text-slate-200 font-medium text-xs rounded-lg shadow-sm transition-all">
-                        <Icon icon="heroicons:document-arrow-down-20-solid" class="w-4 h-4 text-slate-500" />
-                        <span>Export Excel</span>
-                    </button> 
-                    -->
-
+					<button @click="handlePrint" type="button" class="btn-action-slate">
+						<span>Ekspor</span>
+						<kbd class="btn-kbd">[Ctrl+E]</kbd>
+					</button>
+					<button @click="handlePrint" type="button" class="btn-action-slate">
+						<span>Cetak</span>
+						<kbd class="btn-kbd">[Ctrl+P]</kbd>
+					</button>
 				</div>
 			</div>
 
@@ -60,10 +61,11 @@
 			<div class="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
 				<div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
 
-					<RevoGrid ref="gridRef" class="w-full h-full max-h-full focus:outline-none" :columns="columns"
-						:source="rows" :theme="isDark ? 'darkCompact' : 'compact'" resize="true"
-						@beforeeditstart.once="beforeEditStart" @beforeedit.once="beforeEdit" @afteredit="afterEdit"
-						@afterfocus="afterFocus" @keydown="handleKeyDown" />
+					<RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
+						:columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" resize="true"
+						:auto-size-column="true" @beforeeditstart.once="beforeEditStart" @beforeedit.once="beforeEdit"
+						@afteredit="afterEdit" @afterfocus="afterFocus" @keydown="handleKeyDown"
+						:column-types="columnTypes" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns"
 						:focused-coordinate="focusedCoordinate" />
@@ -116,6 +118,11 @@ import { useTabStore } from '@/stores/tabs'
 import { useFilterStore } from '@/stores/filter' // 🟢 1. Import Filter Store Pinia
 import { useRoute } from 'vue-router'            // 🟢 2. Import useRoute
 
+import NumberColumnType from '@revolist/revogrid-column-numeral'
+import SelectTypePlugin from '@revolist/revogrid-column-select'
+import DateTypePlugin from '@revolist/revogrid-column-date'
+
+
 const props = defineProps({
 	menu: { type: Object, required: true },
 	schemaData: { type: Object, required: true }
@@ -148,6 +155,15 @@ let focusTimeoutId = null
 let watchTabTimeoutId = null
 
 
+const columnTypes = {
+	numeric: new NumberColumnType('0,0'),          // Format ribuan biasa (contoh: 1,000)
+	decimal: new NumberColumnType('0,0.00'),       // Format desimal (contoh: 1,000.00)
+	select: new SelectTypePlugin(),                // Dropdown pilihan
+	date: new DateTypePlugin()                     // Calendar/Date picker
+}
+
+
+
 const relationCellRenderer = (createElement, props, displayField, fieldKey) => {
 	const rowData = props.model[fieldKey]
 	const displayText = rowData ? rowData[displayField] : ''
@@ -173,14 +189,32 @@ const loadComponentData = async () => {
 			prop: field.key,
 			name: field.label,
 			readonly: field.readonly || false,
-			size: field.label.length * 15,
-			columnType: field.type === 'relation' ? 'display' : field.type,
 			_type: field.type || 'text',
 			_autoIncrementOnDuplicate: field.autoIncrementOnDuplicate || false,
 			_primary: field.primary || false,
 		}
 
-		if (field.type === 'relation' && field.relation) {
+		// 🌟 TAHAP PEMETAAN TIPE DATA SESUAI DOKUMENTASI (Tetap sama seperti kode Anda)
+		if (field.type === 'number' || field.type === 'integer') {
+			columnConfig.columnType = 'numeric'
+		}
+		else if (field.type === 'decimal' || field.type === 'currency') {
+			columnConfig.columnType = 'decimal'
+		}
+		else if (field.type === 'date') {
+			columnConfig.columnType = 'date'
+		}
+		else if (field.type === 'select') {
+			columnConfig.columnType = 'select'
+			columnConfig.labelKey = 'label'
+			columnConfig.valueKey = 'value'
+			columnConfig.source = field.options || []
+			columnConfig.editorProperties = {
+				appendToBody: true
+			}
+		}
+		else if (field.type === 'relation' && field.relation) {
+			columnConfig.columnType = 'display'
 			columnConfig.cellTemplate = (createElement, linkProps) =>
 				relationCellRenderer(createElement, linkProps, field.relation.displayField, field.key)
 		}
@@ -608,5 +642,28 @@ watch(() => tabStore.activeTabId, async (activeTabId) => {
 <style scoped>
 :deep(revo-grid) {
 	z-index: 10 !important;
+}
+</style>
+<style>
+.flatpickr-calendar,
+.revogrid-editor-datepicker,
+.revo-editor-container {
+	position: fixed !important;
+	z-index: 99999 !important;
+}
+
+.revo-dropdown-holder,
+.revogrid-editor-select,
+.revo-editor-container:has(.revogrid-editor-select) {
+	position: fixed !important;
+	max-width: 250px !important;
+	/* Jika koordinat melampaui lebar layar, paksa merapat ke kanan viewport */
+	right: 10px !important;
+	left: auto !important;
+	z-index: 99999 !important;
+}
+
+div:has(> revo-grid) {
+	overflow: hidden !important;
 }
 </style>

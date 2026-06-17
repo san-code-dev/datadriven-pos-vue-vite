@@ -1,6 +1,6 @@
 <template>
     <div v-if="rows.length > 0"
-        class="absolute right-0 top-0 bottom-[10px] w-[10px] flex flex-col justify-between pointer-events-none z-50">
+        class="absolute right-0 top-0 bottom-[15px] w-[15px] flex flex-col justify-between pointer-events-none z-50">
         <button @click="scrollToFirstRow"
             class="pointer-events-auto w-full h-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-b-sm"
             title="Ke Baris Pertama">
@@ -15,46 +15,83 @@
     </div>
 
     <div v-if="columns.length > 0"
-        class="absolute bottom-0 left-0 right-[10px] h-[10px] flex justify-between pointer-events-none z-50">
-        <span @click="scrollToFirstCol"
+        class="absolute bottom-0 left-0 right-[15px] h-[15px] flex justify-between pointer-events-none z-50">
+        <button @click="scrollToFirstCol"
             class="pointer-events-auto h-full w-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-r-sm"
             title="Ke Kolom Pertama">
             <Icon icon="heroicons:chevron-left-20-solid" class="w-3 h-3 flex-shrink-0" />
-        </span>
+        </button>
 
-        <span @click="scrollToLastCol"
+        <button @click="scrollToLastCol"
             class="pointer-events-auto h-full w-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-l-sm"
             title="Ke Kolom Terakhir">
             <Icon icon="heroicons:chevron-right-20-solid" class="w-3 h-3 flex-shrink-0" />
-        </span>
+        </button>
     </div>
 </template>
-
 <style>
-/* Style kustom untuk internal scrollbar RevoGrid tetap di parent */
+/* Style kustom untuk internal scrollbar RevoGrid */
 revogr-scroll-virtual {
     background: transparent !important;
 }
 
+/* 1. Atur Ukuran Dasar Scrollbar (Tetap 15px agar pas dengan rumah tombol) */
 revogr-scroll-virtual::-webkit-scrollbar {
-    width: 10px !important;
-    height: 10px !important;
+    width: 15px !important;
+    height: 15px !important;
 }
 
+revogr-scroll-virtual:active {
+    cursor: grabbing !important;
+    /* Saat mouse menahan/menggeser scrollbar */
+}
+
+/* 2. Track Area: Menyeimbangkan ruang tombol */
 revogr-scroll-virtual::-webkit-scrollbar-track {
     background: transparent !important;
+    margin-top: 16px !important;
+    /* Menghindari tombol atas (h-4) */
+    margin-bottom: 15px !important;
+    /* Menghindari tombol bawah */
+    margin-left: 16px !important;
+    margin-right: 31px !important;
 }
 
+revogr-scroll-virtual[type="horizontal"]::-webkit-scrollbar-track {
+    background: transparent !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    margin-left: 16px !important;
+    /* Menghindari tombol kiri (w-4) */
+    margin-right: 26px !important;
+    /* Menghindari tombol kanan */
+}
+
+/* 3. Tampilan Scrollbar Thumb (DIECILKAN DI SINI) */
+/* 3. Tampilan Scrollbar Thumb (Ketebalan Sedang/Ideal) */
 revogr-scroll-virtual::-webkit-scrollbar-thumb {
     background-color: rgba(16, 185, 129, 0.4) !important;
+
+    /* UBAH DI SINI: Berubah dari 5px ke 3.5px atau 4px untuk thumb yang lebih tebal */
+    border: 3.5px solid transparent !important;
+    background-clip: padding-box !important;
+
     border-radius: 9999px !important;
     transition: background-color 0.2s ease-in-out !important;
+    cursor: grab !important;
+    /* Ubah dari pointer ke grab */
+}
+
+revogr-scroll-virtual::-webkit-scrollbar-thumb:active {
+    cursor: grabbing !important;
+    /* Ubah dari pointer ke grab */
 }
 
 revogr-scroll-virtual::-webkit-scrollbar-thumb:hover {
     background-color: rgb(5, 150, 105) !important;
 }
 
+/* Mode Dark */
 .dark revogr-scroll-virtual::-webkit-scrollbar-thumb {
     background-color: rgba(52, 211, 153, 0.3) !important;
 }

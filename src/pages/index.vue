@@ -44,11 +44,10 @@ async function login() {
 
         // Simpan menu hasil login ke Pinia (otomatis tersinkron ke local storage)
         authStore.setMenus(response.data.menu)
-
         // Redirect ke dashboard setelah sukses
         await router.push('/dashboard')
     } catch (err: any) {
-        error.value = err.message
+        error.value = err.response.data.message
     } finally {
         loading.value = false
     }

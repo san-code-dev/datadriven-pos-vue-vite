@@ -153,3 +153,44 @@ This project allows JS, and strict mode is turned off. Update `tsconfig.ts` as r
 ## Community
 
 - [Vue Designer Community](https://discord.gg/BYp45Nnu5T)
+
+
+
+
+next features
+Pemanfaatan fitur Live Chat antar user dan Notifikasi Sistem dalam sistem ERP (Enterprise Resource Planning) sangat krusial. ERP bukan sekadar aplikasi pencatatan data, melainkan pusat syaraf operasional perusahaan.
+
+Berikut adalah skenario nyata pemanfaatan kedua fitur tersebut untuk meningkatkan efisiensi bisnis:
+
+1. Pemanfaatan Live Chat Antar User ERP
+Berbeda dengan WhatsApp atau Slack, live chat di dalam ERP bersifat context-aware (terikat langsung dengan data/dokumen yang ada di sistem).
+
+Kolaborasi Langsung di Dalam Dokumen (Contextual Chat):
+Saat staf finansial melihat kejanggalan pada Invoice #1024, mereka bisa langsung membuka chat dengan tim sales di dalam halaman invoice tersebut. Tidak perlu screenshot atau copy-paste nomor invoice ke aplikasi chat eksternal.
+
+Penyelesaian Masalah Gudang (Stock Discrepancy):
+Tim admin gudang bisa langsung chat tim purchasing jika barang yang datang tidak sesuai dengan Purchase Order (PO) yang sedang di-input secara real-time.
+
+Audit Trail yang Jelas:
+Percakapan terkait keputusan bisnis (misal: "Kenapa diskon ini disetujui?") tersimpan di dalam sistem ERP, sehingga mempermudah audit internal di kemudian hari.
+
+Onboarding & Operasional Terpusat:
+Karyawan baru tidak perlu berpindah-pindah aplikasi. Semua koordinasi kerja dari hulu ke hilir selesai di satu platform.
+
+2. Pemanfaatan Notifikasi Sistem (System Notifications)
+Notifikasi sistem berfungsi sebagai penggerak otomatis alur kerja (workflow automation), memastikan tidak ada proses bisnis yang mandek.
+
+A. Sistem Approval (Persetujuan) & Aturan Urgen
+Notifikasi Pengajuan Anggaran: Saat tim marketing mengajukan dana campaign, manajer keuangan langsung mendapat notifikasi: "Pengajuan Dana ID-998 butuh persetujuan Anda."
+
+Over-Limit Kredit Kontraktor: Jika tim sales mencoba membuat pesanan untuk klien yang utangnya sudah melebihi batas, sistem otomatis mengunci transaksi dan mengirim notifikasi ke Direktur Keuangan untuk meminta izin khusus.
+
+B. Manajemen Inventaris & Rantai Pasok (Supply Chain)
+Peringatan Stok Menipis (Low Stock Alert): Sistem otomatis memicu notifikasi ke bagian gudang/purchasing ketika bahan baku menyentuh minimum buffer stock.
+
+Kedatangan Barang: Notifikasi otomatis ke tim sales bahwa barang yang dipesan oleh klien mereka baru saja selesai di-input oleh tim bongkar muat gudang.
+
+C. Manajemen Piutang & Penjualan (CRM/Finance)
+Jatuh Tempo Pembayaran: Notifikasi ke tim Account Receivable (AR) 3 hari sebelum invoice klien jatuh tempo agar bisa segera melakukan penagihan.
+
+Target Tercapai: Notifikasi selebrasi otomatis ke seluruh tim ketika target penjualan bulanan perusahaan terpenuhi.

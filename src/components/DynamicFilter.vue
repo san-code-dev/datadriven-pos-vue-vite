@@ -28,16 +28,13 @@
             </div>
 
             <div class=" flex items-center space-x-2 text-xs">
-                <button @click="addFilterRow"
-                    class="px-3 py-1.5 font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm transition-all flex items-center gap-1 focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+                <button @click="addFilterRow" class="btn-action-slate">
                     <span>+ Aturan</span> <kbd class="opacity-60 text-[10px]">[Ins]</kbd>
                 </button>
-                <button v-if="localFilters.length > 0" @click="applyFilters"
-                    class="px-3 py-1.5 font-medium bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-sm transition-all flex items-center gap-1 focus:ring-2 focus:ring-emerald-400 focus:outline-none">
+                <button v-if="localFilters.length > 0" @click="applyFilters" class="btn-action-slate">
                     <span>Terapkan</span> <kbd class="opacity-60 text-[10px]">[Enter]</kbd>
                 </button>
-                <button v-if="localFilters.length > 0" @click="resetFilters"
-                    class="px-3 py-1.5 font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-all focus:ring-2 focus:ring-slate-400 focus:outline-none">
+                <button v-if="localFilters.length > 0" @click="resetFilters" class="btn-action-slate">
                     Reset
                 </button>
             </div>
@@ -48,7 +45,7 @@
             <div v-if="localFilters.length === 0"
                 class="text-center py-3 text-xs text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg my-2">
                 Belum ada filter aktif. Tekan tombol atau <kbd
-                    class="px-1 bg-slate-100 dark:bg-slate-700 rounded shadow">Insert</kbd> untuk menyaring data.
+                    class="px-1 bg-slate-100 dark:bg-slate-700 rounded shadow">Alt+F</kbd> untuk menyaring data.
             </div>
 
             <div v-else class="space-y-3 pt-2">
@@ -258,10 +255,12 @@ const applyFilters = () => {
     emit('filter-changed', localFilters.value)
 }
 
-const resetFilters = () => {
+const resetFilters = async () => {
     localFilters.value = []
     filterStore.clearFilters(props.tabId)
     emit('filter-changed', [])
+    await nextTick();
+    emit('escape-filter')
 }
 
 const focusInputAtRow = (rowIndex, inputIndex = 0) => {

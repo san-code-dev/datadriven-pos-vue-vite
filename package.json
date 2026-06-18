@@ -20,6 +20,7 @@
     "format": "prettier --write \"**/*.{html,vue,svelte,astro,js,jsx,cjs,mjs,ts,tsx,cts,mts,css,md,mdx,json}\" !public --ignore-path .gitignore"
   },
   "dependencies": {
+    "@revolist/revo-dropdown": "^3.0.9",
     "@revolist/revogrid-column-date": "^2.0.25",
     "@revolist/revogrid-column-numeral": "^2.0.11",
     "@revolist/revogrid-column-select": "^3.2.0",

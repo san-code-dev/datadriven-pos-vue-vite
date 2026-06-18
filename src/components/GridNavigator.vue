@@ -29,13 +29,83 @@
         </button>
     </div>
 </template>
+
+<script setup>
+import { Icon } from '@iconify/vue'
+
+const props = defineProps({
+    grid: [Object, null],
+    rows: { type: Array, default: () => [] },
+    columns: { type: Array, default: () => [] }
+})
+
+// 🟢 HELPER UTAMA: Mengambil instance element DOM asli RevoGrid secara aman
+const getGrid = () => props.grid?.$el || props.grid || {}
+
+// 🟢 HELPER REALTIME: Mendapatkan koordinat aktif secara asynchronous langsung dari engine grid
+const getActiveCoordinates = async () => {
+    const grid = getGrid()
+    if (typeof grid.getFocused !== 'function') return { x: 0, y: 0 }
+    const focused = await grid.getFocused()
+    return {
+        x: focused?.cell?.x ?? 0,
+        y: focused?.cell?.y ?? 0
+    }
+}
+
+// ========================================================
+// FUNGSI JUMP & FOCUS UNTUK BARIS (VERTIKAL)
+// ========================================================
+const scrollToFirstRow = async () => {
+    if (props.rows.length === 0) return
+    const grid = getGrid()
+    const { x } = await getActiveCoordinates()
+
+    grid.setCellsFocus?.({ x, y: 0 }, { x, y: 0 })
+    grid.scrollToRow?.(0)
+}
+
+const scrollToLastRow = async () => {
+    if (props.rows.length === 0) return
+    const grid = getGrid()
+    const { x } = await getActiveCoordinates()
+    const lastRowIndex = props.rows.length - 1
+
+    grid.setCellsFocus?.({ x, y: lastRowIndex }, { x, y: lastRowIndex })
+    grid.scrollToRow?.(lastRowIndex)
+}
+
+// ========================================================
+// FUNGSI JUMP & FOCUS UNTUK KOLOM (HORIZONTAL)
+// ========================================================
+const scrollToFirstCol = async () => {
+    if (props.columns.length === 0) return
+    const grid = getGrid()
+    const { y } = await getActiveCoordinates()
+
+    grid.scrollToColumnIndex?.(0)
+    grid.setCellsFocus?.({ x: 0, y }, { x: 0, y })
+}
+
+const scrollToLastCol = async () => {
+    if (props.columns.length === 0) return
+    const grid = getGrid()
+    const { y } = await getActiveCoordinates()
+    const lastColIndex = props.columns.length - 1
+
+    grid.scrollToColumnIndex?.(lastColIndex)
+    grid.setCellsFocus?.({ x: lastColIndex, y }, { x: lastColIndex, y })
+}
+
+defineExpose({ scrollToLastRow, scrollToLastCol, scrollToFirstRow, scrollToFirstCol })
+</script>
+
 <style>
 /* Style kustom untuk internal scrollbar RevoGrid */
 revogr-scroll-virtual {
     background: transparent !important;
 }
 
-/* 1. Atur Ukuran Dasar Scrollbar (Tetap 15px agar pas dengan rumah tombol) */
 revogr-scroll-virtual::-webkit-scrollbar {
     width: 15px !important;
     height: 15px !important;
@@ -43,16 +113,12 @@ revogr-scroll-virtual::-webkit-scrollbar {
 
 revogr-scroll-virtual:active {
     cursor: grabbing !important;
-    /* Saat mouse menahan/menggeser scrollbar */
 }
 
-/* 2. Track Area: Menyeimbangkan ruang tombol */
 revogr-scroll-virtual::-webkit-scrollbar-track {
     background: transparent !important;
     margin-top: 16px !important;
-    /* Menghindari tombol atas (h-4) */
     margin-bottom: 15px !important;
-    /* Menghindari tombol bawah */
     margin-left: 16px !important;
     margin-right: 31px !important;
 }
@@ -62,36 +128,26 @@ revogr-scroll-virtual[type="horizontal"]::-webkit-scrollbar-track {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
     margin-left: 16px !important;
-    /* Menghindari tombol kiri (w-4) */
     margin-right: 26px !important;
-    /* Menghindari tombol kanan */
 }
 
-/* 3. Tampilan Scrollbar Thumb (DIECILKAN DI SINI) */
-/* 3. Tampilan Scrollbar Thumb (Ketebalan Sedang/Ideal) */
 revogr-scroll-virtual::-webkit-scrollbar-thumb {
     background-color: rgba(16, 185, 129, 0.4) !important;
-
-    /* UBAH DI SINI: Berubah dari 5px ke 3.5px atau 4px untuk thumb yang lebih tebal */
     border: 3.5px solid transparent !important;
     background-clip: padding-box !important;
-
     border-radius: 9999px !important;
     transition: background-color 0.2s ease-in-out !important;
     cursor: grab !important;
-    /* Ubah dari pointer ke grab */
 }
 
 revogr-scroll-virtual::-webkit-scrollbar-thumb:active {
     cursor: grabbing !important;
-    /* Ubah dari pointer ke grab */
 }
 
 revogr-scroll-virtual::-webkit-scrollbar-thumb:hover {
     background-color: rgb(5, 150, 105) !important;
 }
 
-/* Mode Dark */
 .dark revogr-scroll-virtual::-webkit-scrollbar-thumb {
     background-color: rgba(52, 211, 153, 0.3) !important;
 }
@@ -100,79 +156,3 @@ revogr-scroll-virtual::-webkit-scrollbar-thumb:hover {
     background-color: rgb(52, 211, 153) !important;
 }
 </style>
-<script setup>
-import { Icon } from '@iconify/vue'
-
-const props = defineProps({
-    grid: [Object, null], // Menerima ref/element RevoGrid dari parent
-    rows: {
-        type: Array,
-        default: () => []
-    },
-    columns: {
-        type: Array,
-        default: () => []
-    },
-    focusedCoordinate: {
-        type: Object,
-        default: () => ({ x: -1, y: -1 })
-    }
-})
-
-// Fungsi helper internal untuk mengambil instance grid asli
-const getGridInstance = () => {
-    return props.grid?.$el || props.grid
-}
-
-// ========================================================
-// FUNGSI JUMP & FOCUS UNTUK BARIS (VERTIKAL)
-// ========================================================
-const scrollToFirstRow = () => {
-    nextTick(() => {
-        const grid = getGridInstance()
-        if (!grid || props.rows.length === 0) return
-
-        const currentX = props.focusedCoordinate.x >= 0 ? props.focusedCoordinate.x : 0
-        grid.setCellsFocus({ x: currentX, y: 0 }, { x: currentX, y: 0 })
-        grid.scrollToRow(0)
-
-    })
-}
-
-const scrollToLastRow = () => {
-    nextTick(() => {
-        const grid = getGridInstance()
-        if (!grid || props.rows.length === 0) return
-
-        const lastRowIndex = props.rows.length - 1
-        const currentX = props.focusedCoordinate.x >= 0 ? props.focusedCoordinate.x : 0
-        grid.setCellsFocus({ x: currentX, y: lastRowIndex }, { x: currentX, y: lastRowIndex })
-        grid.scrollToRow(lastRowIndex)
-    })
-}
-
-// ========================================================
-// FUNGSI JUMP & FOCUS UNTUK KOLOM (HORIZONTAL)
-// ========================================================
-const scrollToFirstCol = (e) => {
-    const grid = getGridInstance()
-    if (!grid || props.columns.length === 0) return
-
-    const currentY = props.focusedCoordinate.y >= 0 ? props.focusedCoordinate.y : 0
-    grid.scrollToColumnIndex(0)
-    grid.setCellsFocus({ x: 0, y: currentY }, { x: 0, y: currentY })
-}
-
-const scrollToLastCol = (e) => {
-    const grid = getGridInstance()
-    if (!grid || props.columns.length === 0) return
-
-    const lastColIndex = props.columns.length - 1
-    const currentY = props.focusedCoordinate.y >= 0 ? props.focusedCoordinate.y : 0
-    grid.scrollToColumnIndex(lastColIndex)
-    grid.setCellsFocus({ x: lastColIndex, y: currentY }, { x: lastColIndex, y: currentY })
-}
-
-// Expose fungsi scrollToLastRow agar bisa dipanggil Parent saat inisialisasi awal data
-defineExpose({ scrollToLastRow, scrollToLastCol, scrollToFirstRow, scrollToFirstCol })
-</script>

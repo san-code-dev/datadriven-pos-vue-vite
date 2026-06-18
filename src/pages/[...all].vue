@@ -1,8 +1,8 @@
 <script setup>
 import { useRoute, useRouter } from 'vue-router'
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { Icon } from '@iconify/vue'
 
-// 1. Ganti import MockData dengan instance Axios global Anda
 import api from '@/lib/axios'
 import { useAuthStore } from '@/stores/auth'
 
@@ -13,14 +13,16 @@ import DashboardContent from '@/components/DashboardContent.vue'
 import MasterComponent from '@/components/dynamic/MasterComponent.vue'
 import TransactionComponent from '@/components/dynamic/TransactionComponent.vue'
 import { useFilterStore } from '@/stores/filter'
+
 const route = useRoute()
 const router = useRouter()
 const tabStore = useTabStore()
-const authStore = useAuthStore() // Gunakan authStore untuk mencocokkan menu yang diizinkan
+const authStore = useAuthStore()
 const filterStore = useFilterStore()
+
 const isError = ref(false)
-
-
+const isLoading = ref(false)
+const errorMessage = ref('')
 
 const componentsMap = {
     'dashboard': DashboardContent,
@@ -52,10 +54,15 @@ const fetchSchemaFromApi = async () => {
 
     if (currentPath === '/' || currentPath === '/dashboard') {
         tabStore.activeTabId = '/dashboard'
+        isError.value = false
+        isLoading.value = false
         return
     }
 
+    // Reset state visual sebelum memulai request baru
     isError.value = false
+    isLoading.value = true
+    errorMessage.value = ''
 
     const pathSegments = currentPath.split('/').filter(Boolean)
     const rootPath = pathSegments.length ? `/${pathSegments[0]}` : '/'
@@ -64,16 +71,17 @@ const fetchSchemaFromApi = async () => {
 
     if (!matchedMenu) {
         isError.value = true
+        isLoading.value = false
+        errorMessage.value = 'Halaman tidak ditemukan atau Anda tidak memiliki hak akses.'
         return
     }
 
     try {
-        // 🟢 Ambil filter aktif dari Pinia Store sebelum menembak API
         const activeFilters = filterStore.getFiltersByTab(currentPath)
 
         const response = await api.get(`${currentPath}/`, {
             params: {
-                where: JSON.stringify(activeFilters) // Amankan filter ke query string URL
+                where: JSON.stringify(activeFilters)
             }
         })
 
@@ -84,10 +92,8 @@ const fetchSchemaFromApi = async () => {
             const existingTab = tabStore.openedTabs.find(t => t.id === currentPath)
 
             if (existingTab) {
-                // 🟢 Jika tab sudah ada, perbarui data responsnya saja dengan hasil filter terbaru
                 existingTab.apiResponse = responseData
             } else {
-                // Jika belum ada, buat tab baru seperti biasa
                 tabStore.addTab({
                     id: currentPath,
                     label: responseData.label || matchedMenu.label,
@@ -100,10 +106,14 @@ const fetchSchemaFromApi = async () => {
             tabStore.activeTabId = currentPath
         } else {
             isError.value = true
+            errorMessage.value = 'Server mengembalikan data kosong.'
         }
     } catch (err) {
         console.error('Fetch metadata failed:', err)
         isError.value = true
+        errorMessage.value = err.response?.data?.message || err.message || 'Terjadi kesalahan jaringan server.'
+    } finally {
+        isLoading.value = false
     }
 }
 
@@ -159,7 +169,6 @@ onBeforeUnmount(() => {
     window.removeEventListener('keydown', handleKeyDown)
 })
 
-// Pasang watcher untuk mendeteksi perubahan rute
 watch(() => route.path, fetchSchemaFromApi, { immediate: true })
 </script>
 
@@ -174,9 +183,20 @@ watch(() => route.path, fetchSchemaFromApi, { immediate: true })
 
             <div class="flex-1 min-h-0 relative overflow-hidden w-full">
 
+                <!-- 🟢 TAMPILAN LOADING MINIMALIS EMERALD (HANYA MUNCUL JIKA PROSES LAMA) -->
+                <div v-if="isLoading"
+                    class="absolute inset-0 bg-gray-50/60 dark:bg-gray-900/60 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-50 animate-delayed-fade">
+                    <Icon icon="heroicons:arrow-path-20-solid"
+                        class="w-7 h-7 text-emerald-500 dark:text-emerald-400 animate-spin" />
+                    <span class="text-xs font-medium text-emerald-600 dark:text-emerald-400">Memuat data
+                        halaman...</span>
+                </div>
+
+                <!-- KONTEN TAB UTAMA -->
                 <keep-alive :max="5">
                     <div v-for="tab in tabStore.openedTabs" :key="tab.id + (tab.refreshKey || 0)"
-                        v-show="tabStore.activeTabId === tab.id" :data-tab-id="tab.id" class="w-full h-full">
+                        v-show="tabStore.activeTabId === tab.id && !isError" :data-tab-id="tab.id"
+                        class="w-full h-full">
 
                         <component v-if="tab.apiResponse && getComponentByType(tab.apiResponse.type)"
                             :is="getComponentByType(tab.apiResponse.type)" :menu="tab.currentMenu"
@@ -184,15 +204,60 @@ watch(() => route.path, fetchSchemaFromApi, { immediate: true })
                     </div>
                 </keep-alive>
 
-                <div v-if="isError" class="flex items-center justify-center h-full">
-                    <div
-                        class="text-center p-8 bg-white dark:bg-gray-800 shadow-xl rounded-2xl max-w-md border border-gray-100 dark:border-gray-700">
-                        <span class="text-5xl block mb-3">⚠️</span>
-                        <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">Gagal Memuat Halaman</h1>
-                    </div>
+                <!-- 🟢 TAMPILAN ERROR MINIMALIS (TANPA BOX BUNGKUSAN) -->
+                <div v-if="isError && !isLoading"
+                    class="flex flex-col items-center justify-center h-full p-6 text-center animate-fade-in max-w-sm mx-auto">
+                    <Icon icon="heroicons:exclamation-triangle-20-solid" class="w-10 h-10 text-rose-500 mb-2" />
+                    <h1 class="text-base font-bold text-gray-800 dark:text-gray-100">Gagal Memuat Halaman</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words line-clamp-3">
+                        {{ errorMessage }}
+                    </p>
+
+                    <button @click="fetchSchemaFromApi" type="button"
+                        class="mt-4 px-4 py-1.5 bg-transparent border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">
+                        <Icon icon="heroicons:arrow-path-16-solid" class="w-3.5 h-3.5" />
+                        <span>Coba Lagi</span>
+                    </button>
                 </div>
 
             </div>
         </div>
     </div>
 </template>
+
+<style scoped>
+/* Animasi untuk menunda kemunculan loading screen selama 400ms */
+@keyframes delayedFade {
+    0% {
+        opacity: 0;
+    }
+
+    80% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+.animate-delayed-fade {
+    animation: delayedFade 0.5s ease-in-out forwards;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>

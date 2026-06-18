@@ -64,12 +64,6 @@
 
                     <div class="flex-1 h-full p-4 overflow-y-auto min-h-0 flex flex-col gap-3">
 
-                        <div
-                            class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 shrink-0">
-                            <Icon icon="heroicons:adjustments-horizontal" class="w-4 h-4 text-emerald-500" />
-                            <span>Inspector Perbandingan Data</span>
-                        </div>
-
                         <div v-if="!selectedLog"
                             class="flex-1 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-400 p-8">
                             <Icon icon="heroicons:cursor-arrow-rays" class="w-8 h-8 mb-1 animate-pulse" />
@@ -83,7 +77,7 @@
                                 class="flex-1 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-xl p-4 flex flex-col min-h-0 overflow-hidden">
                                 <div
                                     class="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-2 flex items-center gap-1.5 shrink-0">
-                                    <span class="w-2 h-2 rounded-full bg-rose-500"></span> Sebelum Perubahan (Old Data)
+                                    <span class="w-2 h-2 rounded-full bg-rose-500"></span> Data Lama
                                 </div>
                                 <div
                                     class="flex-1 overflow-auto bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono text-[11px] text-slate-300">
@@ -104,8 +98,7 @@
                                 class="flex-1 bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-xl p-4 flex flex-col min-h-0 overflow-hidden">
                                 <div
                                     class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2 flex items-center gap-1.5 shrink-0">
-                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Sesudah Perubahan (New
-                                    Data)
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Data Baru
                                 </div>
                                 <div
                                     class="flex-1 overflow-auto bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono text-[11px] text-slate-300">

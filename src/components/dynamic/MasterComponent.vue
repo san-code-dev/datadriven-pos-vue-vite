@@ -26,21 +26,22 @@
 							Log Audit
 						</span>
 					</span>
-					<div
-						class="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700 transition-all duration-200">
+					<div class="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700 ">
 						<template v-if="syncStatus.state === 'loading'">
 							<Icon icon="heroicons:arrow-path-20-solid"
 								class="w-3.5 h-3.5 animate-spin text-emerald-500" />
-							<span class="text-slate-500 dark:text-slate-400">{{ syncStatus.message }}</span>
+							<span class="text-slate-500 dark:text-slate-400">
+								{{ syncStatus.message }}
+							</span>
 						</template>
 
-						<template v-else-if="syncStatus.state === 'success'">
+						<template v-if="syncStatus.state === 'success'">
 							<Icon icon="heroicons:check-circle-20-solid" class="w-3.5 h-3.5 text-emerald-500" />
 							<span class="text-emerald-600 dark:text-emerald-400 font-medium">{{ syncStatus.message
 							}}</span>
 						</template>
 
-						<template v-else-if="syncStatus.state === 'error'">
+						<template v-if="syncStatus.state === 'error'">
 							<Icon icon="heroicons:exclamation-circle-20-solid" class="w-3.5 h-3.5 text-rose-500" />
 							<span class="text-rose-600 dark:text-rose-400 font-medium animate-pulse">{{
 								syncStatus.message }}</span>
@@ -59,13 +60,23 @@
 						<Icon icon="heroicons:lock-closed-20-solid" class="w-4 h-4" />
 						<span>Akses Terkunci</span>
 					</button>
-					<button @click="handleExport" type="button" class="btn-action-slate">
-						<span>Ekspor</span>
-						<kbd class="btn-kbd">[Ctrl+E]</kbd>
-					</button>
 					<button @click="handlePrint" type="button" class="btn-action-slate">
 						<span>Cetak</span>
 						<kbd class="btn-kbd">[Ctrl+P]</kbd>
+					</button>
+					<button @click="handleExport" type="button" class="btn-action-slate">
+						<span>Ekspor</span>
+					</button>
+
+					<button @click="fetchGridData" type="button" class="btn-action-slate">
+						<template v-if="syncStatus.state === 'loading'">
+							<Icon icon="heroicons:arrow-path-20-solid"
+								class="w-3.5 h-3.5 animate-spin text-emerald-500" />
+						</template>
+						<template v-else>
+							<Icon icon="heroicons:arrow-path-20-solid" class="w-3.5 h-3.5" />
+						</template>
+						<span>Refresh</span>
 					</button>
 				</div>
 			</div>
@@ -117,7 +128,7 @@
 	</div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Icon } from '@iconify/vue'
 import { isDark } from '@/composables/dark'
@@ -195,9 +206,25 @@ const relationCellRenderer = (createElement, props, displayField, fieldKey) => {
 }
 
 // Helper untuk mengatur visual state indicator
+// Tambahkan satu variabel tracker di luar fungsi (di atasnya)
+let apiLoadingTimeout = null
+
 const setSyncStatus = (state, message, autoResetDelay = 3000) => {
 	if (statusResetTimeout) clearTimeout(statusResetTimeout)
-	syncStatus.value = { state, message }
+
+	// 1. Selalu bersihkan timeout loading yang lama setiap ada perubahan status
+	if (apiLoadingTimeout) clearTimeout(apiLoadingTimeout)
+
+	// 2. Jika status yang masuk adalah 'loading', tunda eksekusinya selama 400ms
+	if (state === 'loading') {
+		apiLoadingTimeout = setTimeout(() => {
+			syncStatus.value = { state, message }
+		}, 400)
+	} else {
+		// 3. Jika statusnya 'success', 'error', atau 'idle', langsung ganti saat itu juga
+		// Ini otomatis membatalkan antrean 'loading' di atas karena apiLoadingTimeout sudah di-clear
+		syncStatus.value = { state, message }
+	}
 
 	if ((state === 'success' || state === 'error') && autoResetDelay) {
 		statusResetTimeout = setTimeout(() => {
@@ -211,7 +238,7 @@ const formatRelativeTime = (timestamp) => {
 	if (!timestamp) return 'belum ada riwayat'
 
 	const now = new Date()
-	const diffInSeconds = Math.floor((now - new Date(timestamp)) / 1000)
+	const diffInSeconds = Math.floor((now.getTime() - new Date(timestamp).getTime()) / 1000)
 
 	if (diffInSeconds < 30) return 'baru saja'
 	if (diffInSeconds < 60) return `${diffInSeconds} detik lalu`
@@ -657,27 +684,5 @@ watch(() => tabStore.activeTabId, async (activeTabId) => {
 <style scoped>
 :deep(revo-grid) {
 	z-index: 10 !important;
-}
-</style>
-<style>
-.flatpickr-calendar,
-.revogrid-editor-datepicker,
-.revo-editor-container {
-	position: fixed !important;
-	z-index: 99999 !important;
-}
-
-.revo-dropdown-holder,
-.revogrid-editor-select,
-.revo-editor-container:has(.revogrid-editor-select) {
-	position: fixed !important;
-	max-width: 250px !important;
-	right: 10px !important;
-	left: auto !important;
-	z-index: 99999 !important;
-}
-
-div:has(> revo-grid) {
-	overflow: hidden !important;
 }
 </style>

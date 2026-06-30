@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Matrix Color Analyst Tool</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: #1e293b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 480px;
+            border: 1px solid #e2e8f0;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        /* PANEL UTAMA POLOS (Sekarang Terpisah di Atas) */
+        .color-preview-panel {
+            width: 100%;
+            height: 140px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #cbd5e1;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+            transition: background-color 0.05s ease;
+        }
+
+        /* Bidang Pengendali Matrix 2D */
+        .matrix-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: crosshair;
+            border: 1px solid #cbd5e1;
+        }
+
+        .matrix-bg {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right,
+                    hsl(0, 100%, 50%), hsl(60, 100%, 50%), hsl(120, 100%, 50%),
+                    hsl(180, 100%, 50%), hsl(240, 100%, 50%), hsl(300, 100%, 50%), hsl(360, 100%, 50%));
+        }
+
+        .matrix-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, #000 0%, transparent 50%, #fff 100%);
+        }
+
+        /* Penunjuk Koordinat (Pointer) */
+        .matrix-pointer {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            background: transparent;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+            transform: translate(-8px, -8px);
+            pointer-events: none;
+            left: 50%;
+            top: 50%;
+        }
+
+        .data-display {
+            background: #f1f5f9;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .value-text {
+            color: #0f172a;
+            font-family: monospace;
+        }
+
+        /* Kontrol Gulir Saturation (Kepekatan) */
+        .saturation-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 12px;
+            border-radius: 6px;
+            background: #cbd5e1;
+            outline: none;
+            cursor: pointer;
+            margin-bottom: 25px;
+        }
+
+        .saturation-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #0f172a;
+            cursor: pointer;
+        }
+
+        .btn-match {
+            width: 100%;
+            padding: 14px;
+            background-color: #0f172a;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .result-box {
+            margin-top: 20px;
+            padding: 18px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border-left: 4px solid #3b82f6;
+            display: none;
+        }
+
+        .palette {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .color-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>2D Matrix Color Analyst</h1>
+
+        <div id="mainColorPanel" class="color-preview-panel"></div>
+
+        <div class="matrix-container" id="matrixBox">
+            <div class="matrix-bg"></div>
+            <div class="matrix-overlay" id="matrixOverlay"></div>
+            <div class="matrix-pointer" id="matrixPointer"></div>
+        </div>
+
+        <div class="data-display">
+            <div class="data-row">
+                <span>Sumbu X (Hue / Spektrum):</span>
+                <span id="hueLabel" class="value-text">180°</span>
+            </div>
+            <div class="data-row">
+                <span>Sumbu Y (Lightness / Kecerahan):</span>
+                <span id="lightLabel" class="value-text">50%</span>
+            </div>
+            <div class="data-row">
+                <span>Slider (Saturation / Kepekatan):</span>
+                <span id="satLabel" class="value-text">100%</span>
+            </div>
+        </div>
+
+        <div style="font-size: 13px; font-weight:600; margin-bottom:8px; color:#475569;">Atur Kepekatan Warna
+            (Saturation):</div>
+        <input type="range" id="satSlider" class="saturation-slider" min="0" max="100" value="100">
+
+        <button id="matchBtn" class="btn-match">ANALYZE SELECTION</button>
+
+        <div id="resultCard" class="result-box">
+            <p style="margin-bottom: 8px;"><strong>Undertone Sistem:</strong> <span id="toneResult"
+                    style="font-weight: bold;"></span></p>
+            <p style="margin-bottom: 8px;"><strong>Karakter Spektrum:</strong> <span id="seasonResult"></span></p>
+            <p style="margin-top: 12px; font-size: 13px; font-weight: 600;">Palet Koordinat Terdekat:</p>
+            <div class="palette" id="paletteResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const matrixBox = document.getElementById('matrixBox');
+        const mainColorPanel = document.getElementById('mainColorPanel');
+        const pointer = document.getElementById('matrixPointer');
+        const satSlider = document.getElementById('satSlider');
+
+        const hueLabel = document.getElementById('hueLabel');
+        const lightLabel = document.getElementById('lightLabel');
+        const satLabel = document.getElementById('satLabel');
+
+        const matchBtn = document.getElementById('matchBtn');
+        const resultCard = document.getElementById('resultCard');
+        const toneResult = document.getElementById('toneResult');
+        const seasonResult = document.getElementById('seasonResult');
+        const paletteResult = document.getElementById('paletteResult');
+
+        let currentH = 180;
+        let currentL = 50;
+        let currentS = 100;
+        let isDragging = false;
+
+        function updateColorFromMatrix(e) {
+            const rect = matrixBox.getBoundingClientRect();
+            let x = e.clientX - rect.left;
+            let y = e.clientY - rect.top;
+
+            x = Math.max(0, Math.min(x, rect.width));
+            y = Math.max(0, Math.min(y, rect.height));
+
+            pointer.style.left = `${x}px`;
+            pointer.style.top = `${y}px`;
+
+            currentH = Math.round((x / rect.width) * 360);
+            currentL = Math.round(100 - (y / rect.height) * 100);
+            currentS = parseInt(satSlider.value);
+
+            hueLabel.textContent = `${currentH}°`;
+            lightLabel.textContent = `${currentL}%`;
+            satLabel.textContent = `${currentS}%`;
+
+            // UPDATE WARMA PADA PANEL UTAMA YANG DI ATAS (POLOS)
+            mainColorPanel.style.backgroundColor = `hsl(${currentH}, ${currentS}%, ${currentL}%)`;
+        }
+
+        matrixBox.addEventListener('mousedown', (e) => { isDragging = true; updateColorFromMatrix(e); });
+        window.addEventListener('mousemove', (e) => { if (isDragging) updateColorFromMatrix(e); });
+        window.addEventListener('mouseup', () => { isDragging = false; });
+
+        matrixBox.addEventListener('touchstart', (e) => { isDragging = true; updateColorFromMatrix(e.touches[0]); });
+        window.addEventListener('touchmove', (e) => { if (isDragging) updateColorFromMatrix(e.touches[0]); });
+        window.addEventListener('touchend', () => { isDragging = false; });
+
+        satSlider.addEventListener('input', () => {
+            currentS = parseInt(satSlider.value);
+            satLabel.textContent = `${currentS}%`;
+            mainColorPanel.style.backgroundColor = `hsl(${currentH}, ${currentS}%, ${currentL}%)`;
+        });
+
+        // Jalankan render awal agar panel tidak kosong saat pertama dibuka
+        mainColorPanel.style.backgroundColor = `hsl(${currentH}, ${currentS}%, ${currentL}%)`;
+
+        matchBtn.addEventListener('click', () => {
+            let tone = "";
+            let character = "";
+
+            if ((currentH >= 0 && currentH <= 80) || (currentH >= 320 && currentH <= 360)) {
+                tone = "Warm Undertone (Hangat)";
+                if (currentL > 60) {
+                    character = "Spring System (Light/Clear) — Warna hangat cerah, jernih, segar.";
+                } else if (currentL < 45) {
+                    character = "Autumn System (Deep/Muted) — Warna hangat pekat, gelap, dan earthy.";
+                } else {
+                    character = "True Warm — Optimal dengan emas murni.";
+                }
+            } else {
+                tone = "Cool Undertone (Dingin)";
+                if (currentL > 60) {
+                    character = "Summer System (Soft/Pastel) — Warna dingin pudar, lavender, pastel.";
+                } else if (currentL < 45) {
+                    character = "Winter System (Deep/Vibrant) — Warna kontras tajam, safir, fuchsia.";
+                } else {
+                    character = "True Cool — Optimal dengan biru murni.";
+                }
+            }
+
+            toneResult.textContent = tone;
+            toneResult.style.color = tone.includes("Warm") ? "#ea580c" : "#2563eb";
+            seasonResult.textContent = character;
+
+            const variations = [
+                `hsl(${currentH}, ${currentS}%, ${currentL}%)`,
+                `hsl(${currentH}, ${Math.max(currentS - 35, 20)}%, ${currentL}%)`,
+                `hsl(${(currentH + 20) % 360}, ${currentS}%, ${currentL}%)`,
+                `hsl(${(currentH - 20 + 360) % 360}, ${currentS}%, ${currentL}%)`
+            ];
+
+            paletteResult.innerHTML = "";
+            variations.forEach(col => {
+                const dot = document.createElement('div');
+                dot.className = 'color-dot';
+                dot.style.backgroundColor = col;
+                paletteResult.appendChild(dot);
+            });
+
+            resultCard.style.display = 'block';
+        });
+    </script>
+
+</body>
+
+</html>

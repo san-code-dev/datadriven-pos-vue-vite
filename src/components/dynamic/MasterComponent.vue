@@ -89,7 +89,7 @@
 				<div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
 
 					<RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
-						:columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" resize="true"
+						:columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
 						:auto-size-column="true" @beforeeditstart="beforeEditStart" @afteredit="afterEdit"
 						@beforeedit="beforeEdit" @keydown="handleKeyDown" :column-types="columnTypes" />
 

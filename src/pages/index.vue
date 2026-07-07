@@ -47,7 +47,8 @@ async function login() {
         // Redirect ke dashboard setelah sukses
         await router.push('/dashboard')
     } catch (err: any) {
-        error.value = err.response.data.message
+        const errorMessage = err.response?.data?.message || err.message || "Terjadi kesalahan sistem";
+        error.value = errorMessage
     } finally {
         loading.value = false
     }

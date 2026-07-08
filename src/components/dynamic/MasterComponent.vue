@@ -163,7 +163,7 @@ const navigatorRef = ref(null)
 const columns = ref([])
 const rows = ref([])
 const primaryKey = ref('id')
-const permission = ref({})
+const permission = ref<Record<string, boolean | undefined>>({})
 
 const showSearchModal = ref(false)
 const searchQuery = ref('')
@@ -321,7 +321,7 @@ const loadComponentData = async () => {
 	if (!res) return
 
 	columns.value = (res.schema || []).map(field => {
-		const columnConfig = {
+		const columnConfig: Record<string, any> = {
 			prop: field.key,
 			name: field.label,
 			readonly: field.readonly || false,
@@ -601,7 +601,7 @@ const handleSearchSubmit = () => {
 
 	const quickFilterRow = {
 		field: primaryKey.value || 'id',
-		operator: 'contains',
+		operator: 'contains' as const,
 		value: value,
 		valueTo: ''
 	}

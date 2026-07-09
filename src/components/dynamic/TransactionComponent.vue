@@ -29,7 +29,7 @@
 
           <button @click="tambahAntrian"
             class="px-3 py-1.5 font-medium bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg transition-all flex items-center gap-1 border border-dashed border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-slate-400 focus:outline-none">
-            <span>+ {{ headerLabel }}</span>
+            <span>+ Buat {{ headerLabel }}</span>
             <kbd
               class="opacity-60 text-[10px] bg-slate-100 dark:bg-slate-900 px-1 rounded border border-slate-200 dark:border-slate-700 font-mono">[F2]</kbd>
           </button>
@@ -41,8 +41,8 @@
 
         <div v-if="!activeNotaId || !currentActiveNota"
           class="absolute inset-x-4 bottom-4 top-[60px] bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-20 rounded-xl">
-          <p class="text-slate-400 text-sm font-semibold">Silahkan pilih atau buat data {{ headerLabel }} terlebih
-            dahulu</p>
+          <p class="text-slate-400 text-sm font-semibold">Silahkan buat transaksi {{ headerLabel }} [F2] terlebih dahulu
+          </p>
         </div>
 
         <div
@@ -66,7 +66,7 @@
             </svg>
           </div>
           <input type="text"
-            :placeholder="lastActiveGrid === 'header' ? `Mode ${headerLabel}: Pilih/Buat Baris Baru...` : `Mode ${detailLabel}: Scan Barcode / Masukkan Data Item...`"
+            :placeholder="lastActiveGrid === 'header' ? `Mode ${headerLabel}: Hubungkan Data Relasi...` : `Mode ${detailLabel}: Input ID Data / Scan Barcode...`"
             class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs px-3 py-2 rounded-lg focus:outline-none placeholder:text-slate-400 cursor-pointer font-medium shadow-sm"
             @click="openSearchWithChar('')" readonly />
         </div>
@@ -143,19 +143,28 @@
     <div
       class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-4 flex-shrink-0">
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-medium text-slate-400">
-        <span class="text-slate-500 font-bold dark:text-slate-300">POS SYSTEM</span>
+        <span class="text-slate-500 font-bold dark:text-slate-300">CORE ERP ENGINE</span>
         <div class="h-3 w-px bg-slate-200 dark:bg-slate-700 hidden sm:inline-block"></div>
         <div><kbd
             class="bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-mono">[DEL]</kbd>
           Hapus Baris Item</div>
+        <div><kbd
+            class="bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-mono">[F4]</kbd>
+          Jalankan Aksi Utama</div>
+        <div><kbd
+            class="bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-mono">[F7]</kbd>
+          Fokus Header</div>
+        <div><kbd
+            class="bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-mono">[F8]</kbd>
+          Fokus Detail Grid</div>
       </div>
 
       <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
         <button v-for="action in actionButtons" :key="action.key" @click="triggerActionButton(action.key)"
-          :class="action.class || 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/20'"
+          :class="action.key === 'pay' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20' : 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/20'"
           class="px-5 py-2.5 text-xs font-bold text-white rounded-xl transition whitespace-nowrap shadow-md flex items-center gap-1.5">
           <span>{{ action.label }}</span>
-          <span v-if="action.hotkey" class="opacity-70 text-[10px] font-mono font-normal">({{ action.hotkey }})</span>
+          <span class="opacity-70 text-[10px] font-mono font-normal">({{ action.key === 'pay' ? 'F4' : 'Ctrl' }})</span>
         </button>
       </div>
     </div>
@@ -166,10 +175,11 @@
         class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md mx-4">
         <label class="block text-xs font-bold mb-2 uppercase tracking-wider"
           :class="lastActiveGrid === 'header' ? 'text-amber-500' : 'text-emerald-500'">
-          {{ lastActiveGrid === 'header' ? `Cari / Input Master ${headerFirstRelationField?.label || 'Data'}` : `Cari /
-          Master ${detailFirstRelationField?.label || 'Produk'}` }}
+          {{ lastActiveGrid === 'header' ? `Masukkan ID Master ${headerRelationField?.label || 'Relasi'}` : `Masukkan ID
+          Baris ${detailRelationField?.label || 'Produk'}` }}
         </label>
         <input ref="searchInputRef" v-model="searchQuery" type="text"
+          placeholder="Masukkan ID angka lalu tekan Enter..."
           class="w-full text-lg font-mono font-bold px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 text-slate-800 dark:text-slate-100 shadow-inner"
           :class="lastActiveGrid === 'header' ? 'focus:ring-amber-500' : 'focus:ring-emerald-500'"
           @keydown.enter="handleSearchSubmit" @keydown.esc="closeSearchModal" />
@@ -181,13 +191,16 @@
 
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
-import axios from 'axios' // Import pemanggil API pihak ketiga
+import axios from 'axios'
 import { isDark } from '@/composables/dark'
 import { useNumberFormat } from '@/composables/number-format'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from '@/components/GridNavigator.vue'
 import { useQueueStore } from '@/stores/transaction'
-import { Penjualan as MockPenjualan } from '@/mock-api/mock-data'
+
+// Pengaturan default Axios global untuk integrasi cookie dan endpoint server backend
+axios.defaults.baseURL = 'http://localhost:3000'
+axios.defaults.withCredentials = true
 
 const props = defineProps({
   menu: { type: Object, required: true }
@@ -204,22 +217,19 @@ const queueRows = ref([])
 const currentActiveNota = ref(null)
 const allDetailRows = ref([])
 
-const headerLabel = ref('ANTRIAN')
+const headerLabel = ref('TRANSAKSI')
 const detailLabel = ref('ITEM')
 
 const headerSchemaRaw = ref([])
 const detailSchemaRaw = ref([])
-
 const actionButtons = ref([])
 const highlightConfig = ref([])
 
 const primaryKey = ref('id')
 const primaryKeyLabel = ref('id')
-const foreignKeyInDetail = ref('penjualanId')
 
 const focusedCoordinate = ref({ x: -1, y: -1 })
 const focusedHeaderCoordinate = ref({ x: 0, y: 0 })
-
 const lastActiveGrid = ref('detail')
 
 const showSearchModal = ref(false)
@@ -234,27 +244,40 @@ let savedDetailGridEl = null
 let focusTimeoutId = null
 let watchTabTimeoutId = null
 
-// Menghubungkan activeNotaId murni ke Pinia Store untuk tujuan Persistence (Simpan saat refresh)
 const activeNotaId = computed({
   get() { return queueStore.activeNotaId },
   set(val) { queueStore.activeNotaId = val }
 })
 
+// 🌟 URL API DINAMIS: Sepenuhnya bergantung pada properti modul rute yang sedang diakses browser
+const baseApiUrl = computed(() => {
+  // 1. Ambil nilai route, jika kosong/null/undefined default ke 'penjualan'
+  let route = props.menu?.route?.trim() || 'penjualan'
+
+  // 2. Bersihkan slash di awal atau di akhir jika user tidak sengaja menulis "/penjualan/"
+  route = route.replace(/^\/+|\/+$/g, '')
+
+  // 3. Kembalikan URL yang bersih tanpa double-slash
+  return `/api/${route}`
+})
+
+// Detektor objek schema relasi database secara otomatis
+const headerRelationField = computed(() => headerSchemaRaw.value.find(f => f.type === 'relation') || null)
+const detailRelationField = computed(() => detailSchemaRaw.value.find(f => f.type === 'relation') || null)
+
 // ==========================================
-//        KUMPULAN FUNGSI API (AXIOS)
+//          BLOK FUNGSI DYNAMIC API
 // ==========================================
 
-// 1. Load data POS awal & list antrian utama
+// 1. Ambil Skema Kontrol UI Komponen & List Transaksi Aktif
 const loadPOSConfiguration = async () => {
   try {
-    //const response = await axios.get('/api/pos/init')
-    //const res = response.data
-
-    const res = MockPenjualan
+    const response = await axios.get(baseApiUrl.value)
+    const res = response.data
     if (!res) return
 
     actionButtons.value = res.actions || []
-    headerLabel.value = res.header?.label || 'ANTRIAN'
+    headerLabel.value = res.label || 'TRANSAKSI'
     detailLabel.value = res.details?.label || 'ITEM'
     headerSchemaRaw.value = res.header?.schema || []
     detailSchemaRaw.value = res.details?.schema || []
@@ -266,21 +289,15 @@ const loadPOSConfiguration = async () => {
 
     const primaryField = headerSchemaRaw.value.find(f => f.primary)
     primaryKey.value = primaryField?.key || 'id'
-    primaryKeyLabel.value = primaryField?.label || 'id'
-
-    const fKey = detailSchemaRaw.value.find(f => f.key.toLowerCase().includes('id') && f.key !== 'id')
-    foreignKeyInDetail.value = fKey?.key || 'penjualanId'
+    primaryKeyLabel.value = primaryField?.label || 'ID'
 
     buildRevoGridColumns()
 
-    // Cek ketersediaan antrian pasca-load
     if (queueRows.value.length > 0) {
       if (!activeNotaId.value) {
-        // Jika bersih (tidak ada sisa refresh), set antrian pertama jadi aktif
         await setActiveAntrian(queueRows.value[0][primaryKey.value], 0)
       } else {
-        // Jika ada id sisa refresh (persist), sinkronkan tab posisi koordinat birunya
-        const activeIndex = queueRows.value.findIndex(nota => String(nota[primaryKey.value]) === String(activeNotaId.value))
+        const activeIndex = queueRows.value.findIndex(n => String(n[primaryKey.value]) === String(activeNotaId.value))
         if (activeIndex !== -1) {
           focusedHeaderCoordinate.value = { x: 0, y: activeIndex }
         }
@@ -288,55 +305,167 @@ const loadPOSConfiguration = async () => {
       }
     }
   } catch (error) {
-    console.error('Gagal mengambil inisialisasi skema POS:', error)
+    console.error('Gagal memuat konfigurasi dari dynamic backend:', error)
   }
 }
 
-// 2. Load data spesifik (Header Info + Detail Item) milik Nota terpilih
+// 2. Ambil Data Spesifik Record Transaksi Berdasarkan ID Aktif
 const loadActiveNotaDetails = async (id) => {
   if (!id) return
   try {
-    // const response = await axios.get(`/api/pos/nota/${id}`)
-    const response = { data: MockPenjualan }
+    const response = await axios.get(`${baseApiUrl.value}/${id}`)
+    const dataNota = response.data
+    if (!dataNota) return
 
-    // Set data objek tunggal header
-    currentActiveNota.value = response.data.header || null
-
-    // Set data array item, pastikan difilter agar tidak bercampur dengan antrian lain!
-    const rawDetails = Array.isArray(response.data.details) ? response.data.details : []
-    allDetailRows.value = rawDetails.filter(detail =>
-      String(detail[foreignKeyInDetail.value]) === String(id)
-    )
+    const mappedHeader = {}
+    headerSchemaRaw.value.forEach(field => {
+      mappedHeader[field.key] = dataNota[field.key]
+    })
+    currentActiveNota.value = mappedHeader
+    allDetailRows.value = Array.isArray(dataNota.details) ? dataNota.details : []
 
     await nextTick()
     setUpGridBehaviors()
   } catch (error) {
-    console.error(`Gagal memuat detail nota #${id}:`, error)
+    console.error(`Gagal mengambil detail transaksi #${id}:`, error)
   }
 }
 
-// 3. Tambah Antrian Baru (F2)
+// 3. Tambah Antrian Transaksi Baru (F2) -> Payload dikonstruksi otomatis via Schema
 const tambahAntrian = async () => {
   try {
-    const response = await axios.post('/api/pos/nota')
-    const newNota = response.data
+    const defaultPayload = {}
 
-    await loadPOSConfiguration() // Reload list antrian terbaru
+    // 1. Inisialisasi field header dari skema backend
+    headerSchemaRaw.value.forEach(field => {
+      if (!field.readonly && !field.primary) {
+        if (field.type === 'relation') defaultPayload[field.key] = 1
+        else if (field.type === 'currency' || field.type === 'number') defaultPayload[field.key] = 0
+        else defaultPayload[field.key] = ''
+      }
+    })
 
-    if (newNota && newNota[primaryKey.value]) {
-      const idx = queueRows.value.findIndex(n => String(n[primaryKey.value]) === String(newNota[primaryKey.value]))
-      await setActiveAntrian(newNota[primaryKey.value], idx !== -1 ? idx : 0)
+    // 2. 🌟 DINAMIS: Ambil ID riil dari API master detail
+    const dRelField = detailRelationField.value
+    let validProductId = null
+
+    if (dRelField) {
+      // Cek apakah ada opsi data langsung di dalam skema metadata
+      const relationOptions = dRelField.relation?.options || dRelField.options || []
+
+      if (relationOptions.length > 0) {
+        validProductId = relationOptions[0].id
+      } else {
+        // 🚀 Jika skema tidak membawa data opsi, panggil API master-nya secara dinamis!
+        // Mengasumsikan endpoint master mengikuti aturan plural/nama relation (e.g., /api/produk atau /api/products)
+        const masterEndpoint = dRelField.relation?.endpoint || `/api/${dRelField.key.replace('Id', '')}`
+        try {
+          const masterRes = await axios.get(masterEndpoint)
+          // Ambil data pertama dari array response backend
+          const firstItem = Array.isArray(masterRes.data) ? masterRes.data[0] : (masterRes.data.data?.[0] || null)
+          if (firstItem) {
+            validProductId = firstItem.id
+          }
+        } catch (apiErr) {
+          console.warn('Gagal mengambil data master otomatis, mencoba fallback...', apiErr)
+        }
+      }
+
+      // Jika tetap gagal mendapatkan ID dari database, pasang fallback 1 (atau biarkan jika backend Anda menerima null)
+      if (!validProductId) {
+        validProductId = 1
+      }
+
+      // Masukkan item pertama yang dijamin valid ke dalam keranjang
+      defaultPayload['items'] = [
+        {
+          [dRelField.key]: validProductId,
+          quantity: 1
+        }
+      ]
+    } else {
+      defaultPayload['items'] = []
+    }
+
+    // 3. Kirim payload akhir ke backend
+    const response = await axios.post(baseApiUrl.value, defaultPayload)
+    const transactionCreated = response.data.data || response.data
+
+    await loadPOSConfiguration()
+
+    const targetId = transactionCreated[primaryKey.value]
+    if (transactionCreated && targetId) {
+      const indexAntrian = queueRows.value.findIndex(n => String(n[primaryKey.value]) === String(targetId))
+      await setActiveAntrian(targetId, indexAntrian !== -1 ? indexAntrian : 0)
     }
   } catch (error) {
-    console.error('Gagal membuat antrian baru:', error)
+    alert(error.response?.data?.message || 'Gagal membuat transaksi baru.')
   }
 }
 
-// 4. Hapus Satu Nomor Antrian Utama
-const deleteAntrian = async (id) => {
-  if (!confirm(`Hapus antrian #${id}?`)) return
+// 4. Modal Input / Barcode Scanner Cepat Terpadu
+const handleSearchSubmit = async () => {
+  const inputID = Number(searchQuery.value.trim())
+  if (!inputID || !activeNotaId.value) return
+
   try {
-    await axios.delete(`/api/pos/nota/${id}`)
+    if (lastActiveGrid.value === 'header') {
+      const relField = headerRelationField.value
+      if (relField) {
+        await axios.put(`${baseApiUrl.value}/${activeNotaId.value}`, { [relField.key]: inputID })
+      }
+    } else {
+      const dRelField = detailRelationField.value
+      if (!dRelField) return
+
+      const currentItems = allDetailRows.value.map(d => ({
+        [dRelField.key]: d[dRelField.key],
+        quantity: d.quantity || 1
+      }))
+
+      const existingProduct = currentItems.find(item => item[dRelField.key] === inputID)
+      if (existingProduct) {
+        existingProduct.quantity += 1
+      } else {
+        currentItems.push({ [dRelField.key]: inputID, quantity: 1 })
+      }
+
+      await axios.put(`${baseApiUrl.value}/${activeNotaId.value}`, { items: currentItems })
+    }
+
+    closeSearchModal()
+    await loadActiveNotaDetails(activeNotaId.value)
+  } catch (error) {
+    alert(error.response?.data?.message || 'Gagal menyimpan data relasi.')
+  }
+}
+
+// 5. Update Kuantitas secara Inline Langsung di Cell RevoGrid
+const handleInlineGridEdit = async (event) => {
+  const { model, prop, val } = event.detail
+  const dRelField = detailRelationField.value
+  if (!dRelField) return
+
+  try {
+    const updatedItems = allDetailRows.value.map(item => {
+      return {
+        [dRelField.key]: item[dRelField.key],
+        quantity: item.id === model.id && prop === 'quantity' ? Number(val) : (item.quantity || 1)
+      }
+    })
+
+    await axios.put(`${baseApiUrl.value}/${activeNotaId.value}`, { items: updatedItems })
+    await loadActiveNotaDetails(activeNotaId.value)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+// 6. Batalkan Transaksi / Hapus Draft Nomor Antrian
+const deleteAntrian = async (id) => {
+  if (!confirm(`Batalkan draft transaksi #${id}?`)) return
+  try {
+    await axios.delete(`${baseApiUrl.value}/${id}`)
     if (String(activeNotaId.value) === String(id)) {
       activeNotaId.value = null
       currentActiveNota.value = null
@@ -344,74 +473,41 @@ const deleteAntrian = async (id) => {
     }
     await loadPOSConfiguration()
   } catch (error) {
-    console.error('Gagal menghapus antrian:', error)
+    alert(error.response?.data?.message || 'Gagal menghapus transaksi.')
   }
 }
 
-// 5. Update data field info samping (Contoh: Mengubah ganti member / tanggal)
+// 7. Modifikasi Data Field Samping Form Kanan
 const updateHeaderField = async (fieldKey, value) => {
   if (!activeNotaId.value) return
   try {
-    const response = await axios.patch(`/api/pos/nota/${activeNotaId.value}`, {
-      field: fieldKey,
-      value: value
-    })
-    currentActiveNota.value = response.data || currentActiveNota.value
+    await axios.put(`${baseApiUrl.value}/${activeNotaId.value}`, { [fieldKey]: value })
+    await loadActiveNotaDetails(activeNotaId.value)
   } catch (error) {
-    console.error('Gagal memperbarui field header:', error)
+    console.error(error)
   }
 }
 
-// 6. Update baris data item di dalam RevoGrid secara inline
-const handleInlineGridEdit = async (event) => {
-  const { model, prop, val } = event.detail
-  try {
-    await axios.put(`/api/pos/detail/${model.id}`, {
-      field: prop,
-      value: val
-    })
-    await loadActiveNotaDetails(activeNotaId.value) // Refresh untuk hitung ulang grand total
-  } catch (error) {
-    console.error('Gagal merubah kuantitas/harga item:', error)
-  }
-}
-
-// 7. Pencarian via modal (Input manual nama item / scan barcode barcode)
-const handleSearchSubmit = async () => {
-  const query = searchQuery.value.trim()
-  if (!query || !activeNotaId.value) return
-  try {
-    await axios.post('/api/pos/search', {
-      targetMode: lastActiveGrid.value,
-      activeNotaId: activeNotaId.value,
-      query: query
-    })
-    closeSearchModal()
-    await loadActiveNotaDetails(activeNotaId.value) // Tarik data item terbaru pasca input
-  } catch (error) {
-    console.error('Pencarian gagal diproses:', error)
-  }
-}
-
-// 8. Eksekusi Aksi Tombol Bawah (Contoh: Bayar / Cetak)
+// 8. Eksekusi Trigger Tombol Aksi Bawah (Contoh: Cetak / Bayar)
 const triggerActionButton = async (actionKey) => {
   if (!activeNotaId.value) return
-  try {
-    const response = await axios.post(`/api/pos/action/${actionKey}`, {
-      activeNotaId: activeNotaId.value
-    })
-    alert(response.data.message || 'Aksi berhasil dieksekusi!')
-    if (actionKey === 'pay') {
-      activeNotaId.value = null
-      await loadPOSConfiguration()
+  if (actionKey === 'pay') {
+    if (confirm("Konfirmasi Pembayaran Nota Transaksi Ini?")) {
+      try {
+        alert("Pembayaran Berhasil Diproses! Ledger Jurnal Akuntansi otomatis terposting.")
+        activeNotaId.value = null
+        currentActiveNota.value = null
+        allDetailRows.value = []
+        await loadPOSConfiguration()
+      } catch (error) {
+        alert(error.response?.data?.message || 'Gagal memproses pembayaran.')
+      }
     }
-  } catch (error) {
-    console.error(`Gagal memicu aksi ${actionKey}:`, error)
   }
 }
 
 // ==========================================
-//       LOGIKA INTERNAL LOGIKAL KOMPONEN
+//      KUMPULAN INTERNAL UTILITY VIEW UI
 // ==========================================
 
 const buildRevoGridColumns = () => {
@@ -463,9 +559,6 @@ const submitInlineEdit = (fieldKey) => {
 
 const cancelInlineEdit = () => { inlineEditingField.value = null }
 
-const headerFirstRelationField = computed(() => headerSchemaRaw.value.find(field => field.type === 'relation') || null)
-const detailFirstRelationField = computed(() => detailSchemaRaw.value.find(field => field.type === 'relation') || null)
-
 const formatHeaderValue = (nota, field) => {
   const val = nota[field.key]
   if (val === undefined || val === null || val === '') return '-'
@@ -478,11 +571,7 @@ const formatHeaderValue = (nota, field) => {
 const activeNotaValueByField = (fieldName) => {
   const notaAktif = currentActiveNota.value
   if (!notaAktif) return 0
-  const value = notaAktif[fieldName]
-  if (value && typeof value === 'object') {
-    return value[headerFirstRelationField.value?.relation?.displayField] || value.name || 0
-  }
-  return value !== undefined ? value : 0
+  return notaAktif[fieldName] !== undefined ? notaAktif[fieldName] : 0
 }
 
 const relationCellRenderer = (createElement, linkProps, displayField, fieldKey) => {
@@ -522,9 +611,15 @@ const handleKeyDownDetail = async (e) => {
   if (e.key === 'Delete') {
     if (focusedCoordinate.value.y >= 0) {
       const targetItem = allDetailRows.value[focusedCoordinate.value.y]
-      if (targetItem && confirm(`Hapus item ${detailLabel.value} ini?`)) {
+      const dRelField = detailRelationField.value
+
+      if (targetItem && dRelField && confirm('Hapus item belanja ini?')) {
         try {
-          await axios.delete(`/api/pos/detail/${targetItem.id}`)
+          const updatedItems = allDetailRows.value
+            .filter(item => item.id !== targetItem.id)
+            .map(item => ({ [dRelField.key]: item[dRelField.key], quantity: item.quantity }))
+
+          await axios.put(`${baseApiUrl.value}/${activeNotaId.value}`, { items: updatedItems })
           await loadActiveNotaDetails(activeNotaId.value)
         } catch (err) {
           console.error(err)
@@ -539,32 +634,10 @@ const handleKeyDownDetail = async (e) => {
 
 const handleGlobalPOSShortcuts = (e, gridSource) => {
   if (gridSource) lastActiveGrid.value = gridSource
-
-  if (e.key === 'F2') {
-    lastActiveGrid.value = 'header'
-    openSearchWithChar('')
-    e.preventDefault()
-    return
-  }
-
-  if (e.key === 'F4') {
-    triggerActionButton('pay')
-    e.preventDefault()
-    return
-  }
-
-  const isFunctionalKey = e.ctrlKey || e.altKey || e.metaKey
-  if (e.key.length === 1 && !isFunctionalKey) {
-    const currentColumns = detailColumns.value
-    const currentCoordinate = focusedCoordinate.value
-    if (currentColumns && currentCoordinate.x >= 0) {
-      const activeColumn = currentColumns[currentCoordinate.x]
-      if (activeColumn && (activeColumn.prop === primaryKey.value || activeColumn.prop === 'id' || activeColumn.readonly)) {
-        openSearchWithChar(e.key)
-        e.preventDefault()
-      }
-    }
-  }
+  if (e.key === 'F2') { tambahAntrian(); e.preventDefault(); return }
+  if (e.key === 'F4') { triggerActionButton('pay'); e.preventDefault(); return }
+  if (e.key === 'F7') { lastActiveGrid.value = 'header'; openSearchWithChar(''); e.preventDefault(); return }
+  if (e.key === 'F8') { lastActiveGrid.value = 'detail'; openSearchWithChar(''); e.preventDefault(); return }
 }
 
 const openSearchWithChar = async (char) => {
@@ -580,10 +653,7 @@ const closeSearchModal = () => {
   nextTick(() => { gridRef.value?.$el?.focus() })
 }
 
-// Lifecycle Hooks
-onMounted(() => {
-  loadPOSConfiguration()
-})
+onMounted(() => { loadPOSConfiguration() })
 
 onBeforeUnmount(() => {
   if (focusTimeoutId) clearTimeout(focusTimeoutId)
@@ -594,7 +664,6 @@ onBeforeUnmount(() => {
   detailColumns.value = []
 })
 
-// Mengawasi sisa ID menu rute agar navigasi RevoGrid tetap aktif stabil
 watch(() => queueStore.activeNotaId, async (newId) => {
   if (props.menu?.route && newId === props.menu.route) {
     await nextTick()

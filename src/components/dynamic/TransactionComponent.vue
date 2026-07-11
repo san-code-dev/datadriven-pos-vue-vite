@@ -1,23 +1,25 @@
+<!-- src/components/TransactionComponent.vue -->
 <template>
   <div
     class="flex flex-col h-full max-h-full overflow-hidden min-h-0 bg-slate-100 dark:bg-slate-900 w-full p-3 gap-3 font-sans select-none">
 
+    <!-- ANTRIAN HEADER -->
     <div
       class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 flex-shrink-0 text-xs">
       <div class="flex flex-wrap items-center gap-2">
-        <button v-for="(nota, index) in localQueue" :key="nota.id" @click="setActiveAntrian(nota.id, index)"
+        <button v-for="nota in localQueue" :key="nota.id" @click="setActiveAntrian(nota.id)"
           :class="activeNotaId === nota.id
             ? 'bg-emerald-600 text-white shadow-sm'
             : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'"
           class="px-3 py-1.5 font-medium rounded-lg transition-all flex items-center gap-1.5 focus:outline-none">
           <span>{{ primaryKeyLabel }} #{{ nota.id }} <span v-if="nota.customer" class="opacity-90">({{ nota.customer
-          }})</span></span>
-          <span @click.stop="deleteAntrianLocally(nota.id)"
+              }})</span></span>
+          <span @click.stop="cancelTransactionFromServer(nota.id)"
             :class="activeNotaId === nota.id ? 'hover:bg-emerald-700 text-emerald-200' : 'hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-400'"
             class="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold transition ml-0.5">✕</span>
         </button>
 
-        <button @click="tambahAntrianLokal"
+        <button @click="tambahAntrianServer"
           class="px-3 py-1.5 font-medium bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg transition-all flex items-center gap-1 border border-dashed border-slate-300 dark:border-slate-600 focus:outline-none">
           <Icon icon="mdi:plus" class="w-3.5 h-3.5" />
           <span>Buat {{ headerLabel }}</span>
@@ -32,8 +34,9 @@
       </div>
     </div>
 
+    <!-- MAIN GRID CONTAINER -->
     <div class="flex-1 grid grid-cols-12 gap-3 min-h-0 w-full items-stretch">
-
+      <!-- CONTAINER DETAIL BELANJA -->
       <div
         class="col-span-12 lg:col-span-9 flex flex-col bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl overflow-hidden p-4 relative min-h-0 gap-3">
 
@@ -47,17 +50,18 @@
 
         <div class="flex justify-between items-center flex-shrink-0">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ detailLabel }}</span>
-          <button @click="addBlankDetailRow"
+          <button @click="openSearchModalDirect('detail')"
             class="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400 px-2.5 py-1 rounded-lg transition-colors">
-            <Icon icon="mdi:playlist-plus" class="w-4 h-4" /> Tambah Baris
+            <Icon icon="mdi:playlist-plus" class="w-4 h-4" /> Tambah Item (Scan/Cari)
           </button>
         </div>
 
+        <!-- REVO GRID DATAGRID -->
         <div
           class="flex-1 min-h-0 relative rounded-lg border border-slate-200/60 dark:border-slate-700/60 overflow-hidden">
           <RevoGrid ref="gridRef" class="w-full h-full max-h-full focus:outline-none" :columns="detailColumns"
             :source="localDetails" :theme="isDark ? 'darkCompact' : 'compact'" resize="true" @afterfocus="afterFocus"
-            @beforecellsave="handleLocalGridEdit" />
+            @beforecellsave="handleServerGridEdit" />
         </div>
 
         <div
@@ -68,14 +72,14 @@
               class="w-4 h-4" />
           </div>
           <input type="text"
-            :placeholder="lastActiveGrid === 'header' ? 'Mode Header: Masukkan/Cari Data Relator...' : 'Mode Detail: Masukkan Barcode / ID Produk...'"
+            :placeholder="lastActiveGrid === 'header' ? 'Mode Header: Cari Data Relator...' : 'Mode Detail: Masukkan Barcode / ID Produk...'"
             class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs px-3 py-2 rounded-lg focus:outline-none cursor-pointer font-medium shadow-sm"
             @click="openSearchModal" readonly />
         </div>
       </div>
 
+      <!-- SIDEBAR FIELD DATA HEADER -->
       <div class="col-span-12 lg:col-span-3 flex flex-col gap-3 min-h-0 overflow-y-auto scrollbar-none">
-
         <div
           class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-4 flex flex-col gap-3 flex-shrink-0">
           <div
@@ -93,7 +97,7 @@
               </div>
 
               <select v-else-if="field.type === 'relation'" v-model="localHeader[field.key]"
-                @change="syncQueueCustomerName(field)"
+                @change="updateHeaderToServer(field.key, localHeader[field.key])"
                 class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 dark:text-slate-100 font-medium">
                 <option value="" disabled>Pilih {{ field.label }}</option>
                 <option v-for="opt in masterRelations[field.relation?.entity]" :key="opt.id" :value="opt.id">
@@ -102,19 +106,24 @@
               </select>
 
               <input v-else-if="field.type === 'date'" type="date" v-model="localHeader[field.key]"
+                @change="updateHeaderToServer(field.key, localHeader[field.key])"
                 class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-slate-800 dark:text-slate-100" />
 
               <input v-else-if="field.type === 'currency' || field.type === 'number'" type="number"
-                v-model.number="localHeader[field.key]" @input="recalculateTotals"
+                v-model.number="localHeader[field.key]"
+                @lazyupdate="updateHeaderToServer(field.key, localHeader[field.key])"
+                @blur="updateHeaderToServer(field.key, localHeader[field.key])"
                 class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-slate-800 dark:text-slate-100 text-right" />
 
               <input v-else type="text" v-model="localHeader[field.key]"
+                @blur="updateHeaderToServer(field.key, localHeader[field.key])"
                 class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium text-slate-800 dark:text-slate-100" />
             </div>
           </div>
           <div v-else class="text-center py-4 text-slate-400 text-xs italic">Belum ada transaksi aktif.</div>
         </div>
 
+        <!-- HIGHLIGHT CONTAINER BLOCK (TOTAL BAYAR) -->
         <div v-for="hl in highlightConfig" :key="hl.key"
           class="bg-slate-900 text-emerald-400 dark:bg-slate-950 p-4 rounded-xl flex flex-col justify-between shadow-md border border-slate-800 min-h-[90px] flex-shrink-0">
           <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">{{ hl.label }}</div>
@@ -125,6 +134,7 @@
       </div>
     </div>
 
+    <!-- PANELS FOOTER BUTTON ACTIONS -->
     <div
       class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-4 flex-shrink-0">
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-medium text-slate-400">
@@ -145,11 +155,12 @@
           <Icon :icon="action.type === 'payment' ? 'mdi:credit-card-outline' : 'mdi:printer'" class="w-4 h-4" />
           <span>{{ action.label }}</span>
           <span class="opacity-70 text-[10px] font-mono font-normal">({{ action.type === 'payment' ? 'F4' : 'Ctrl'
-          }})</span>
+            }})</span>
         </button>
       </div>
     </div>
 
+    <!-- MODAL POPUP SELECTION & SEARCH SCAN -->
     <div v-if="showSearchModal" @click.self="closeSearchModal"
       class="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
       <div
@@ -186,28 +197,27 @@ const props = defineProps({
 
 const { formatNumber, formatCurrency } = useNumberFormat()
 
-// State Management Form Lokal
+// Metadata Schema Backend
 const schemaLabel = ref('')
 const headerLabel = ref('TRANSAKSI')
 const detailLabel = ref('ITEM')
 const primaryKeyLabel = ref('ID')
-
 const headerSchemaRaw = ref([])
 const detailSchemaRaw = ref([])
+const detailColumns = ref([])
 const actionButtons = ref([])
 const highlightConfig = ref([])
 
+// Real-time Queue & Current Record Active Data
 const localQueue = ref([])
 const activeNotaId = ref(null)
 const localHeader = ref({})
 const localDetails = ref([])
 
-// Master relational storage (e.g. products, customer arrays parsed globally)
-const masterRelations = ref({
-  customer: [],
-  product: []
-})
+// Dropdown Relation Cache Map
+const masterRelations = ref({ customer: [], product: [] })
 
+// UI Controllers State
 const gridRef = ref(null)
 const showSearchModal = ref(false)
 const searchQuery = ref('')
@@ -215,7 +225,7 @@ const searchInputRef = ref(null)
 const lastActiveGrid = ref('detail')
 const focusedCoordinate = ref({ x: -1, y: -1 })
 
-// Engine Dynamic Base API endpoint
+// Dynamic Base Routing URL Builder
 const baseApiUrl = computed(() => {
   let route = props.menu?.route?.trim() || 'penjualan'
   route = route.replace(/^\/+|\/+$/g, '')
@@ -223,20 +233,18 @@ const baseApiUrl = computed(() => {
 })
 
 const headerRelationField = computed(() => headerSchemaRaw.value.find(f => f.type === 'relation') || null)
-const detailRelationField = computed(() => detailSchemaRaw.value.find(f => f.type === 'relation') || null)
 const filteredHeaderSchema = computed(() => {
   const highlights = highlightConfig.value.map(h => h.field)
   return headerSchemaRaw.value.filter(f => !highlights.includes(f.key))
 })
 
 // ==========================================
-//           CORE TRANSAKSI LOCAL ALUR
+//          LIFECYCLE HOOKS
 // ==========================================
-
 onMounted(async () => {
   await loadDynamicModuleConfiguration()
-  await fetchMasterRelationsMockAndApi()
-  tambahAntrianLokal()
+  await fetchMasterRelations()
+  await fetchQueueListFromServer()
   window.addEventListener('keydown', handleGlobalShortcuts)
 })
 
@@ -244,7 +252,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalShortcuts)
 })
 
-// 1. Ambil Skema Metadata Backend Secara Dinamis
+// ==========================================
+//      SERVERSIDE CONFIG & SCHEMA FETCH
+// ==========================================
 const loadDynamicModuleConfiguration = async () => {
   try {
     const response = await axios.get(baseApiUrl.value)
@@ -259,217 +269,222 @@ const loadDynamicModuleConfiguration = async () => {
     detailSchemaRaw.value = res.details?.schema || []
 
     primaryKeyLabel.value = headerSchemaRaw.value.find(f => f.primary)?.label || 'ID'
-
     highlightConfig.value = headerSchemaRaw.value
       .filter(f => f.highlight)
       .map(f => ({ key: f.key, label: f.label, field: f.key, type: f.type }))
 
     buildRevoGridColumnsConfig()
   } catch (error) {
-    console.error('Gagal memuat konfigurasi skema backend:', error)
+    console.error('Gagal memuat konfigurasi skema:', error)
   }
 }
 
-// Fetch data master relasi untuk select option lokal & mapping pencarian otomatis
-const fetchMasterRelationsMockAndApi = async () => {
+const fetchMasterRelations = async () => {
   try {
-    // Diganti dengan endpoint riil `/api/customer` dan `/api/product` dari relation schema backend Anda
-    const resCustomer = await axios.get('/api/customer').catch(() => ({ data: [{ id: 1, nmCustomer: 'Umum / Cash Customer' }] }))
-    const resProduct = await axios.get('/api/product').catch(() => ({
-      data: [
-        { id: 101, name: 'Produk A', price: 15000 },
-        { id: 102, name: 'Produk B', price: 25000 }
-      ]
-    }))
-
+    const resCustomer = await axios.get('/api/customer').catch(() => ({ data: [] }))
+    const resProduct = await axios.get('/api/product').catch(() => ({ data: [] }))
     masterRelations.value.customer = resCustomer.data || []
     masterRelations.value.product = resProduct.data || []
     buildRevoGridColumnsConfig()
   } catch (e) {
-    console.error('Error fetching master relation lists', e)
+    console.error('Gagal memuat relasi master data:', e)
   }
 }
 
-// 2. Buat Antrian Transaksi di Sisi Lokal (Klien)
-const tambahAntrianLokal = () => {
-  const newId = 'Lokal-' + Math.floor(1000 + Math.random() * 9000)
+// ==========================================
+//        SYNCHRONIZED CORE OPERATION
+// ==========================================
 
-  // Konstruksi Object Header Lokal berdasarkan Skema backend
-  const initialHeader = {}
-  headerSchemaRaw.value.forEach(field => {
-    if (field.type === 'date') initialHeader[field.key] = new Date().toISOString().split('T')[0]
-    else if (field.type === 'currency' || field.type === 'number') initialHeader[field.key] = 0
-    else initialHeader[field.key] = ''
-  })
-  initialHeader.id = newId
-  initialHeader.noInvoice = `DRAFT-${newId}`
-
-  const newQueueItem = { id: newId, customer: 'Drafting...', header: initialHeader, details: [] }
-  localQueue.value.push(newQueueItem)
-
-  setActiveAntrian(newId, localQueue.value.length - 1)
-}
-
-const setActiveAntrian = (id, index) => {
-  // Simpan state antrian lama terlebih dahulu sebelum switch
-  if (activeNotaId.value) {
-    const activeIdx = localQueue.value.findIndex(q => q.id === activeNotaId.value)
-    if (activeIdx !== -1) {
-      localQueue.value[activeIdx].header = { ...localHeader.value }
-      localQueue.value[activeIdx].details = [...localDetails.value]
+const fetchQueueListFromServer = async () => {
+  try {
+    const response = await axios.get(baseApiUrl.value)
+    if (Array.isArray(response.data)) {
+      localQueue.value = response.data
+      if (localQueue.value.length > 0 && !activeNotaId.value) {
+        await setActiveAntrian(localQueue.value[0].id)
+      }
     }
+  } catch (e) {
+    console.error('Gagal memuat list antrian server:', e)
   }
+}
 
-  activeNotaId.value = id
-  const targetQueue = localQueue.value[index]
-  if (targetQueue) {
-    localHeader.value = targetQueue.header
-    localDetails.value = targetQueue.details
-    if (localDetails.value.length === 0) {
-      addBlankDetailRow()
+const tambahAntrianServer = async () => {
+  try {
+    // POST /api/penjualan -> memicu newTransaction() di backend
+    const response = await axios.post(baseApiUrl.value, {})
+    const schemaFull = response.data
+
+    await fetchQueueListFromServer()
+    if (schemaFull?.header?.data?.id) {
+      await setActiveAntrian(schemaFull.header.data.id)
     }
+  } catch (e) {
+    alert('Gagal membuat transaksi baru di server.')
   }
 }
 
-const addBlankDetailRow = () => {
-  const blankRow = { id: 'item-' + Date.now() + Math.random() }
-  detailSchemaRaw.value.forEach(field => {
-    if (field.type === 'number' || field.type === 'currency') blankRow[field.key] = 0
-    else blankRow[field.key] = ''
-  })
-  localDetails.value = [...localDetails.value, blankRow]
-}
+const setActiveAntrian = async (id) => {
+  try {
+    activeNotaId.value = id
+    // GET /api/penjualan/:header_key -> Mengembalikan Full SCHEMA + Terisi Data Record ter-sync
+    const response = await axios.get(`${baseApiUrl.value}/${id}`)
+    const moduleSchema = response.data
 
-// 3. Detektor Interseptor Edit Baris RevoGrid Lokal
-const handleLocalGridEdit = (event) => {
-  const { model, prop, val } = event.detail
-  const rowIndex = localDetails.value.findIndex(item => item.id === model.id)
-  if (rowIndex === -1) return
-
-  // Logika kalkulasi dinamis lokal jika kolom relasi produk atau kuantitas berubah
-  if (prop === 'productId') {
-    const prodId = Number(val)
-    const productMaster = masterRelations.value.product.find(p => p.id === prodId)
-    if (productMaster) {
-      localDetails.value[rowIndex].productId = productMaster.id
-      localDetails.value[rowIndex].price = productMaster.price || 0
-      localDetails.value[rowIndex].quantity = localDetails.value[rowIndex].quantity || 1
-      localDetails.value[rowIndex].subTotal = localDetails.value[rowIndex].price * localDetails.value[rowIndex].quantity
+    if (moduleSchema) {
+      localHeader.value = moduleSchema.header?.data || {}
+      localDetails.value = moduleSchema.details?.data || []
     }
-  } else if (prop === 'quantity') {
-    const qty = Number(val) || 0
-    localDetails.value[rowIndex].quantity = qty
-    localDetails.value[rowIndex].subTotal = (localDetails.value[rowIndex].price || 0) * qty
-  } else {
-    localDetails.value[rowIndex][prop] = val
-  }
-
-  recalculateTotals()
-}
-
-// 4. Kalkulator Total Belanja Bersih Sisi Klien
-const recalculateTotals = () => {
-  const grandSubTotal = localDetails.value.reduce((acc, curr) => acc + (Number(curr.subTotal) || 0), 0)
-  const discount = Number(localHeader.value.discount) || 0
-  localHeader.value.total = Math.max(0, grandSubTotal - discount)
-}
-
-const syncQueueCustomerName = (field) => {
-  const selectedCustId = localHeader.value[field.key]
-  const customerObj = masterRelations.value.customer.find(c => c.id === Number(selectedCustId))
-  const currentIdx = localQueue.value.findIndex(q => q.id === activeNotaId.value)
-  if (currentIdx !== -1 && customerObj) {
-    localQueue.value[currentIdx].customer = customerObj[field.relation?.displayField] || customerObj.name
+  } catch (e) {
+    console.error('Gagal mengambil detail data transaksi:', e)
   }
 }
 
-// 5. Eksekusi Pembayaran Akhir & Post Payload ke Backend Service
-const triggerAction = async (actionKey) => {
+const updateHeaderToServer = async (key, val) => {
   if (!activeNotaId.value) return
+  try {
+    // PUT /api/penjualan/:header_key -> Update header form data field
+    const patchPayload = { [key]: val }
+    const response = await axios.put(`${baseApiUrl.value}/${activeNotaId.value}`, patchPayload)
 
-  if (actionKey === 'pay') {
-    if (!localHeader.value.customerId) return alert('Pilih Customer terlebih dahulu!')
+    // Refresh Data Local dari response backend hasil re-kalkulasi
+    if (response.data?.header?.data) {
+      localHeader.value = response.data.header.data
+      localDetails.value = response.data.details.data || []
 
-    // Validasi item lokal
-    const itemsPayload = localDetails.value
-      .filter(d => d.productId && Number(d.quantity) > 0)
-      .map(d => ({ productId: Number(d.productId), quantity: Number(d.quantity) }))
-
-    if (itemsPayload.length === 0) return alert('Keranjang belanja kosong atau kuantitas tidak valid!')
-
-    // Pembuatan payload bersih sesuai method create() di backend service Anda
-    const finalPayload = {
-      customerId: Number(localHeader.value.customerId),
-      discount: Number(localHeader.value.discount) || 0,
-      items: itemsPayload
+      // Update nama customer pada antrian sidebar kiri secara reaktif
+      if (key === headerRelationField.value?.key) {
+        const currentIdx = localQueue.value.findIndex(q => q.id === activeNotaId.value)
+        const custObj = masterRelations.value.customer.find(c => c.id === Number(val))
+        if (currentIdx !== -1 && custObj) {
+          localQueue.value[currentIdx].customer = custObj[headerRelationField.value.relation?.displayField] || custObj.name
+        }
+      }
     }
-
-    try {
-      // POST data ke backend untuk disimpan secara sah & pemicu auto-jurnal akuntansi
-      await axios.post(baseApiUrl.value, finalPayload)
-      alert('Transaksi Berhasil Disimpan! Jurnal Akuntansi otomatis terbentuk.')
-
-      // Hapus dari antrian lokal setelah sukses bayar
-      deleteAntrianLocally(activeNotaId.value)
-    } catch (error) {
-      alert(error.response?.data?.message || 'Gagal memproses pengiriman data transaksi ke server.')
-    }
+  } catch (e) {
+    console.error('Gagal sinkronisasi data header ke server:', e)
   }
 }
 
-// 6. Barcode Scanner / ID Finder Modal Submission Handlers
-const handleSearchSubmit = () => {
+const handleServerGridEdit = async (event) => {
+  const { model, prop, val } = event.detail
+  if (prop !== 'quantity') return // Hanya ijinkan modifikasi Qty pada RevoGrid, Product disecan lewat modal bar
+
+  try {
+    // PUT /api/penjualan/:header_key/:details_key -> updateDetails()
+    const patchItemPayload = { quantity: Number(val) }
+    const response = await axios.put(`${baseApiUrl.value}/${activeNotaId.value}/${model.id}`, patchItemPayload)
+
+    if (response.data) {
+      localHeader.value = response.data.header?.data || {}
+      localDetails.value = response.data.details?.data || []
+    }
+  } catch (e) {
+    alert('Gagal mengubah quantity item di server')
+  }
+}
+
+const handleSearchSubmit = async () => {
   const inputCode = searchQuery.value.trim()
   if (!inputCode) return
 
   if (lastActiveGrid.value === 'header') {
     if (headerRelationField.value) {
-      localHeader.value[headerRelationField.value.key] = Number(inputCode)
-      syncQueueCustomerName(headerRelationField.value)
+      await updateHeaderToServer(headerRelationField.value.key, Number(inputCode))
     }
+    closeSearchModal()
   } else {
-    // Modul scanning barcode item belanja otomatis ke baris tabel lokal
+    // Modul scanning barcode item -> Kirim POST item detail baru ke server
     const productMaster = masterRelations.value.product.find(p => String(p.id) === inputCode)
     if (productMaster) {
-      const existingRowIdx = localDetails.value.findIndex(d => d.productId === productMaster.id)
-      if (existingRowIdx !== -1) {
-        localDetails.value[existingRowIdx].quantity += 1
-        localDetails.value[existingRowIdx].subTotal = localDetails.value[existingRowIdx].quantity * localDetails.value[existingRowIdx].price
-      } else {
-        const newRow = {
-          id: 'item-' + Date.now(),
-          productId: productMaster.id,
-          quantity: 1,
-          price: productMaster.price,
-          subTotal: productMaster.price
+      try {
+        // Cek apakah item sudah terdaftar di detail untuk mitigasi duplicate baris
+        const existItem = localDetails.value.find(d => d.productId === productMaster.id)
+        if (existItem) {
+          // Jika ada, lakukan update PUT penambahan quantity (+1)
+          const newQty = Number(existItem.quantity) + 1
+          const res = await axios.put(`${baseApiUrl.value}/${activeNotaId.value}/${existItem.id}`, { quantity: newQty })
+          localHeader.value = res.data.header?.data || {}
+          localDetails.value = res.data.details?.data || []
+        } else {
+          // Jika belum ada, lakukan POST /api/penjualan/:header_key -> addDetails()
+          const res = await axios.post(`${baseApiUrl.value}/${activeNotaId.value}`, {
+            productId: productMaster.id,
+            quantity: 1
+          })
+          localHeader.value = res.data.header?.data || {}
+          localDetails.value = res.data.details?.data || []
         }
-        localDetails.value.push(newRow)
+      } catch (e) {
+        alert('Gagal memasukkan data detail item ke server.')
       }
-      recalculateTotals()
     } else {
-      alert('Produk dengan ID / Barcode tersebut tidak ditemukan pada database lokal.')
+      alert('Produk tidak terdaftar dalam database relasi master.')
+    }
+    closeSearchModal()
+  }
+}
+
+const deleteDetailRowFromServer = async () => {
+  if (focusedCoordinate.value.y === -1 || localDetails.value.length === 0) return
+  const targetRow = localDetails.value[focusedCoordinate.value.y]
+  if (!targetRow || !targetRow.id) return
+
+  if (confirm('Hapus baris item belanja ini?')) {
+    try {
+      // DELETE /api/penjualan/:header_key/:details_key -> deleteDetails()
+      const response = await axios.delete(`${baseApiUrl.value}/${activeNotaId.value}/${targetRow.id}`)
+      if (response.data) {
+        localHeader.value = response.data.header?.data || {}
+        localDetails.value = response.data.details?.data || []
+        focusedCoordinate.value = { x: -1, y: -1 }
+      }
+    } catch (e) {
+      alert('Gagal menghapus detail item dari server.')
     }
   }
-  closeSearchModal()
 }
 
-const deleteAntrianLocally = (id) => {
-  const index = localQueue.value.findIndex(q => q.id === id)
-  if (index === -1) return
-  localQueue.value.splice(index, 1)
-  if (localQueue.value.length > 0) {
-    setActiveAntrian(localQueue.value[0].id, 0)
-  } else {
+const cancelTransactionFromServer = async (id) => {
+  if (!confirm('Apakah anda yakin ingin membatalkan & menghapus permanen nota transaksi ini?')) return
+  try {
+    // DELETE /api/penjualan/:header_key -> cancelTransaction()
+    await axios.delete(`${baseApiUrl.value}/${id}`)
+
     activeNotaId.value = null
-    localHeader.value = {}
-    localDetails.value = []
+    await fetchQueueListFromServer()
+    if (localQueue.value.length === 0) {
+      localHeader.value = {}
+      localDetails.value = []
+    }
+  } catch (e) {
+    alert('Gagal membatalkan transaksi pada server database.')
+  }
+}
+
+const triggerAction = async (actionKey) => {
+  if (!activeNotaId.value) return
+
+  if (actionKey === 'pay') {
+    if (!localHeader.value.customerId) return alert('Silahkan pilih Customer terlebih dahulu!')
+    if (localDetails.value.length === 0) return alert('Daftar barang belanja kosong!')
+
+    try {
+      // PUT /api/penjualan/:header_key -> saveTransaction() mengubah Status invoice draft menjadi Final PJ-XXXXX
+      await axios.put(`${baseApiUrl.value}/${activeNotaId.value}`, { isFinalSubmit: true })
+      alert('Transaksi Berhasil Disimpan & Dicetak! Jurnal Akuntansi otomatis dibentuk.')
+
+      activeNotaId.value = null
+      await fetchQueueListFromServer()
+    } catch (error) {
+      alert(error.response?.data?.error || 'Gagal memproses finalisasi simpan transaksi.')
+    }
   }
 }
 
 // ==========================================
-//          RENDERING & CONFIG REVO GRID
+//          RENDERING GRID MODIFIERS
 // ==========================================
-
 const buildRevoGridColumnsConfig = () => {
   detailColumns.value = detailSchemaRaw.value.map(field => {
     const config = { prop: field.key, name: field.label, readonly: field.readonly || false }
@@ -479,8 +494,11 @@ const buildRevoGridColumnsConfig = () => {
     } else if (field.type === 'number') {
       config.cellTemplate = (createElement, linkProps) => createElement('span', { class: 'font-mono text-center block w-full' }, formatNumber(linkProps.model[field.key] || 0))
     } else if (field.type === 'relation' && field.relation?.entity === 'product') {
-      config.editor = 'select'
-      config.source = masterRelations.value.product.map(p => String(p.id))
+      // Ubah template nama agar menampilkan Nama Produk, bukan ProductId mentah
+      config.cellTemplate = (createElement, linkProps) => {
+        const prod = masterRelations.value.product.find(p => p.id === Number(linkProps.model[field.key]))
+        return createElement('span', { class: 'font-medium block w-full pl-1' }, prod ? prod.name : 'Pilih Produk...')
+      }
     }
     return config
   })
@@ -491,42 +509,39 @@ const afterFocus = (e) => {
   focusedCoordinate.value = { x: e.detail.colIndex, y: e.detail.rowIndex }
 }
 
-const handleGlobalShortcuts = (e) => {
-  if (showSearchModal.value) return
-  if (e.key === 'F2') { e.preventDefault(); tambahAntrianLokal() }
-  if (e.key === 'F4') { e.preventDefault(); triggerAction('pay') }
-  if (e.key === 'F7') { e.preventDefault(); lastActiveGrid.value = 'header'; openSearchModal() }
-  if (e.key === 'F8') { e.preventDefault(); lastActiveGrid.value = 'detail'; openSearchModal() }
-  if (e.key === 'Delete' && lastActiveGrid.value === 'detail' && focusedCoordinate.value.y >= 0) {
-    localDetails.value.splice(focusedCoordinate.value.y, 1)
-    if (localDetails.value.length === 0) addBlankDetailRow()
-    recalculateTotals()
-  }
+const openSearchModalDirect = (mode) => {
+  lastActiveGrid.value = mode
+  openSearchModal()
 }
 
-const openSearchModal = async () => {
+const openSearchModal = () => {
+  if (!activeNotaId.value) return
   showSearchModal.value = true
-  await nextTick()
-  searchInputRef.value?.focus()
+  searchQuery.value = ''
+  nextTick(() => {
+    if (searchInputRef.value) searchInputRef.value.focus()
+  })
 }
 
 const closeSearchModal = () => {
   showSearchModal.value = false
-  searchQuery.value = ''
+}
+
+const handleGlobalShortcuts = (e) => {
+  if (showSearchModal.value) return
+  if (e.key === 'F2') {
+    e.preventDefault()
+    tambahAntrianServer()
+  }
+  if (e.key === 'F4') {
+    e.preventDefault()
+    triggerAction('pay')
+  }
+  if (e.key === 'Delete') {
+    if (lastActiveGrid.value === 'detail') {
+      e.preventDefault()
+      deleteDetailRowFromServer()
+    }
+  }
 }
 </script>
-
-<style scoped>
-:deep(revo-grid) {
-  z-index: 10 !important;
-}
-
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-
-.scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-</style>

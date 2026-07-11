@@ -186,7 +186,7 @@ onUnmounted(() => {
                         <div v-if="route.path === '/dashboard'"
                             class="absolute left-0 top-2.5 bottom-2.5 w-1 bg-emerald-500 dark:bg-emerald-400 rounded-r">
                         </div>
-                        <Icon icon="si:dashboard-vert-line" class="text-xl flex-shrink-0" />
+                        <Icon icon="carbon:dashboard" class="text-xl flex-shrink-0" />
                         <span class="text-sm capitalize text-sidebar-label"
                             :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
                             Dashboard

@@ -32,7 +32,7 @@ const componentsMap = {
 }
 
 const getComponentByType = (type) => {
-    if (!type) console.error('component type not defined from api respone');
+    if (!type) console.error('component type not defined from api response');
     return componentsMap[type] || null
 }
 
@@ -80,7 +80,15 @@ const fetchSchemaFromApi = async () => {
     try {
         const activeFilters = filterStore.getFiltersByTab(currentPath)
 
-        const response = await api.get(`${currentPath}/`, {
+        // 1. Tentukan target endpoint secara dinamis
+        // Jika modul berupa transaksi, muat metadata via `/get-last-transaction`
+        const cleanPath = currentPath.replace(/\/+$/, '') // Hilangkan trailing slash
+        const isTransaction = matchedMenu.type?.includes('transaction')
+        const requestUrl = isTransaction
+            ? `${cleanPath}/get-last-transaction`
+            : `${cleanPath}/get-all`
+        console.log(requestUrl)
+        const response = await api.get(requestUrl, {
             params: {
                 where: JSON.stringify(activeFilters)
             }
@@ -184,7 +192,6 @@ watch(() => route.path, fetchSchemaFromApi, { immediate: true })
 
             <div class="flex-1 min-h-0 relative overflow-hidden w-full">
 
-                <!-- 🟢 TAMPILAN LOADING MINIMALIS EMERALD (HANYA MUNCUL JIKA PROSES LAMA) -->
                 <div v-if="isLoading"
                     class="absolute inset-0 bg-gray-50/60 dark:bg-gray-900/60 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-50 animate-delayed-fade">
                     <Icon icon="heroicons:arrow-path-20-solid"
@@ -193,7 +200,6 @@ watch(() => route.path, fetchSchemaFromApi, { immediate: true })
                         halaman...</span>
                 </div>
 
-                <!-- KONTEN TAB UTAMA -->
                 <keep-alive :max="5">
                     <div v-for="tab in tabStore.openedTabs" :key="tab.id + (tab.refreshKey || 0)"
                         v-show="tabStore.activeTabId === tab.id && !isError" :data-tab-id="tab.id"
@@ -205,7 +211,6 @@ watch(() => route.path, fetchSchemaFromApi, { immediate: true })
                     </div>
                 </keep-alive>
 
-                <!-- 🟢 TAMPILAN ERROR MINIMALIS (TANPA BOX BUNGKUSAN) -->
                 <div v-if="isError && !isLoading"
                     class="flex flex-col items-center justify-center h-full p-6 text-center animate-fade-in max-w-sm mx-auto">
                     <Icon icon="heroicons:exclamation-triangle-20-solid" class="w-10 h-10 text-rose-500 mb-2" />
@@ -227,7 +232,6 @@ watch(() => route.path, fetchSchemaFromApi, { immediate: true })
 </template>
 
 <style scoped>
-/* Animasi untuk menunda kemunculan loading screen selama 400ms */
 @keyframes delayedFade {
     0% {
         opacity: 0;

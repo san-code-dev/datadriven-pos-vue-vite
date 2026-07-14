@@ -151,7 +151,7 @@
     </div>
 
     <div v-if="showSearchModal" @click.self="closeSearchModal"
-      class="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+      class="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
       <div
         class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md mx-4">
         <label class="block text-xs font-bold mb-2 uppercase tracking-wider"
@@ -170,23 +170,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import axios from 'axios'
 import { Icon } from '@iconify/vue'
 import { isDark } from '@/composables/dark'
 import { useNumberFormat } from '@/composables/number-format'
 import RevoGrid from '@revolist/vue3-datagrid'
 import { evaluate } from 'mathjs'
+
 axios.defaults.baseURL = 'http://localhost:3000'
 axios.defaults.withCredentials = true
 
 const props = defineProps({
-  menu: { type: Object, required: true }
+  menu: { type: Object, required: true },
+  schemaData: { type: Object, default: null } // Di-pass langsung dari [...all].vue
 })
 
+const route = useRoute()
 const { formatNumber, formatCurrency } = useNumberFormat()
 
-// Metadata Schema Backend
+// Metadata Schema State
 const schemaLabel = ref('')
 const headerLabel = ref('TRANSAKSI')
 const detailLabel = ref('ITEM')
@@ -197,14 +201,14 @@ const detailColumns = ref([])
 const actionButtons = ref([])
 const highlightConfig = ref([])
 
-// Real-time Queue & Current Record Active Data
+// Real-time Queue & Current Active Record
 const localQueue = ref([])
 const activeNotaId = ref(null)
 const localHeader = ref({})
 const localDetails = ref([])
 
-// Dropdown Relation Cache Map (Hanya untuk relasi non-item seperti customer)
-const masterRelations = ref({ customer: [] })
+// Dropdown Relation Cache Map
+const masterRelations = ref<{ [key: string]: any[] }>({ customer: [] })
 
 // UI Controllers State
 const gridRef = ref(null)
@@ -214,11 +218,10 @@ const searchInputRef = ref(null)
 const lastActiveGrid = ref('detail')
 const focusedCoordinate = ref({ x: -1, y: -1 })
 
-// Dynamic Base Routing URL Builder
+// Dynamic Base Routing URL Builder (Mengikuti route path router aktif)
 const baseApiUrl = computed(() => {
-  let route = props.menu?.route?.trim() || 'penjualan'
-  route = route.replace(/^\/+|\/+$/g, '')
-  return `/api/${route}`
+  const cleanPath = route.path.replace(/^\/+|\/+$/g, '')
+  return `/api/${cleanPath}`
 })
 
 const headerRelationField = computed(() => headerSchemaRaw.value.find(f => f.type === 'relation') || null)
@@ -232,7 +235,14 @@ const filteredHeaderSchema = computed(() => {
 // ==========================================
 onMounted(async () => {
   await fetchHeaderRelations()
-  await fetchInitialLoad()
+
+  // Jika schema sudah dimuat oleh [...all].vue, langsung aplikasikan
+  if (props.schemaData) {
+    applySchemaToComponent(props.schemaData)
+  } else {
+    await fetchInitialLoad()
+  }
+
   window.addEventListener('keydown', handleGlobalShortcuts)
 })
 
@@ -240,12 +250,18 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalShortcuts)
 })
 
+// Mengamati perubahan tab rute untuk re-fetch metadata
+watch(() => route.path, async () => {
+  await fetchHeaderRelations()
+  await fetchInitialLoad()
+})
+
 // ==========================================
 //       SERVERSIDE CONFIG & RECORD FETCH
 // ==========================================
 const fetchHeaderRelations = async () => {
   try {
-    // Cukup memuat data relasi non-item (seperti data customer untuk dropdown sidebar)
+    // Memuat relasi master customer secara dinamis
     const resCustomer = await axios.get('/api/customer').catch(() => ({ data: [] }))
     masterRelations.value.customer = resCustomer.data || []
   } catch (e) {
@@ -255,16 +271,9 @@ const fetchHeaderRelations = async () => {
 
 const fetchInitialLoad = async () => {
   try {
-    // Pola 1: GET /api/penjualan -> memicu getLastTransaction()
-    const response = await axios.get(baseApiUrl.value)
-    const fullSchema = response.data
-
-    if (fullSchema && fullSchema.header) {
-      applySchemaToComponent(fullSchema)
-
-      if (fullSchema.queue && Array.isArray(fullSchema.queue.data)) {
-        localQueue.value = fullSchema.queue.data
-      }
+    const response = await axios.get(`${baseApiUrl.value}/get-last-transaction`)
+    if (response.data) {
+      applySchemaToComponent(response.data)
     }
   } catch (error) {
     console.error('Gagal melakukan inisialisasi data transaksi akhir:', error)
@@ -286,10 +295,9 @@ const applySchemaToComponent = (schema) => {
     .map(f => ({ key: f.key, label: f.label, field: f.key, type: f.type }))
 
   localHeader.value = schema.header?.data || {}
-  localDetails.value = schema.details?.data || {}
+  localDetails.value = schema.details?.data || []
   activeNotaId.value = schema.header?.data?.id || null
 
-  // SINKRONISASI DATA QUEUE DI SINI AGAR TIDAK HILANG SAAT MUTASI DATA
   if (schema.queue && Array.isArray(schema.queue.data)) {
     localQueue.value = schema.queue.data
   }
@@ -300,14 +308,11 @@ const applySchemaToComponent = (schema) => {
 // ==========================================
 //        SYNCHRONIZED CORE OPERATION
 // ==========================================
-
 const tambahAntrianServer = async () => {
   try {
-    const response = await axios.post(baseApiUrl.value, {})
-    const fullSchema = response.data
-
-    if (fullSchema && fullSchema.header?.data?.id) {
-      applySchemaToComponent(fullSchema)
+    const response = await axios.post(`${baseApiUrl.value}/new-transaction`, {})
+    if (response.data) {
+      applySchemaToComponent(response.data)
       await fetchInitialLoad()
     }
   } catch (e) {
@@ -317,7 +322,9 @@ const tambahAntrianServer = async () => {
 
 const setActiveAntrian = async (id) => {
   try {
-    const response = await axios.get(`${baseApiUrl.value}/${id}`)
+    const response = await axios.get(`${baseApiUrl.value}/get-transaction`, {
+      params: { header_key: id }
+    })
     if (response.data) {
       applySchemaToComponent(response.data)
     }
@@ -330,7 +337,9 @@ const updateHeaderToServer = async (key, val) => {
   if (!activeNotaId.value) return
   try {
     const patchPayload = { [key]: val }
-    const response = await axios.put(`${baseApiUrl.value}/${activeNotaId.value}`, patchPayload)
+    const response = await axios.put(`${baseApiUrl.value}/update-header`, patchPayload, {
+      params: { header_key: activeNotaId.value }
+    })
 
     if (response.data) {
       applySchemaToComponent(response.data)
@@ -352,54 +361,43 @@ const handleKeyDown = async (e) => {
   if (e.repeat) return
 
   if (e.key === 'Delete') {
-    handleDeleteKey()
     e.preventDefault()
-    return
+    deleteDetailRowFromServer()
   }
-}
-
-const handleDeleteKey = () => {
-  deleteDetailRowFromServer()
 }
 
 const handleServerGridEdit = async (event) => {
+  const detail = event.detail || event
+  const prop = detail.prop
+  const val = detail.val
+  const rowIndex = detail.rowIndex
 
-  const detail = event.detail || event;
-  const prop = detail.prop;         // Nama kolom dinamis yang diedit (misal: 'quantity', 'discount', 'note')
-  const val = detail.val;           // Nilai barunya
-  const rowIndex = detail.rowIndex; // Posisi baris di dalam grid
-
-  // Ambil data baris asli dari array lokal menggunakan rowIndex
-  const targetRow = localDetails.value[rowIndex];
-
-  if (!targetRow || !targetRow.id) {
-    console.error("ID detail tidak ditemukan untuk baris:", rowIndex);
-    return;
-  }
+  const targetRow = localDetails.value[rowIndex]
+  if (!targetRow || !targetRow.id) return
 
   try {
-    // BUAT PAYLOAD DINAMIS BERDASARKAN PROPERTI YANG DIEDIT
-    // Jika value bisa di-convert ke angka, kita convert (mencegah string angka dikirim ke DB bertipe Int/Float)
-    const processedValue = !isNaN(Number(val)) && val !== '' ? Number(val) : val;
+    const processedValue = !isNaN(Number(val)) && val !== '' ? Number(val) : val
+    const patchItemPayload = { [prop]: processedValue }
 
-    const patchItemPayload = {
-      [prop]: processedValue
-    };
-
-    // Mengarah ke: PUT /api/penjualan/:header_key/:details_key
     const response = await axios.put(
-      `${baseApiUrl.value}/${activeNotaId.value}/${targetRow.id}`,
-      patchItemPayload
-    );
+      `${baseApiUrl.value}/update-details`,
+      patchItemPayload,
+      {
+        params: {
+          header_key: activeNotaId.value,
+          details_key: targetRow.id
+        }
+      }
+    )
 
     if (response.data) {
-      applySchemaToComponent(response.data);
+      applySchemaToComponent(response.data)
     }
   } catch (e) {
-    console.error("Gagal mengirim update dinamis ke server:", e);
-    alert('Gagal mengubah data item di server.');
+    console.error("Gagal mengirim update dinamis ke server:", e)
+    alert('Gagal mengubah data item di server.')
   }
-};
+}
 
 const handleSearchSubmit = async () => {
   const inputCode = searchQuery.value.trim()
@@ -412,18 +410,18 @@ const handleSearchSubmit = async () => {
     closeSearchModal()
   } else {
     try {
-      // LANGSUNG DIKIRIM KE BACKEND (Pola POST: /api/penjualan/:header_key)
-      // Logika barcode vs ID, dan penambahan qty otomatis diurus oleh PenjualanService.addDetails()
-      const res = await axios.post(`${baseApiUrl.value}/${activeNotaId.value}`, { query: inputCode, })
+      const res = await axios.post(
+        `${baseApiUrl.value}/add-details`,
+        { query: inputCode },
+        { params: { header_key: activeNotaId.value } }
+      )
 
       if (res.data) {
         applySchemaToComponent(res.data)
-      } else {
-        alert('Gagal memproses item ke server.')
       }
-    } catch (e) {
+    } catch (e: any) {
       const errorMsg = e.response?.data?.error || 'Produk tidak ditemukan atau gagal dimasukkan.'
-      console.log(errorMsg)
+      alert(errorMsg)
     }
     closeSearchModal()
   }
@@ -436,7 +434,12 @@ const deleteDetailRowFromServer = async () => {
 
   if (confirm('Hapus baris item belanja ini?')) {
     try {
-      const response = await axios.delete(`${baseApiUrl.value}/${activeNotaId.value}/${targetRow.id}`)
+      const response = await axios.delete(`${baseApiUrl.value}/delete-details`, {
+        params: {
+          header_key: activeNotaId.value,
+          details_key: targetRow.id
+        }
+      })
       if (response.data) {
         applySchemaToComponent(response.data)
         focusedCoordinate.value = { x: -1, y: -1 }
@@ -450,7 +453,9 @@ const deleteDetailRowFromServer = async () => {
 const cancelTransactionFromServer = async (id) => {
   if (!confirm('Apakah anda yakin ingin membatalkan & menghapus permanen nota transaksi ini?')) return
   try {
-    await axios.delete(`${baseApiUrl.value}/${id}`)
+    await axios.delete(`${baseApiUrl.value}/cancel-transaction`, {
+      params: { header_key: id }
+    })
 
     if (activeNotaId.value === id) {
       activeNotaId.value = null
@@ -471,7 +476,11 @@ const triggerAction = async (actionKey) => {
     if (localDetails.value.length === 0) return alert('Daftar barang belanja kosong!')
 
     try {
-      await axios.put(`${baseApiUrl.value}/${activeNotaId.value}`, { isFinalSubmit: true })
+      await axios.put(
+        `${baseApiUrl.value}/update-header`,
+        { isFinalSubmit: true },
+        { params: { header_key: activeNotaId.value } }
+      )
       alert('Transaksi Berhasil Disimpan & Dicetak!')
 
       activeNotaId.value = null
@@ -487,21 +496,17 @@ const triggerAction = async (actionKey) => {
 // ==========================================
 const buildRevoGridColumnsConfig = () => {
   detailColumns.value = detailSchemaRaw.value.map(field => {
-    const config = { prop: field.key, name: field.label, readonly: field.readonly || false }
+    const config: any = { prop: field.key, name: field.label, readonly: field.readonly || false }
 
-    // DETEKSI TYPE COMPUTED BERBASIS FORMULA DARI SCHEMA UI
     if (field.type === 'computed' && field.formula) {
       config.cellTemplate = (createElement, linkProps) => {
         let formulaString = field.formula
         const rowData = linkProps.model || {}
 
-        // 1. Parsing Formula: Ganti semua token {key} dengan nilai angka dari baris grid
-        // Regular Expression ini mencari string di dalam kurung kurawal, misal {quantity}
         formulaString = formulaString.replace(/\{([^}]+)\}/g, (match, key) => {
           return Number(rowData[key]) || 0
         })
 
-        // 2. Evaluasi rumusnya secara aman menggunakan mathjs
         let computedValue = 0
         try {
           computedValue = evaluate(formulaString)
@@ -509,7 +514,6 @@ const buildRevoGridColumnsConfig = () => {
           console.error(`Gagal mengevaluasi formula untuk ${field.key}:`, err)
         }
 
-        // 3. Render hasilnya dengan format currency (atau custom format berdasarkan key)
         return createElement(
           'span',
           { class: 'font-mono text-right block w-full text-blue-600 dark:text-blue-400 font-semibold bg-slate-50/50 dark:bg-slate-900/30 px-1' },
@@ -517,7 +521,6 @@ const buildRevoGridColumnsConfig = () => {
         )
       }
     }
-    // Format standar lainnya
     else if (field.type === 'currency') {
       config.cellTemplate = (createElement, linkProps) => createElement('span', { class: 'font-mono text-right block w-full text-emerald-600 font-semibold' }, formatCurrency(linkProps.model[field.key] || 0))
     }

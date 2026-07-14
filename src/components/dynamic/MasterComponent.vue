@@ -129,14 +129,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from '@/components/GridNavigator.vue'
 import DynamicFilter from '@/components/DynamicFilter.vue'
 
-import api from '@/lib/axios'
+import axios from 'axios'
 import { useTabStore } from '@/stores/tabs'
 import { useFilterStore } from '@/stores/filter'
 import { useRoute } from 'vue-router'
@@ -144,10 +144,8 @@ import { useRoute } from 'vue-router'
 import NumberColumnType from '@revolist/revogrid-column-numeral'
 import SelectTypePlugin from '@revolist/revogrid-column-select'
 import DateTypePlugin from '@revolist/revogrid-column-date'
-// Tulis di bagian atas barisan import script setup
 import AuditLogDialog from '@/components/AuditLogDialog.vue'
 
-// Buat reactive state baru untuk handle visibility modal
 const showLogModal = ref(false)
 const props = defineProps({
 	menu: { type: Object, required: true },
@@ -171,13 +169,18 @@ const searchInputRef = ref(null)
 
 const activeFilters = ref(filterStore.getFiltersByTab(props.menu?.route || route.path) || {})
 
-// 🟢 STATE BARU: Manajemen Loader & Status Server
-const syncStatus = ref({ state: 'idle', message: '' }) // 'idle' | 'loading' | 'success' | 'error'
+const syncStatus = ref({ state: 'idle', message: '' })
 const lastUpdatedText = ref('baru saja')
 let lastUpdatedTimer = null
 let statusResetTimeout = null
-
 let activeTimeoutId = null
+
+const relationOptions = ref<{ [entityName: string]: Array<{ value: any, label: string }> }>({})
+
+// 🟢 BASE URL AGNOSTIC (Misal: /product)
+const formKey = computed(() => {
+	return props.menu.key.toLowerCase()
+})
 
 const getGrid = () => (gridRef.value?.$el || gridRef.value || {})
 
@@ -200,29 +203,29 @@ const columnTypes = {
 	date: new DateTypePlugin()
 }
 
-const relationCellRenderer = (createElement, props, displayField, fieldKey) => {
-	const rowData = props.model[fieldKey]
-	return createElement('span', {}, rowData ? rowData[displayField] : '')
+const relationCellRenderer = (createElement, cellProps, displayField, fieldKey, optionsList) => {
+	const rawValue = cellProps.model[fieldKey]
+	if (!rawValue) return createElement('span', {}, '')
+
+	if (typeof rawValue === 'object' && rawValue !== null) {
+		return createElement('span', {}, rawValue[displayField] || rawValue.name || '')
+	}
+
+	const matchedOption = optionsList.find(opt => opt.value === rawValue)
+	return createElement('span', {}, matchedOption ? matchedOption.label : rawValue)
 }
 
-// Helper untuk mengatur visual state indicator
-// Tambahkan satu variabel tracker di luar fungsi (di atasnya)
 let apiLoadingTimeout = null
 
 const setSyncStatus = (state, message, autoResetDelay = 3000) => {
 	if (statusResetTimeout) clearTimeout(statusResetTimeout)
-
-	// 1. Selalu bersihkan timeout loading yang lama setiap ada perubahan status
 	if (apiLoadingTimeout) clearTimeout(apiLoadingTimeout)
 
-	// 2. Jika status yang masuk adalah 'loading', tunda eksekusinya selama 400ms
 	if (state === 'loading') {
 		apiLoadingTimeout = setTimeout(() => {
 			syncStatus.value = { state, message }
 		}, 400)
 	} else {
-		// 3. Jika statusnya 'success', 'error', atau 'idle', langsung ganti saat itu juga
-		// Ini otomatis membatalkan antrean 'loading' di atas karena apiLoadingTimeout sudah di-clear
 		syncStatus.value = { state, message }
 	}
 
@@ -233,10 +236,8 @@ const setSyncStatus = (state, message, autoResetDelay = 3000) => {
 	}
 }
 
-// Mengonversi waktu audit log menjadi teks relatif seperti "baru saja" atau "X menit lalu"
 const formatRelativeTime = (timestamp) => {
 	if (!timestamp) return 'belum ada riwayat'
-
 	const now = new Date()
 	const diffInSeconds = Math.floor((now.getTime() - new Date(timestamp).getTime()) / 1000)
 
@@ -257,26 +258,19 @@ const formatRelativeTime = (timestamp) => {
 	})
 }
 
-// 🟢 HIT DATA AUDIT LOG TERBARU
 const fetchLastAuditTimestamp = async () => {
 	const tableName = props.schemaData?.key || 'Product'
 	try {
-		const response = await api.get('/audit-logs', { params: { tableName } })
-		const logs = response.data?.schema?.data || []
+		const response = await axios.get('/audit-logs/get-all', { params: { tableName } })
+		const logs = response.data?.schema?.data || response.data?.data || []
 
 		if (logs.length > 0) {
-			// Ambil log index 0 (asumsi API mengembalikan data tersortir DESC / terbaru di atas)
 			const latestLog = logs[0]
-
-			// Menggunakan property date yang ada pada response audit log Anda (misal: created_at / log_time)
 			const targetTime = latestLog.created_at || latestLog.createdAt || latestLog.date
 
 			if (lastUpdatedTimer) clearInterval(lastUpdatedTimer)
-
-			// Set text awal
 			lastUpdatedText.value = formatRelativeTime(targetTime)
 
-			// Update text relatif setiap 30 detik secara berkala
 			lastUpdatedTimer = setInterval(() => {
 				lastUpdatedText.value = formatRelativeTime(targetTime)
 			}, 30000)
@@ -289,14 +283,38 @@ const fetchLastAuditTimestamp = async () => {
 	}
 }
 
-// 🟢 UPDATE: Fetch Data dengan Loader terpadu
+const fetchRelationOptions = async () => {
+	const schema = props.schemaData?.schema || []
+	const relationFields = schema.filter(f => f.type === 'relation' && f.relation)
+
+	for (const field of relationFields) {
+		const entity = field.relation.entity
+		const displayField = field.relation.displayField || 'name'
+		if (relationOptions.value[entity]) continue
+
+		try {
+			const response = await axios.get(`/${entity}/get-all`)
+			const rawData = response.data?.schema?.data || response.data?.data || []
+			relationOptions.value[entity] = rawData.map((item: any) => ({
+				value: item.id,
+				label: item[displayField] || item.name
+			}))
+		} catch (err) {
+			console.error(`Gagal memuat opsi relasi untuk entitas ${entity}:`, err)
+		}
+	}
+}
+
+// 🟢 GET ALL: Sesuai dynamic controller GET /:form_key/get-all?where=...
 const fetchGridData = async () => {
 	setSyncStatus('loading', 'Mengambil data..')
 	try {
-		const endpoint = props.menu.route || `/${props.menu.key.toLowerCase()}`
-		const response = await api.get(endpoint, {
-			params: { where: JSON.stringify(activeFilters.value) }
+		const response = await axios.get(`/${formKey.value}/get-all`, {
+			params: {
+				where: activeFilters.value
+			}
 		})
+
 		const freshData = response.data?.schema?.data || response.data?.data || []
 
 		rows.value = [...freshData]
@@ -310,7 +328,7 @@ const fetchGridData = async () => {
 		getGrid().requestGridRowsRedraw?.()
 		setSyncStatus('success', 'Selesai sinkronisasi')
 		fetchLastAuditTimestamp()
-	} catch (err) {
+	} catch (err: any) {
 		console.error("Gagal sinkronisasi data dengan server:", err)
 		setSyncStatus('error', `Gagal memuat: ${err.message || 'Server Error'}`)
 	}
@@ -319,6 +337,8 @@ const fetchGridData = async () => {
 const loadComponentData = async () => {
 	const res = props.schemaData
 	if (!res) return
+
+	await fetchRelationOptions()
 
 	columns.value = (res.schema || []).map(field => {
 		const columnConfig: Record<string, any> = {
@@ -342,9 +362,20 @@ const loadComponentData = async () => {
 			columnConfig.editorProperties = { appendToBody: true }
 		}
 		else if (field.type === 'relation' && field.relation) {
-			columnConfig.columnType = 'display'
+			const entity = field.relation.entity
+			columnConfig.columnType = 'select'
+			columnConfig.labelKey = 'label'
+			columnConfig.valueKey = 'value'
+			columnConfig.source = relationOptions.value[entity] || []
+			columnConfig.editorProperties = { appendToBody: true }
 			columnConfig.cellTemplate = (createElement, linkProps) =>
-				relationCellRenderer(createElement, linkProps, field.relation.displayField, field.key)
+				relationCellRenderer(
+					createElement,
+					linkProps,
+					field.relation.displayField,
+					field.key,
+					relationOptions.value[entity] || []
+				)
 		}
 		return columnConfig
 	})
@@ -378,31 +409,26 @@ const beforeEdit = (event) => {
 
 	const columnLabel = originalField.label || prop;
 	const fieldType = originalField.type;
-	const isRequired = originalField.required || false; // Mendeteksi flag required dari skema otomatis
+	const isRequired = originalField.required || false;
 
-	// 2. VALIDASI REQUIRED (MURNI MANDIRI)
-	// Jika di skema diset 'required: true', field ini TIDAK boleh kosong, apa pun tipenya
 	if (isRequired) {
 		const isStringEmpty = typeof val === 'string' && val.trim() === '';
 		const isNullOrUndefined = val === null || val === undefined || val === '';
 
 		if (isStringEmpty || isNullOrUndefined) {
 			setSyncStatus('error', `${columnLabel} wajib diisi!`);
-			event.preventDefault(); // Batalkan edit pada grid
+			event.preventDefault();
 			return;
 		}
 	}
 
-	// 3. VALIDASI ANGKA / NUMERIK
 	if (['number', 'integer', 'decimal', 'currency'].includes(fieldType)) {
-		// Cek jika input diisi tetapi bukan angka yang valid
 		if (val !== '' && val !== null && val !== undefined && isNaN(Number(val))) {
 			setSyncStatus('error', `${columnLabel} hanya boleh berisi angka!`);
 			event.preventDefault();
 			return;
 		}
 
-		// Validasi nilai tidak boleh negatif untuk tipe finansial/currency
 		if (fieldType === 'currency' && val !== '' && Number(val) < 0) {
 			setSyncStatus('error', `${columnLabel} tidak boleh bernilai negatif!`);
 			event.preventDefault();
@@ -410,7 +436,6 @@ const beforeEdit = (event) => {
 		}
 	}
 
-	// 4. VALIDASI TANGGAL
 	if (fieldType === 'date' && val) {
 		const timestamp = Date.parse(val);
 		if (isNaN(timestamp)) {
@@ -419,10 +444,9 @@ const beforeEdit = (event) => {
 			return;
 		}
 	}
-
 }
 
-// 🟢 UPDATE: Auto Save dengan status 'Memperbarui..'
+// 🟢 UPDATE: Sesuai dynamic controller PUT /:form_key/update?id=:id dengan Body Payload
 const afterEdit = async (event) => {
 	if (event.detail.oldValue === event.detail.value) return
 
@@ -432,8 +456,10 @@ const afterEdit = async (event) => {
 
 	setSyncStatus('loading', 'Memperbarui..')
 	try {
-		const endpoint = `${props.menu.route || `/${props.menu.key.toLowerCase()}`}/${recordId}`
-		const response = await api.put(endpoint, updatedModel)
+		// PUT /product/update?id=12 -> argumen ke-1: id=12 (dari query), argumen ke-2: updatedModel (dari req.body)
+		const response = await axios.put(`/${formKey.value}/update`, updatedModel, {
+			params: { id: recordId }
+		})
 
 		if (response.status === 200) {
 			console.log('Auto-save berhasil.')
@@ -445,7 +471,7 @@ const afterEdit = async (event) => {
 			setSyncStatus('success', 'Perubahan disimpan')
 			fetchLastAuditTimestamp()
 		}
-	} catch (err) {
+	} catch (err: any) {
 		console.error('Gagal auto-save:', err)
 		setSyncStatus('error', `Gagal memperbarui: ${err.response?.data?.message || err.message}`)
 	}
@@ -493,7 +519,7 @@ const handleArrowUp = (currentY) => {
 	if (currentY === 0) console.log('ARROW UP di baris pertama')
 }
 
-// 🟢 UPDATE: Tambah Baris Baru dengan status 'Memperbarui..'
+// 🟢 CREATE: Sesuai dynamic controller POST /:form_key/create dengan Body Payload kosong {}
 const handleAddNewRow = async () => {
 	if (!permission.value.create) {
 		alert('Anda tidak memiliki akses untuk menambah data!')
@@ -502,11 +528,11 @@ const handleAddNewRow = async () => {
 
 	setSyncStatus('loading', 'Memperbarui..')
 	try {
-		const endpoint = props.menu.route || `/${props.menu.key.toLowerCase()}`
-		const response = await api.post(endpoint)
+		// POST /product/create -> argumen: body (dari req.body)
+		const response = await axios.post(`/${formKey.value}/create`, {})
 
-		if (response.status === 201) {
-			const serverNewData = response.data.data
+		if (response.status === 201 || response.status === 200) {
+			const serverNewData = response.data.data || response.data
 			rows.value = [...rows.value, serverNewData]
 
 			const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
@@ -526,13 +552,13 @@ const handleAddNewRow = async () => {
 			setSyncStatus('success', 'Baris baru ditambahkan')
 			fetchLastAuditTimestamp()
 		}
-	} catch (err) {
+	} catch (err: any) {
 		console.error("Gagal menambahkan baris baru:", err)
 		setSyncStatus('error', `Gagal menambah baris: ${err.message}`)
 	}
 }
 
-// 🟢 UPDATE: Hapus Baris Baru dengan status 'Menghapus..'
+// 🟢 DELETE: Sesuai dynamic controller DELETE /:form_key/delete?id=:id
 const handleDeleteKey = async () => {
 	if (!permission.value.delete) return
 
@@ -545,8 +571,10 @@ const handleDeleteKey = async () => {
 	if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
 		setSyncStatus('loading', 'Menghapus..')
 		try {
-			const endpoint = `${props.menu.route || `/${props.menu.key.toLowerCase()}`}/${recordId}`
-			const response = await api.delete(endpoint)
+			// DELETE /product/delete?id=12 -> argumen: id=12 (dari query)
+			const response = await axios.delete(`/${formKey.value}/delete`, {
+				params: { id: recordId }
+			})
 
 			if ([200, 204].includes(response.status)) {
 				const updatedRows = rows.value.filter((_, index) => index !== targetIndex)
@@ -562,7 +590,7 @@ const handleDeleteKey = async () => {
 				setSyncStatus('success', 'Data berhasil dihapus')
 				fetchLastAuditTimestamp()
 			}
-		} catch (err) {
+		} catch (err: any) {
 			console.error("Gagal menghapus data:", err)
 			setSyncStatus('error', `Gagal menghapus: ${err.response?.data?.message || err.message}`)
 		}

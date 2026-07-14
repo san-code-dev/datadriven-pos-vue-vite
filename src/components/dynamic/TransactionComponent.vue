@@ -1,9 +1,7 @@
-<!-- src/components/TransactionComponent.vue -->
 <template>
   <div
     class="flex flex-col h-full max-h-full overflow-hidden min-h-0 bg-slate-100 dark:bg-slate-900 w-full p-3 gap-3 font-sans select-none">
 
-    <!-- ANTRIAN HEADER -->
     <div
       class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 flex-shrink-0 text-xs">
       <div class="flex flex-wrap items-center gap-2">
@@ -34,9 +32,7 @@
       </div>
     </div>
 
-    <!-- MAIN GRID CONTAINER -->
     <div class="flex-1 grid grid-cols-12 gap-3 min-h-0 w-full items-stretch">
-      <!-- CONTAINER DETAIL BELANJA -->
       <div
         class="col-span-12 lg:col-span-9 flex flex-col bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl overflow-hidden p-4 relative min-h-0 gap-3">
 
@@ -56,12 +52,11 @@
           </button>
         </div>
 
-        <!-- REVO GRID DATAGRID -->
         <div
           class="flex-1 min-h-0 relative rounded-lg border border-slate-200/60 dark:border-slate-700/60 overflow-hidden">
           <RevoGrid ref="gridRef" class="w-full h-full max-h-full focus:outline-none" :columns="detailColumns"
             :source="localDetails" :theme="isDark ? 'darkCompact' : 'compact'" resize="true" @afterfocus="afterFocus"
-            @beforecellsave="handleServerGridEdit" />
+            @afteredit="handleServerGridEdit" @keydown="handleKeyDown" />
         </div>
 
         <div
@@ -78,7 +73,6 @@
         </div>
       </div>
 
-      <!-- SIDEBAR FIELD DATA HEADER -->
       <div class="col-span-12 lg:col-span-3 flex flex-col gap-3 min-h-0 overflow-y-auto scrollbar-none">
         <div
           class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-4 flex flex-col gap-3 flex-shrink-0">
@@ -110,9 +104,7 @@
                 class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-slate-800 dark:text-slate-100" />
 
               <input v-else-if="field.type === 'currency' || field.type === 'number'" type="number"
-                v-model.number="localHeader[field.key]"
-                @lazyupdate="updateHeaderToServer(field.key, localHeader[field.key])"
-                @blur="updateHeaderToServer(field.key, localHeader[field.key])"
+                v-model.number="localHeader[field.key]" @blur="updateHeaderToServer(field.key, localHeader[field.key])"
                 class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-slate-800 dark:text-slate-100 text-right" />
 
               <input v-else type="text" v-model="localHeader[field.key]"
@@ -123,7 +115,6 @@
           <div v-else class="text-center py-4 text-slate-400 text-xs italic">Belum ada transaksi aktif.</div>
         </div>
 
-        <!-- HIGHLIGHT CONTAINER BLOCK (TOTAL BAYAR) -->
         <div v-for="hl in highlightConfig" :key="hl.key"
           class="bg-slate-900 text-emerald-400 dark:bg-slate-950 p-4 rounded-xl flex flex-col justify-between shadow-md border border-slate-800 min-h-[90px] flex-shrink-0">
           <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">{{ hl.label }}</div>
@@ -134,7 +125,6 @@
       </div>
     </div>
 
-    <!-- PANELS FOOTER BUTTON ACTIONS -->
     <div
       class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-4 flex-shrink-0">
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-medium text-slate-400">
@@ -155,12 +145,11 @@
           <Icon :icon="action.type === 'payment' ? 'mdi:credit-card-outline' : 'mdi:printer'" class="w-4 h-4" />
           <span>{{ action.label }}</span>
           <span class="opacity-70 text-[10px] font-mono font-normal">({{ action.type === 'payment' ? 'F4' : 'Ctrl'
-            }})</span>
+          }})</span>
         </button>
       </div>
     </div>
 
-    <!-- MODAL POPUP SELECTION & SEARCH SCAN -->
     <div v-if="showSearchModal" @click.self="closeSearchModal"
       class="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
       <div
@@ -180,14 +169,14 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import axios from 'axios'
 import { Icon } from '@iconify/vue'
 import { isDark } from '@/composables/dark'
 import { useNumberFormat } from '@/composables/number-format'
 import RevoGrid from '@revolist/vue3-datagrid'
-
+import { evaluate } from 'mathjs'
 axios.defaults.baseURL = 'http://localhost:3000'
 axios.defaults.withCredentials = true
 
@@ -214,8 +203,8 @@ const activeNotaId = ref(null)
 const localHeader = ref({})
 const localDetails = ref([])
 
-// Dropdown Relation Cache Map
-const masterRelations = ref({ customer: [], product: [] })
+// Dropdown Relation Cache Map (Hanya untuk relasi non-item seperti customer)
+const masterRelations = ref({ customer: [] })
 
 // UI Controllers State
 const gridRef = ref(null)
@@ -239,12 +228,11 @@ const filteredHeaderSchema = computed(() => {
 })
 
 // ==========================================
-//          LIFECYCLE HOOKS
+//           LIFECYCLE HOOKS
 // ==========================================
 onMounted(async () => {
-  await loadDynamicModuleConfiguration()
-  await fetchMasterRelations()
-  await fetchQueueListFromServer()
+  await fetchHeaderRelations()
+  await fetchInitialLoad()
   window.addEventListener('keydown', handleGlobalShortcuts)
 })
 
@@ -253,106 +241,100 @@ onBeforeUnmount(() => {
 })
 
 // ==========================================
-//      SERVERSIDE CONFIG & SCHEMA FETCH
+//       SERVERSIDE CONFIG & RECORD FETCH
 // ==========================================
-const loadDynamicModuleConfiguration = async () => {
+const fetchHeaderRelations = async () => {
   try {
-    const response = await axios.get(baseApiUrl.value)
-    const res = response.data
-    if (!res) return
-
-    schemaLabel.value = res.label || ''
-    actionButtons.value = res.actions || []
-    headerLabel.value = res.header?.label || 'INFORMASI UTAMA'
-    detailLabel.value = res.details?.label || 'DAFTAR ITEM'
-    headerSchemaRaw.value = res.header?.schema || []
-    detailSchemaRaw.value = res.details?.schema || []
-
-    primaryKeyLabel.value = headerSchemaRaw.value.find(f => f.primary)?.label || 'ID'
-    highlightConfig.value = headerSchemaRaw.value
-      .filter(f => f.highlight)
-      .map(f => ({ key: f.key, label: f.label, field: f.key, type: f.type }))
-
-    buildRevoGridColumnsConfig()
-  } catch (error) {
-    console.error('Gagal memuat konfigurasi skema:', error)
-  }
-}
-
-const fetchMasterRelations = async () => {
-  try {
+    // Cukup memuat data relasi non-item (seperti data customer untuk dropdown sidebar)
     const resCustomer = await axios.get('/api/customer').catch(() => ({ data: [] }))
-    const resProduct = await axios.get('/api/product').catch(() => ({ data: [] }))
     masterRelations.value.customer = resCustomer.data || []
-    masterRelations.value.product = resProduct.data || []
-    buildRevoGridColumnsConfig()
   } catch (e) {
     console.error('Gagal memuat relasi master data:', e)
   }
+}
+
+const fetchInitialLoad = async () => {
+  try {
+    // Pola 1: GET /api/penjualan -> memicu getLastTransaction()
+    const response = await axios.get(baseApiUrl.value)
+    const fullSchema = response.data
+
+    if (fullSchema && fullSchema.header) {
+      applySchemaToComponent(fullSchema)
+
+      if (fullSchema.queue && Array.isArray(fullSchema.queue.data)) {
+        localQueue.value = fullSchema.queue.data
+      }
+    }
+  } catch (error) {
+    console.error('Gagal melakukan inisialisasi data transaksi akhir:', error)
+  }
+}
+
+const applySchemaToComponent = (schema) => {
+  if (!schema) return
+  schemaLabel.value = schema.label || ''
+  actionButtons.value = schema.actions || []
+  headerLabel.value = schema.header?.label || 'INFORMASI UTAMA'
+  detailLabel.value = schema.details?.label || 'DAFTAR ITEM'
+  headerSchemaRaw.value = schema.header?.schema || []
+  detailSchemaRaw.value = schema.details?.schema || []
+
+  primaryKeyLabel.value = headerSchemaRaw.value.find(f => f.primary)?.label || 'ID'
+  highlightConfig.value = headerSchemaRaw.value
+    .filter(f => f.highlight)
+    .map(f => ({ key: f.key, label: f.label, field: f.key, type: f.type }))
+
+  localHeader.value = schema.header?.data || {}
+  localDetails.value = schema.details?.data || {}
+  activeNotaId.value = schema.header?.data?.id || null
+
+  // SINKRONISASI DATA QUEUE DI SINI AGAR TIDAK HILANG SAAT MUTASI DATA
+  if (schema.queue && Array.isArray(schema.queue.data)) {
+    localQueue.value = schema.queue.data
+  }
+
+  buildRevoGridColumnsConfig()
 }
 
 // ==========================================
 //        SYNCHRONIZED CORE OPERATION
 // ==========================================
 
-const fetchQueueListFromServer = async () => {
-  try {
-    const response = await axios.get(baseApiUrl.value)
-    if (Array.isArray(response.data)) {
-      localQueue.value = response.data
-      if (localQueue.value.length > 0 && !activeNotaId.value) {
-        await setActiveAntrian(localQueue.value[0].id)
-      }
-    }
-  } catch (e) {
-    console.error('Gagal memuat list antrian server:', e)
-  }
-}
-
 const tambahAntrianServer = async () => {
   try {
-    // POST /api/penjualan -> memicu newTransaction() di backend
     const response = await axios.post(baseApiUrl.value, {})
-    const schemaFull = response.data
+    const fullSchema = response.data
 
-    await fetchQueueListFromServer()
-    if (schemaFull?.header?.data?.id) {
-      await setActiveAntrian(schemaFull.header.data.id)
+    if (fullSchema && fullSchema.header?.data?.id) {
+      applySchemaToComponent(fullSchema)
+      await fetchInitialLoad()
     }
   } catch (e) {
-    alert('Gagal membuat transaksi baru di server.')
+    alert('Gagal membuat antrian transaksi baru.')
   }
 }
 
 const setActiveAntrian = async (id) => {
   try {
-    activeNotaId.value = id
-    // GET /api/penjualan/:header_key -> Mengembalikan Full SCHEMA + Terisi Data Record ter-sync
     const response = await axios.get(`${baseApiUrl.value}/${id}`)
-    const moduleSchema = response.data
-
-    if (moduleSchema) {
-      localHeader.value = moduleSchema.header?.data || {}
-      localDetails.value = moduleSchema.details?.data || []
+    if (response.data) {
+      applySchemaToComponent(response.data)
     }
   } catch (e) {
-    console.error('Gagal mengambil detail data transaksi:', e)
+    console.error('Gagal memuat detail transaksi antrian:', e)
   }
 }
 
 const updateHeaderToServer = async (key, val) => {
   if (!activeNotaId.value) return
   try {
-    // PUT /api/penjualan/:header_key -> Update header form data field
     const patchPayload = { [key]: val }
     const response = await axios.put(`${baseApiUrl.value}/${activeNotaId.value}`, patchPayload)
 
-    // Refresh Data Local dari response backend hasil re-kalkulasi
-    if (response.data?.header?.data) {
-      localHeader.value = response.data.header.data
-      localDetails.value = response.data.details.data || []
+    if (response.data) {
+      applySchemaToComponent(response.data)
 
-      // Update nama customer pada antrian sidebar kiri secara reaktif
       if (key === headerRelationField.value?.key) {
         const currentIdx = localQueue.value.findIndex(q => q.id === activeNotaId.value)
         const custObj = masterRelations.value.customer.find(c => c.id === Number(val))
@@ -366,23 +348,58 @@ const updateHeaderToServer = async (key, val) => {
   }
 }
 
-const handleServerGridEdit = async (event) => {
-  const { model, prop, val } = event.detail
-  if (prop !== 'quantity') return // Hanya ijinkan modifikasi Qty pada RevoGrid, Product disecan lewat modal bar
+const handleKeyDown = async (e) => {
+  if (e.repeat) return
 
-  try {
-    // PUT /api/penjualan/:header_key/:details_key -> updateDetails()
-    const patchItemPayload = { quantity: Number(val) }
-    const response = await axios.put(`${baseApiUrl.value}/${activeNotaId.value}/${model.id}`, patchItemPayload)
-
-    if (response.data) {
-      localHeader.value = response.data.header?.data || {}
-      localDetails.value = response.data.details?.data || []
-    }
-  } catch (e) {
-    alert('Gagal mengubah quantity item di server')
+  if (e.key === 'Delete') {
+    handleDeleteKey()
+    e.preventDefault()
+    return
   }
 }
+
+const handleDeleteKey = () => {
+  deleteDetailRowFromServer()
+}
+
+const handleServerGridEdit = async (event) => {
+
+  const detail = event.detail || event;
+  const prop = detail.prop;         // Nama kolom dinamis yang diedit (misal: 'quantity', 'discount', 'note')
+  const val = detail.val;           // Nilai barunya
+  const rowIndex = detail.rowIndex; // Posisi baris di dalam grid
+
+  // Ambil data baris asli dari array lokal menggunakan rowIndex
+  const targetRow = localDetails.value[rowIndex];
+
+  if (!targetRow || !targetRow.id) {
+    console.error("ID detail tidak ditemukan untuk baris:", rowIndex);
+    return;
+  }
+
+  try {
+    // BUAT PAYLOAD DINAMIS BERDASARKAN PROPERTI YANG DIEDIT
+    // Jika value bisa di-convert ke angka, kita convert (mencegah string angka dikirim ke DB bertipe Int/Float)
+    const processedValue = !isNaN(Number(val)) && val !== '' ? Number(val) : val;
+
+    const patchItemPayload = {
+      [prop]: processedValue
+    };
+
+    // Mengarah ke: PUT /api/penjualan/:header_key/:details_key
+    const response = await axios.put(
+      `${baseApiUrl.value}/${activeNotaId.value}/${targetRow.id}`,
+      patchItemPayload
+    );
+
+    if (response.data) {
+      applySchemaToComponent(response.data);
+    }
+  } catch (e) {
+    console.error("Gagal mengirim update dinamis ke server:", e);
+    alert('Gagal mengubah data item di server.');
+  }
+};
 
 const handleSearchSubmit = async () => {
   const inputCode = searchQuery.value.trim()
@@ -394,32 +411,19 @@ const handleSearchSubmit = async () => {
     }
     closeSearchModal()
   } else {
-    // Modul scanning barcode item -> Kirim POST item detail baru ke server
-    const productMaster = masterRelations.value.product.find(p => String(p.id) === inputCode)
-    if (productMaster) {
-      try {
-        // Cek apakah item sudah terdaftar di detail untuk mitigasi duplicate baris
-        const existItem = localDetails.value.find(d => d.productId === productMaster.id)
-        if (existItem) {
-          // Jika ada, lakukan update PUT penambahan quantity (+1)
-          const newQty = Number(existItem.quantity) + 1
-          const res = await axios.put(`${baseApiUrl.value}/${activeNotaId.value}/${existItem.id}`, { quantity: newQty })
-          localHeader.value = res.data.header?.data || {}
-          localDetails.value = res.data.details?.data || []
-        } else {
-          // Jika belum ada, lakukan POST /api/penjualan/:header_key -> addDetails()
-          const res = await axios.post(`${baseApiUrl.value}/${activeNotaId.value}`, {
-            productId: productMaster.id,
-            quantity: 1
-          })
-          localHeader.value = res.data.header?.data || {}
-          localDetails.value = res.data.details?.data || []
-        }
-      } catch (e) {
-        alert('Gagal memasukkan data detail item ke server.')
+    try {
+      // LANGSUNG DIKIRIM KE BACKEND (Pola POST: /api/penjualan/:header_key)
+      // Logika barcode vs ID, dan penambahan qty otomatis diurus oleh PenjualanService.addDetails()
+      const res = await axios.post(`${baseApiUrl.value}/${activeNotaId.value}`, { query: inputCode, })
+
+      if (res.data) {
+        applySchemaToComponent(res.data)
+      } else {
+        alert('Gagal memproses item ke server.')
       }
-    } else {
-      alert('Produk tidak terdaftar dalam database relasi master.')
+    } catch (e) {
+      const errorMsg = e.response?.data?.error || 'Produk tidak ditemukan atau gagal dimasukkan.'
+      console.log(errorMsg)
     }
     closeSearchModal()
   }
@@ -432,15 +436,13 @@ const deleteDetailRowFromServer = async () => {
 
   if (confirm('Hapus baris item belanja ini?')) {
     try {
-      // DELETE /api/penjualan/:header_key/:details_key -> deleteDetails()
       const response = await axios.delete(`${baseApiUrl.value}/${activeNotaId.value}/${targetRow.id}`)
       if (response.data) {
-        localHeader.value = response.data.header?.data || {}
-        localDetails.value = response.data.details?.data || []
+        applySchemaToComponent(response.data)
         focusedCoordinate.value = { x: -1, y: -1 }
       }
     } catch (e) {
-      alert('Gagal menghapus detail item dari server.')
+      alert('Gagal menghapus detail item.')
     }
   }
 }
@@ -448,15 +450,14 @@ const deleteDetailRowFromServer = async () => {
 const cancelTransactionFromServer = async (id) => {
   if (!confirm('Apakah anda yakin ingin membatalkan & menghapus permanen nota transaksi ini?')) return
   try {
-    // DELETE /api/penjualan/:header_key -> cancelTransaction()
     await axios.delete(`${baseApiUrl.value}/${id}`)
 
-    activeNotaId.value = null
-    await fetchQueueListFromServer()
-    if (localQueue.value.length === 0) {
+    if (activeNotaId.value === id) {
+      activeNotaId.value = null
       localHeader.value = {}
       localDetails.value = []
     }
+    await fetchInitialLoad()
   } catch (e) {
     alert('Gagal membatalkan transaksi pada server database.')
   }
@@ -470,14 +471,13 @@ const triggerAction = async (actionKey) => {
     if (localDetails.value.length === 0) return alert('Daftar barang belanja kosong!')
 
     try {
-      // PUT /api/penjualan/:header_key -> saveTransaction() mengubah Status invoice draft menjadi Final PJ-XXXXX
       await axios.put(`${baseApiUrl.value}/${activeNotaId.value}`, { isFinalSubmit: true })
-      alert('Transaksi Berhasil Disimpan & Dicetak! Jurnal Akuntansi otomatis dibentuk.')
+      alert('Transaksi Berhasil Disimpan & Dicetak!')
 
       activeNotaId.value = null
-      await fetchQueueListFromServer()
+      await fetchInitialLoad()
     } catch (error) {
-      alert(error.response?.data?.error || 'Gagal memproses finalisasi simpan transaksi.')
+      alert('Gagal memproses simpan transaksi.')
     }
   }
 }
@@ -489,17 +489,48 @@ const buildRevoGridColumnsConfig = () => {
   detailColumns.value = detailSchemaRaw.value.map(field => {
     const config = { prop: field.key, name: field.label, readonly: field.readonly || false }
 
-    if (field.type === 'currency') {
-      config.cellTemplate = (createElement, linkProps) => createElement('span', { class: 'font-mono text-right block w-full text-emerald-600 font-semibold' }, formatCurrency(linkProps.model[field.key] || 0))
-    } else if (field.type === 'number') {
-      config.cellTemplate = (createElement, linkProps) => createElement('span', { class: 'font-mono text-center block w-full' }, formatNumber(linkProps.model[field.key] || 0))
-    } else if (field.type === 'relation' && field.relation?.entity === 'product') {
-      // Ubah template nama agar menampilkan Nama Produk, bukan ProductId mentah
+    // DETEKSI TYPE COMPUTED BERBASIS FORMULA DARI SCHEMA UI
+    if (field.type === 'computed' && field.formula) {
       config.cellTemplate = (createElement, linkProps) => {
-        const prod = masterRelations.value.product.find(p => p.id === Number(linkProps.model[field.key]))
-        return createElement('span', { class: 'font-medium block w-full pl-1' }, prod ? prod.name : 'Pilih Produk...')
+        let formulaString = field.formula
+        const rowData = linkProps.model || {}
+
+        // 1. Parsing Formula: Ganti semua token {key} dengan nilai angka dari baris grid
+        // Regular Expression ini mencari string di dalam kurung kurawal, misal {quantity}
+        formulaString = formulaString.replace(/\{([^}]+)\}/g, (match, key) => {
+          return Number(rowData[key]) || 0
+        })
+
+        // 2. Evaluasi rumusnya secara aman menggunakan mathjs
+        let computedValue = 0
+        try {
+          computedValue = evaluate(formulaString)
+        } catch (err) {
+          console.error(`Gagal mengevaluasi formula untuk ${field.key}:`, err)
+        }
+
+        // 3. Render hasilnya dengan format currency (atau custom format berdasarkan key)
+        return createElement(
+          'span',
+          { class: 'font-mono text-right block w-full text-blue-600 dark:text-blue-400 font-semibold bg-slate-50/50 dark:bg-slate-900/30 px-1' },
+          formatCurrency(computedValue)
+        )
       }
     }
+    // Format standar lainnya
+    else if (field.type === 'currency') {
+      config.cellTemplate = (createElement, linkProps) => createElement('span', { class: 'font-mono text-right block w-full text-emerald-600 font-semibold' }, formatCurrency(linkProps.model[field.key] || 0))
+    }
+    else if (field.type === 'number') {
+      config.cellTemplate = (createElement, linkProps) => createElement('span', { class: 'font-mono text-center block w-full' }, formatNumber(linkProps.model[field.key] || 0))
+    }
+    else if (field.type === 'relation' && field.relation?.entity === 'product') {
+      config.cellTemplate = (createElement, linkProps) => {
+        const productName = linkProps.model.productName || linkProps.model.product?.name || `Product ID: ${linkProps.model[field.key]}`
+        return createElement('span', { class: 'font-medium block w-full pl-1' }, productName)
+      }
+    }
+
     return config
   })
 }
@@ -536,12 +567,6 @@ const handleGlobalShortcuts = (e) => {
   if (e.key === 'F4') {
     e.preventDefault()
     triggerAction('pay')
-  }
-  if (e.key === 'Delete') {
-    if (lastActiveGrid.value === 'detail') {
-      e.preventDefault()
-      deleteDetailRowFromServer()
-    }
   }
 }
 </script>

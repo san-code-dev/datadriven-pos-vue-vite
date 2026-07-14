@@ -33,6 +33,7 @@
     "flowbite": "^4.0.1",
     "flowbite-vue": "^0.2.2",
     "lite-youtube-embed": "^0.3.3",
+    "mathjs": "^15.2.0",
     "ofetch": "^1.4.1",
     "pinia": "^2.3.0",
     "pinia-plugin-persistedstate": "^4.7.1",

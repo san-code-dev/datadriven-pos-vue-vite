@@ -32,6 +32,7 @@ const componentsMap = {
 }
 
 const getComponentByType = (type) => {
+    if (!type) console.error('component type not defined from api respone');
     return componentsMap[type] || null
 }
 

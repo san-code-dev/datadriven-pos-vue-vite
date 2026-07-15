@@ -172,15 +172,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
+import api from '@/lib/axios'
 import { Icon } from '@iconify/vue'
 import { isDark } from '@/composables/dark'
 import { useNumberFormat } from '@/composables/number-format'
 import RevoGrid from '@revolist/vue3-datagrid'
 import { evaluate } from 'mathjs'
-
-axios.defaults.baseURL = 'http://localhost:3000'
-axios.defaults.withCredentials = true
 
 const props = defineProps({
   menu: { type: Object, required: true },
@@ -190,6 +187,9 @@ const props = defineProps({
 const route = useRoute()
 const { formatNumber, formatCurrency } = useNumberFormat()
 
+const formKey = computed(() => {
+  return props.menu.key.toLowerCase()
+})
 // Metadata Schema State
 const schemaLabel = ref('')
 const headerLabel = ref('TRANSAKSI')
@@ -218,11 +218,6 @@ const searchInputRef = ref(null)
 const lastActiveGrid = ref('detail')
 const focusedCoordinate = ref({ x: -1, y: -1 })
 
-// Dynamic Base Routing URL Builder (Mengikuti route path router aktif)
-const baseApiUrl = computed(() => {
-  const cleanPath = route.path.replace(/^\/+|\/+$/g, '')
-  return `/api/${cleanPath}`
-})
 
 const headerRelationField = computed(() => headerSchemaRaw.value.find(f => f.type === 'relation') || null)
 const filteredHeaderSchema = computed(() => {
@@ -262,7 +257,7 @@ watch(() => route.path, async () => {
 const fetchHeaderRelations = async () => {
   try {
     // Memuat relasi master customer secara dinamis
-    const resCustomer = await axios.get('/api/customer').catch(() => ({ data: [] }))
+    const resCustomer = await api.get(`/${formKey.value}/customer`).catch(() => ({ data: [] }))
     masterRelations.value.customer = resCustomer.data || []
   } catch (e) {
     console.error('Gagal memuat relasi master data:', e)
@@ -271,7 +266,7 @@ const fetchHeaderRelations = async () => {
 
 const fetchInitialLoad = async () => {
   try {
-    const response = await axios.get(`${baseApiUrl.value}/get-last-transaction`)
+    const response = await api.get(`/${formKey.value}/get-last-transaction`)
     if (response.data) {
       applySchemaToComponent(response.data)
     }
@@ -310,7 +305,7 @@ const applySchemaToComponent = (schema) => {
 // ==========================================
 const tambahAntrianServer = async () => {
   try {
-    const response = await axios.post(`${baseApiUrl.value}/new-transaction`, {})
+    const response = await api.post(`/${formKey.value}/new-transaction`, {})
     if (response.data) {
       applySchemaToComponent(response.data)
       await fetchInitialLoad()
@@ -322,7 +317,7 @@ const tambahAntrianServer = async () => {
 
 const setActiveAntrian = async (id) => {
   try {
-    const response = await axios.get(`${baseApiUrl.value}/get-transaction`, {
+    const response = await api.get(`/${formKey.value}/get-transaction`, {
       params: { header_key: id }
     })
     if (response.data) {
@@ -337,7 +332,7 @@ const updateHeaderToServer = async (key, val) => {
   if (!activeNotaId.value) return
   try {
     const patchPayload = { [key]: val }
-    const response = await axios.put(`${baseApiUrl.value}/update-header`, patchPayload, {
+    const response = await api.put(`/${formKey.value}/update-header`, patchPayload, {
       params: { header_key: activeNotaId.value }
     })
 
@@ -379,8 +374,8 @@ const handleServerGridEdit = async (event) => {
     const processedValue = !isNaN(Number(val)) && val !== '' ? Number(val) : val
     const patchItemPayload = { [prop]: processedValue }
 
-    const response = await axios.put(
-      `${baseApiUrl.value}/update-details`,
+    const response = await api.put(
+      `/${formKey.value}/update-details`,
       patchItemPayload,
       {
         params: {
@@ -410,8 +405,8 @@ const handleSearchSubmit = async () => {
     closeSearchModal()
   } else {
     try {
-      const res = await axios.post(
-        `${baseApiUrl.value}/add-details`,
+      const res = await api.post(
+        `/${formKey.value}/add-details`,
         { query: inputCode },
         { params: { header_key: activeNotaId.value } }
       )
@@ -434,7 +429,7 @@ const deleteDetailRowFromServer = async () => {
 
   if (confirm('Hapus baris item belanja ini?')) {
     try {
-      const response = await axios.delete(`${baseApiUrl.value}/delete-details`, {
+      const response = await api.delete(`/${formKey.value}/delete-details`, {
         params: {
           header_key: activeNotaId.value,
           details_key: targetRow.id
@@ -453,7 +448,7 @@ const deleteDetailRowFromServer = async () => {
 const cancelTransactionFromServer = async (id) => {
   if (!confirm('Apakah anda yakin ingin membatalkan & menghapus permanen nota transaksi ini?')) return
   try {
-    await axios.delete(`${baseApiUrl.value}/cancel-transaction`, {
+    await api.delete(`/${formKey.value}/cancel-transaction`, {
       params: { header_key: id }
     })
 
@@ -476,8 +471,8 @@ const triggerAction = async (actionKey) => {
     if (localDetails.value.length === 0) return alert('Daftar barang belanja kosong!')
 
     try {
-      await axios.put(
-        `${baseApiUrl.value}/update-header`,
+      await api.put(
+        `/${formKey.value}/update-header`,
         { isFinalSubmit: true },
         { params: { header_key: activeNotaId.value } }
       )

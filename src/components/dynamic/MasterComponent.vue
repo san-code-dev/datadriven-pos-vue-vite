@@ -18,14 +18,6 @@
 						<span class="font-medium text-slate-700 dark:text-slate-300">{{ rows.length }}</span>
 						<span>items,</span>
 					</div>
-
-					<span>terakhir diubah
-						<span class="text-slate-400 dark:text-slate-500">{{ lastUpdatedText }}</span>,
-						<span @click="showLogModal = true"
-							class="text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300 font-medium cursor-pointer hover:underline transition-colors ml-1">
-							Log Audit
-						</span>
-					</span>
 					<div class="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700 ">
 						<template v-if="syncStatus.state === 'loading'">
 							<Icon icon="heroicons:arrow-path-20-solid"
@@ -82,8 +74,6 @@
 			</div>
 
 		</div>
-		<AuditLogDialog :isOpen="showLogModal" :tableName="props.schemaData?.key || 'Product'"
-			@close="showLogModal = false" />
 		<div class="flex flex-1 min-h-0 w-full overflow-hidden relative">
 			<div class="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
 				<div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
@@ -136,7 +126,7 @@ import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from '@/components/GridNavigator.vue'
 import DynamicFilter from '@/components/DynamicFilter.vue'
 
-import axios from 'axios'
+import api from '@/lib/axios'
 import { useTabStore } from '@/stores/tabs'
 import { useFilterStore } from '@/stores/filter'
 import { useRoute } from 'vue-router'
@@ -144,7 +134,6 @@ import { useRoute } from 'vue-router'
 import NumberColumnType from '@revolist/revogrid-column-numeral'
 import SelectTypePlugin from '@revolist/revogrid-column-select'
 import DateTypePlugin from '@revolist/revogrid-column-date'
-import AuditLogDialog from '@/components/AuditLogDialog.vue'
 
 const showLogModal = ref(false)
 const props = defineProps({
@@ -177,7 +166,6 @@ let activeTimeoutId = null
 
 const relationOptions = ref<{ [entityName: string]: Array<{ value: any, label: string }> }>({})
 
-// 🟢 BASE URL AGNOSTIC (Misal: /product)
 const formKey = computed(() => {
 	return props.menu.key.toLowerCase()
 })
@@ -236,52 +224,7 @@ const setSyncStatus = (state, message, autoResetDelay = 3000) => {
 	}
 }
 
-const formatRelativeTime = (timestamp) => {
-	if (!timestamp) return 'belum ada riwayat'
-	const now = new Date()
-	const diffInSeconds = Math.floor((now.getTime() - new Date(timestamp).getTime()) / 1000)
 
-	if (diffInSeconds < 30) return 'baru saja'
-	if (diffInSeconds < 60) return `${diffInSeconds} detik lalu`
-
-	const diffInMinutes = Math.floor(diffInSeconds / 60)
-	if (diffInMinutes < 60) return `${diffInMinutes} menit lalu`
-
-	const diffInHours = Math.floor(diffInMinutes / 60)
-	if (diffInHours < 24) return `${diffInHours} jam lalu`
-
-	return new Date(timestamp).toLocaleDateString('id-ID', {
-		day: 'numeric',
-		month: 'short',
-		hour: '2-digit',
-		minute: '2-digit'
-	})
-}
-
-const fetchLastAuditTimestamp = async () => {
-	const tableName = props.schemaData?.key || 'Product'
-	try {
-		const response = await axios.get('/audit-logs/get-all', { params: { tableName } })
-		const logs = response.data?.schema?.data || response.data?.data || []
-
-		if (logs.length > 0) {
-			const latestLog = logs[0]
-			const targetTime = latestLog.created_at || latestLog.createdAt || latestLog.date
-
-			if (lastUpdatedTimer) clearInterval(lastUpdatedTimer)
-			lastUpdatedText.value = formatRelativeTime(targetTime)
-
-			lastUpdatedTimer = setInterval(() => {
-				lastUpdatedText.value = formatRelativeTime(targetTime)
-			}, 30000)
-		} else {
-			lastUpdatedText.value = 'belum pernah diubah'
-		}
-	} catch (err) {
-		console.error('Gagal mengambil data timestamp audit:', err)
-		lastUpdatedText.value = 'gagal memuat'
-	}
-}
 
 const fetchRelationOptions = async () => {
 	const schema = props.schemaData?.schema || []
@@ -293,7 +236,7 @@ const fetchRelationOptions = async () => {
 		if (relationOptions.value[entity]) continue
 
 		try {
-			const response = await axios.get(`/${entity}/get-all`)
+			const response = await api.get(`/${entity}/get-all`)
 			const rawData = response.data?.schema?.data || response.data?.data || []
 			relationOptions.value[entity] = rawData.map((item: any) => ({
 				value: item.id,
@@ -309,9 +252,9 @@ const fetchRelationOptions = async () => {
 const fetchGridData = async () => {
 	setSyncStatus('loading', 'Mengambil data..')
 	try {
-		const response = await axios.get(`/${formKey.value}/get-all`, {
+		const response = await api.get(`/${formKey.value}/get-all`, {
 			params: {
-				where: activeFilters.value
+				filter: JSON.stringify(activeFilters.value)
 			}
 		})
 
@@ -327,7 +270,6 @@ const fetchGridData = async () => {
 		}
 		getGrid().requestGridRowsRedraw?.()
 		setSyncStatus('success', 'Selesai sinkronisasi')
-		fetchLastAuditTimestamp()
 	} catch (err: any) {
 		console.error("Gagal sinkronisasi data dengan server:", err)
 		setSyncStatus('error', `Gagal memuat: ${err.message || 'Server Error'}`)
@@ -383,7 +325,6 @@ const loadComponentData = async () => {
 	rows.value = res.data ? [...res.data] : []
 	primaryKey.value = (res.schema || []).find(f => f.primary)?.key || 'id'
 	permission.value = res.permissions || {}
-	fetchLastAuditTimestamp()
 
 	await nextTick()
 
@@ -456,8 +397,7 @@ const afterEdit = async (event) => {
 
 	setSyncStatus('loading', 'Memperbarui..')
 	try {
-		// PUT /product/update?id=12 -> argumen ke-1: id=12 (dari query), argumen ke-2: updatedModel (dari req.body)
-		const response = await axios.put(`/${formKey.value}/update`, updatedModel, {
+		const response = await api.put(`/${formKey.value}/update`, updatedModel, {
 			params: { id: recordId }
 		})
 
@@ -469,7 +409,6 @@ const afterEdit = async (event) => {
 				if (targetIdx !== -1) currentTab.apiResponse.data[targetIdx] = { ...updatedModel }
 			}
 			setSyncStatus('success', 'Perubahan disimpan')
-			fetchLastAuditTimestamp()
 		}
 	} catch (err: any) {
 		console.error('Gagal auto-save:', err)
@@ -528,8 +467,7 @@ const handleAddNewRow = async () => {
 
 	setSyncStatus('loading', 'Memperbarui..')
 	try {
-		// POST /product/create -> argumen: body (dari req.body)
-		const response = await axios.post(`/${formKey.value}/create`, {})
+		const response = await api.post(`/${formKey.value}/create`, {})
 
 		if (response.status === 201 || response.status === 200) {
 			const serverNewData = response.data.data || response.data
@@ -550,7 +488,6 @@ const handleAddNewRow = async () => {
 
 			setTimeout(() => { navigatorRef.value?.scrollToLastRow?.() }, 50)
 			setSyncStatus('success', 'Baris baru ditambahkan')
-			fetchLastAuditTimestamp()
 		}
 	} catch (err: any) {
 		console.error("Gagal menambahkan baris baru:", err)
@@ -571,8 +508,7 @@ const handleDeleteKey = async () => {
 	if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
 		setSyncStatus('loading', 'Menghapus..')
 		try {
-			// DELETE /product/delete?id=12 -> argumen: id=12 (dari query)
-			const response = await axios.delete(`/${formKey.value}/delete`, {
+			const response = await api.delete(`/${formKey.value}/delete`, {
 				params: { id: recordId }
 			})
 
@@ -588,7 +524,6 @@ const handleDeleteKey = async () => {
 				grid.setCellsFocus?.({ x: 0, y: nextY }, { x: 0, y: nextY })
 
 				setSyncStatus('success', 'Data berhasil dihapus')
-				fetchLastAuditTimestamp()
 			}
 		} catch (err: any) {
 			console.error("Gagal menghapus data:", err)

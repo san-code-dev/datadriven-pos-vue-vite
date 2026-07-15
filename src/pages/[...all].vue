@@ -90,7 +90,7 @@ const fetchSchemaFromApi = async () => {
         console.log(requestUrl)
         const response = await api.get(requestUrl, {
             params: {
-                where: JSON.stringify(activeFilters)
+                filter: JSON.stringify(activeFilters)
             }
         })
 

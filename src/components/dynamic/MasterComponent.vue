@@ -135,7 +135,6 @@ import NumberColumnType from '@revolist/revogrid-column-numeral'
 import SelectTypePlugin from '@revolist/revogrid-column-select'
 import DateTypePlugin from '@revolist/revogrid-column-date'
 
-const showLogModal = ref(false)
 const props = defineProps({
 	menu: { type: Object, required: true },
 	schemaData: { type: Object, required: true }
@@ -159,8 +158,6 @@ const searchInputRef = ref(null)
 const activeFilters = ref(filterStore.getFiltersByTab(props.menu?.route || route.path) || {})
 
 const syncStatus = ref({ state: 'idle', message: '' })
-const lastUpdatedText = ref('baru saja')
-let lastUpdatedTimer = null
 let statusResetTimeout = null
 let activeTimeoutId = null
 
@@ -224,8 +221,6 @@ const setSyncStatus = (state, message, autoResetDelay = 3000) => {
 	}
 }
 
-
-
 const fetchRelationOptions = async () => {
 	const schema = props.schemaData?.schema || []
 	const relationFields = schema.filter(f => f.type === 'relation' && f.relation)
@@ -248,7 +243,7 @@ const fetchRelationOptions = async () => {
 	}
 }
 
-// 🟢 GET ALL: Sesuai dynamic controller GET /:form_key/get-all?where=...
+// 🟢 FETCH GRID DATA: Bertanggung jawab mandiri mengambil data tabel backend
 const fetchGridData = async () => {
 	setSyncStatus('loading', 'Mengambil data..')
 	try {
@@ -258,8 +253,7 @@ const fetchGridData = async () => {
 			}
 		})
 
-		const freshData = response.data?.schema?.data || response.data?.data || []
-
+		const freshData = response.data || response.data?.schema?.data || response.data?.data || []
 		rows.value = [...freshData]
 
 		if (tabStore.activeTabId === props.menu?.route) {
@@ -268,6 +262,7 @@ const fetchGridData = async () => {
 				currentTab.apiResponse.data = [...freshData]
 			}
 		}
+
 		getGrid().requestGridRowsRedraw?.()
 		setSyncStatus('success', 'Selesai sinkronisasi')
 	} catch (err: any) {
@@ -276,6 +271,7 @@ const fetchGridData = async () => {
 	}
 }
 
+// 🟢 LOAD COMPONENT DATA: Dipicu saat props schemaData masuk / berubah
 const loadComponentData = async () => {
 	const res = props.schemaData
 	if (!res) return
@@ -322,9 +318,11 @@ const loadComponentData = async () => {
 		return columnConfig
 	})
 
-	rows.value = res.data ? [...res.data] : []
 	primaryKey.value = (res.schema || []).find(f => f.primary)?.key || 'id'
 	permission.value = res.permissions || {}
+
+	// 🌟 KARENA METADATA BERSIFAT KOSONG DARI DATA TABEL, LANGSUNG TARIK DATA DI SINI
+	await fetchGridData()
 
 	await nextTick()
 
@@ -387,7 +385,6 @@ const beforeEdit = (event) => {
 	}
 }
 
-// 🟢 UPDATE: Sesuai dynamic controller PUT /:form_key/update?id=:id dengan Body Payload
 const afterEdit = async (event) => {
 	if (event.detail.oldValue === event.detail.value) return
 
@@ -458,7 +455,6 @@ const handleArrowUp = (currentY) => {
 	if (currentY === 0) console.log('ARROW UP di baris pertama')
 }
 
-// 🟢 CREATE: Sesuai dynamic controller POST /:form_key/create dengan Body Payload kosong {}
 const handleAddNewRow = async () => {
 	if (!permission.value.create) {
 		alert('Anda tidak memiliki akses untuk menambah data!')
@@ -475,6 +471,7 @@ const handleAddNewRow = async () => {
 
 			const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
 			if (currentTab?.apiResponse) {
+				if (!currentTab.apiResponse.data) currentTab.apiResponse.data = []
 				currentTab.apiResponse.data = [...currentTab.apiResponse.data, serverNewData]
 			}
 
@@ -495,7 +492,6 @@ const handleAddNewRow = async () => {
 	}
 }
 
-// 🟢 DELETE: Sesuai dynamic controller DELETE /:form_key/delete?id=:id
 const handleDeleteKey = async () => {
 	if (!permission.value.delete) return
 
@@ -587,25 +583,17 @@ const handleWindowFocus = () => {
 	}
 }
 
-const handlePrint = () => {
-	window.print()
-}
-
-const handleExport = () => {
-	console.log("Ekspor data ke CSV/Excel...", rows.value)
-}
+const handlePrint = () => { window.print() }
+const handleExport = () => { console.log("Ekspor data ke CSV/Excel...", rows.value) }
 
 onBeforeUnmount(() => {
 	if (activeTimeoutId) clearTimeout(activeTimeoutId)
-	if (lastUpdatedTimer) clearInterval(lastUpdatedTimer)
 	if (statusResetTimeout) clearTimeout(statusResetTimeout)
 	document.removeEventListener('visibilitychange', handleWindowFocus)
-
 	getGrid().removeEventListener?.('mousedown', handleMouseDown)
 
 	rows.value = []
 	columns.value = []
-	console.log('Memory cleared perfectly.')
 })
 
 watch(() => props.schemaData, loadComponentData)

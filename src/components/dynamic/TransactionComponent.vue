@@ -2,6 +2,7 @@
   <div
     class="flex flex-col h-full max-h-full overflow-hidden min-h-0 bg-slate-100 dark:bg-slate-900 w-full p-3 gap-3 font-sans select-none">
 
+    <!-- Antrian / Queue Header -->
     <div
       class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 flex-shrink-0 text-xs">
       <div class="flex flex-wrap items-center gap-2">
@@ -11,7 +12,7 @@
             : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'"
           class="px-3 py-1.5 font-medium rounded-lg transition-all flex items-center gap-1.5 focus:outline-none">
           <span>{{ primaryKeyLabel }} #{{ nota.id }} <span v-if="nota.customer" class="opacity-90">({{ nota.customer
-              }})</span></span>
+          }})</span></span>
           <span @click.stop="cancelTransactionFromServer(nota.id)"
             :class="activeNotaId === nota.id ? 'hover:bg-emerald-700 text-emerald-200' : 'hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-400'"
             class="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold transition ml-0.5">✕</span>
@@ -32,7 +33,10 @@
       </div>
     </div>
 
+    <!-- Main Workspace Area -->
     <div class="flex-1 grid grid-cols-12 gap-3 min-h-0 w-full items-stretch">
+
+      <!-- Left Column: RevoGrid Detail Section -->
       <div
         class="col-span-12 lg:col-span-9 flex flex-col bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl overflow-hidden p-4 relative min-h-0 gap-3">
 
@@ -59,6 +63,7 @@
             @afteredit="handleServerGridEdit" @keydown="handleKeyDown" />
         </div>
 
+        <!-- Dynamic Quick Action Bar -->
         <div
           class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-100 dark:border-slate-800 flex-shrink-0">
           <div :class="lastActiveGrid === 'header' ? 'bg-amber-500' : 'bg-emerald-500'"
@@ -73,6 +78,7 @@
         </div>
       </div>
 
+      <!-- Right Column: Sidebar Form Header Info & Highlights -->
       <div class="col-span-12 lg:col-span-3 flex flex-col gap-3 min-h-0 overflow-y-auto scrollbar-none">
         <div
           class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-4 flex flex-col gap-3 flex-shrink-0">
@@ -115,16 +121,18 @@
           <div v-else class="text-center py-4 text-slate-400 text-xs italic">Belum ada transaksi aktif.</div>
         </div>
 
+        <!-- Highlight Panel (Grand Total, dsb - Terkalkulasi Lokal secara Real-time) -->
         <div v-for="hl in highlightConfig" :key="hl.key"
           class="bg-slate-900 text-emerald-400 dark:bg-slate-950 p-4 rounded-xl flex flex-col justify-between shadow-md border border-slate-800 min-h-[90px] flex-shrink-0">
           <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">{{ hl.label }}</div>
           <div class="text-xl md:text-2xl lg:text-3xl font-black tracking-tight text-right font-mono break-all w-full">
-            {{ hl.type === 'currency' ? formatCurrency(localHeader[hl.field]) : localHeader[hl.field] || 0 }}
+            {{ displayHighlightValue(hl.field, hl.type) }}
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Footer Action Toolbar -->
     <div
       class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-4 flex-shrink-0">
       <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-medium text-slate-400">
@@ -150,6 +158,7 @@
       </div>
     </div>
 
+    <!-- Global Floating Search Modal Input -->
     <div v-if="showSearchModal" @click.self="closeSearchModal"
       class="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
       <div
@@ -181,16 +190,18 @@ import { evaluate } from 'mathjs'
 
 const props = defineProps({
   menu: { type: Object, required: true },
-  schemaData: { type: Object, default: null } // Di-pass langsung dari [...all].vue
+  schema: { type: Object, default: null }
 })
 
 const route = useRoute()
 const { formatNumber, formatCurrency } = useNumberFormat()
 
-const formKey = computed(() => {
-  return props.menu.key.toLowerCase()
-})
-// Metadata Schema State
+const formKey = computed(() => props.menu.key.toLowerCase())
+
+// Permanent Schema Lock
+const originalSchema = ref<any>(null)
+
+// Metadata & Schema Labels State
 const schemaLabel = ref('')
 const headerLabel = ref('TRANSAKSI')
 const detailLabel = ref('ITEM')
@@ -201,10 +212,10 @@ const detailColumns = ref([])
 const actionButtons = ref([])
 const highlightConfig = ref([])
 
-// Real-time Queue & Current Active Record
+// Active Queue & Record State
 const localQueue = ref([])
 const activeNotaId = ref(null)
-const localHeader = ref({})
+const localHeader = ref<Record<string, any>>({})
 const localDetails = ref([])
 
 // Dropdown Relation Cache Map
@@ -218,7 +229,6 @@ const searchInputRef = ref(null)
 const lastActiveGrid = ref('detail')
 const focusedCoordinate = ref({ x: -1, y: -1 })
 
-
 const headerRelationField = computed(() => headerSchemaRaw.value.find(f => f.type === 'relation') || null)
 const filteredHeaderSchema = computed(() => {
   const highlights = highlightConfig.value.map(h => h.field)
@@ -226,57 +236,38 @@ const filteredHeaderSchema = computed(() => {
 })
 
 // ==========================================
-//           LIFECYCLE HOOKS
+//   CLIENT-SIDE CALCULATED AGGREGATE ENGINE
 // ==========================================
-onMounted(async () => {
-  await fetchHeaderRelations()
+const displayHighlightValue = computed(() => {
+  return (fieldKey: string, fieldType: string) => {
+    const targetDetailField = detailSchemaRaw.value.find(f => f.type === 'computed' && f.key === fieldKey)
 
-  // Jika schema sudah dimuat oleh [...all].vue, langsung aplikasikan
-  if (props.schemaData) {
-    applySchemaToComponent(props.schemaData)
-  } else {
-    await fetchInitialLoad()
-  }
-
-  window.addEventListener('keydown', handleGlobalShortcuts)
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleGlobalShortcuts)
-})
-
-// Mengamati perubahan tab rute untuk re-fetch metadata
-watch(() => route.path, async () => {
-  await fetchHeaderRelations()
-  await fetchInitialLoad()
-})
-
-// ==========================================
-//       SERVERSIDE CONFIG & RECORD FETCH
-// ==========================================
-const fetchHeaderRelations = async () => {
-  try {
-    // Memuat relasi master customer secara dinamis
-    const resCustomer = await api.get(`/${formKey.value}/customer`).catch(() => ({ data: [] }))
-    masterRelations.value.customer = resCustomer.data || []
-  } catch (e) {
-    console.error('Gagal memuat relasi master data:', e)
-  }
-}
-
-const fetchInitialLoad = async () => {
-  try {
-    const response = await api.get(`/${formKey.value}/get-last-transaction`)
-    if (response.data) {
-      applySchemaToComponent(response.data)
+    if (targetDetailField && targetDetailField.formula) {
+      let grandTotal = 0
+      localDetails.value.forEach(rowData => {
+        let formulaString = targetDetailField.formula
+        formulaString = formulaString.replace(/\{([^}]+)\}/g, (_, key) => String(Number(rowData[key]) || 0))
+        try {
+          grandTotal += evaluate(formulaString)
+        } catch (err) {
+          console.error(`Gagal mengevaluasi akumulasi total untuk ${fieldKey}:`, err)
+        }
+      })
+      return fieldType === 'currency' ? formatCurrency(grandTotal) : grandTotal
     }
-  } catch (error) {
-    console.error('Gagal melakukan inisialisasi data transaksi akhir:', error)
-  }
-}
 
-const applySchemaToComponent = (schema) => {
+    const fallbackValue = localHeader.value[fieldKey] || 0
+    return fieldType === 'currency' ? formatCurrency(fallbackValue) : fallbackValue
+  }
+})
+
+// ==========================================
+//        COMPONENTS STRUCT INITIALIZER
+// ==========================================
+const initComponentSchema = (schema: any) => {
   if (!schema) return
+  originalSchema.value = schema
+
   schemaLabel.value = schema.label || ''
   actionButtons.value = schema.actions || []
   headerLabel.value = schema.header?.label || 'INFORMASI UTAMA'
@@ -289,201 +280,33 @@ const applySchemaToComponent = (schema) => {
     .filter(f => f.highlight)
     .map(f => ({ key: f.key, label: f.label, field: f.key, type: f.type }))
 
-  localHeader.value = schema.header?.data || {}
-  localDetails.value = schema.details?.data || []
-  activeNotaId.value = schema.header?.data?.id || null
-
-  if (schema.queue && Array.isArray(schema.queue.data)) {
-    localQueue.value = schema.queue.data
-  }
-
   buildRevoGridColumnsConfig()
 }
 
 // ==========================================
-//        SYNCHRONIZED CORE OPERATION
+//          PURE TRANSACTION DATA MAPPER
 // ==========================================
-const tambahAntrianServer = async () => {
-  try {
-    const response = await api.post(`/${formKey.value}/new-transaction`, {})
-    if (response.data) {
-      applySchemaToComponent(response.data)
-      await fetchInitialLoad()
-    }
-  } catch (e) {
-    alert('Gagal membuat antrian transaksi baru.')
+const applyDataToComponent = (resData: any) => {
+  if (!resData) return
+
+  const headerData = resData.header?.data || resData.header || resData
+  const detailsData = resData.details?.data || resData.details || []
+
+  localHeader.value = headerData
+  localDetails.value = Array.isArray(detailsData) ? detailsData : []
+  activeNotaId.value = headerData?.id || null
+
+  if (resData.queue && Array.isArray(resData.queue.data)) {
+    localQueue.value = resData.queue.data
+  } else if (Array.isArray(resData.queue)) {
+    localQueue.value = resData.queue
   }
-}
 
-const setActiveAntrian = async (id) => {
-  try {
-    const response = await api.get(`/${formKey.value}/get-transaction`, {
-      params: { header_key: id }
-    })
-    if (response.data) {
-      applySchemaToComponent(response.data)
+  nextTick(() => {
+    if (gridRef.value?.$el) {
+      gridRef.value.$el.requestGridRowsRedraw?.()
     }
-  } catch (e) {
-    console.error('Gagal memuat detail transaksi antrian:', e)
-  }
-}
-
-const updateHeaderToServer = async (key, val) => {
-  if (!activeNotaId.value) return
-  try {
-    const patchPayload = { [key]: val }
-    const response = await api.put(`/${formKey.value}/update-header`, patchPayload, {
-      params: { header_key: activeNotaId.value }
-    })
-
-    if (response.data) {
-      applySchemaToComponent(response.data)
-
-      if (key === headerRelationField.value?.key) {
-        const currentIdx = localQueue.value.findIndex(q => q.id === activeNotaId.value)
-        const custObj = masterRelations.value.customer.find(c => c.id === Number(val))
-        if (currentIdx !== -1 && custObj) {
-          localQueue.value[currentIdx].customer = custObj[headerRelationField.value.relation?.displayField] || custObj.name
-        }
-      }
-    }
-  } catch (e) {
-    console.error('Gagal sinkronisasi data header ke server:', e)
-  }
-}
-
-const handleKeyDown = async (e) => {
-  if (e.repeat) return
-
-  if (e.key === 'Delete') {
-    e.preventDefault()
-    deleteDetailRowFromServer()
-  }
-}
-
-const handleServerGridEdit = async (event) => {
-  const detail = event.detail || event
-  const prop = detail.prop
-  const val = detail.val
-  const rowIndex = detail.rowIndex
-
-  const targetRow = localDetails.value[rowIndex]
-  if (!targetRow || !targetRow.id) return
-
-  try {
-    const processedValue = !isNaN(Number(val)) && val !== '' ? Number(val) : val
-    const patchItemPayload = { [prop]: processedValue }
-
-    const response = await api.put(
-      `/${formKey.value}/update-details`,
-      patchItemPayload,
-      {
-        params: {
-          header_key: activeNotaId.value,
-          details_key: targetRow.id
-        }
-      }
-    )
-
-    if (response.data) {
-      applySchemaToComponent(response.data)
-    }
-  } catch (e) {
-    console.error("Gagal mengirim update dinamis ke server:", e)
-    alert('Gagal mengubah data item di server.')
-  }
-}
-
-const handleSearchSubmit = async () => {
-  const inputCode = searchQuery.value.trim()
-  if (!inputCode) return
-
-  if (lastActiveGrid.value === 'header') {
-    if (headerRelationField.value) {
-      await updateHeaderToServer(headerRelationField.value.key, Number(inputCode))
-    }
-    closeSearchModal()
-  } else {
-    try {
-      const res = await api.post(
-        `/${formKey.value}/add-details`,
-        { query: inputCode },
-        { params: { header_key: activeNotaId.value } }
-      )
-
-      if (res.data) {
-        applySchemaToComponent(res.data)
-      }
-    } catch (e: any) {
-      const errorMsg = e.response?.data?.error || 'Produk tidak ditemukan atau gagal dimasukkan.'
-      alert(errorMsg)
-    }
-    closeSearchModal()
-  }
-}
-
-const deleteDetailRowFromServer = async () => {
-  if (focusedCoordinate.value.y === -1 || localDetails.value.length === 0) return
-  const targetRow = localDetails.value[focusedCoordinate.value.y]
-  if (!targetRow || !targetRow.id) return
-
-  if (confirm('Hapus baris item belanja ini?')) {
-    try {
-      const response = await api.delete(`/${formKey.value}/delete-details`, {
-        params: {
-          header_key: activeNotaId.value,
-          details_key: targetRow.id
-        }
-      })
-      if (response.data) {
-        applySchemaToComponent(response.data)
-        focusedCoordinate.value = { x: -1, y: -1 }
-      }
-    } catch (e) {
-      alert('Gagal menghapus detail item.')
-    }
-  }
-}
-
-const cancelTransactionFromServer = async (id) => {
-  if (!confirm('Apakah anda yakin ingin membatalkan & menghapus permanen nota transaksi ini?')) return
-  try {
-    await api.delete(`/${formKey.value}/cancel-transaction`, {
-      params: { header_key: id }
-    })
-
-    if (activeNotaId.value === id) {
-      activeNotaId.value = null
-      localHeader.value = {}
-      localDetails.value = []
-    }
-    await fetchInitialLoad()
-  } catch (e) {
-    alert('Gagal membatalkan transaksi pada server database.')
-  }
-}
-
-const triggerAction = async (actionKey) => {
-  if (!activeNotaId.value) return
-
-  if (actionKey === 'pay') {
-    if (!localHeader.value.customerId) return alert('Silahkan pilih Customer terlebih dahulu!')
-    if (localDetails.value.length === 0) return alert('Daftar barang belanja kosong!')
-
-    try {
-      await api.put(
-        `/${formKey.value}/update-header`,
-        { isFinalSubmit: true },
-        { params: { header_key: activeNotaId.value } }
-      )
-      alert('Transaksi Berhasil Disimpan & Dicetak!')
-
-      activeNotaId.value = null
-      await fetchInitialLoad()
-    } catch (error) {
-      alert('Gagal memproses simpan transaksi.')
-    }
-  }
+  })
 }
 
 // ==========================================
@@ -533,6 +356,221 @@ const buildRevoGridColumnsConfig = () => {
   })
 }
 
+// ==========================================
+//       SERVERSIDE CONFIG & RECORD FETCH
+// ==========================================
+const fetchHeaderRelations = async () => {
+  // try {
+  //   const resCustomer = await api.get(`/${formKey.value}/customer`).catch(() => ({ data: [] }))
+  //   masterRelations.value.customer = resCustomer.data || []
+  // } catch (e) {
+  //   console.error('Gagal memuat relasi master data:', e)
+  // }
+}
+
+const fetchInitialLoad = async () => {
+  try {
+    const response = await api.get(`/${formKey.value}/get-last-transaction`)
+    if (response.data) {
+      props.schema.data = response.data
+    }
+    console.log(response)
+  } catch (error) {
+    console.error('Gagal melakukan inisialisasi data transaksi akhir:', error)
+  }
+}
+
+// ==========================================
+//        SYNCHRONIZED CORE OPERATION
+// ==========================================
+const tambahAntrianServer = async () => {
+  try {
+    const response = await api.post(`/${formKey.value}/new-transaction`, {})
+    if (response.data) {
+      applyDataToComponent(response.data)
+      await fetchInitialLoad()
+    }
+  } catch (e) {
+    alert('Gagal membuat antrian transaksi baru.')
+  }
+}
+
+const setActiveAntrian = async (id) => {
+  try {
+    const response = await api.get(`/${formKey.value}/get-transaction`, {
+      params: { header_key: id }
+    })
+    if (response.data) {
+      applyDataToComponent(response.data)
+    }
+  } catch (e) {
+    console.error('Gagal memuat detail transaksi antrian:', e)
+  }
+}
+
+const updateHeaderToServer = async (key, val) => {
+  if (!activeNotaId.value) return
+  try {
+    const patchPayload = { [key]: val }
+    const response = await api.put(`/${formKey.value}/update-header`, patchPayload, {
+      params: { header_key: activeNotaId.value }
+    })
+
+    if (response.data) {
+      applyDataToComponent(response.data)
+
+      if (key === headerRelationField.value?.key) {
+        const currentIdx = localQueue.value.findIndex(q => q.id === activeNotaId.value)
+        const custObj = masterRelations.value.customer.find(c => c.id === Number(val))
+        if (currentIdx !== -1 && custObj) {
+          const queueCopy = [...localQueue.value]
+          queueCopy[currentIdx] = {
+            ...queueCopy[currentIdx],
+            customer: custObj[headerRelationField.value.relation?.displayField] || custObj.name
+          }
+          localQueue.value = queueCopy
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Gagal sinkronisasi data header ke server:', e)
+  }
+}
+
+const handleKeyDown = async (e) => {
+  if (e.repeat) return
+
+  if (e.key === 'Delete') {
+    e.preventDefault()
+    deleteDetailRowFromServer()
+  }
+}
+
+const handleServerGridEdit = async (event) => {
+  const detail = event.detail || event
+  const prop = detail.prop
+  const val = detail.val
+  const rowIndex = detail.rowIndex
+
+  const targetRow = localDetails.value[rowIndex]
+  if (!targetRow || !targetRow.id) return
+
+  try {
+    const processedValue = !isNaN(Number(val)) && val !== '' ? Number(val) : val
+    const patchItemPayload = { [prop]: processedValue }
+
+    const response = await api.put(
+      `/${formKey.value}/update-details`,
+      patchItemPayload,
+      {
+        params: {
+          header_key: activeNotaId.value,
+          details_key: targetRow.id
+        }
+      }
+    )
+
+    if (response.data) {
+      applyDataToComponent(response.data)
+    }
+  } catch (e) {
+    console.error("Gagal mengirim update dinamis ke server:", e)
+    alert('Gagal mengubah data item di server.')
+  }
+}
+
+const handleSearchSubmit = async () => {
+  const inputCode = searchQuery.value.trim()
+  if (!inputCode) return
+
+  if (lastActiveGrid.value === 'header') {
+    if (headerRelationField.value) {
+      await updateHeaderToServer(headerRelationField.value.key, Number(inputCode))
+    }
+    closeSearchModal()
+  } else {
+    try {
+      const res = await api.post(
+        `/${formKey.value}/add-details`,
+        { query: inputCode },
+        { params: { header_key: activeNotaId.value } }
+      )
+      console.log(res)
+      if (res.data) {
+        applyDataToComponent(res.data)
+      }
+    } catch (e: any) {
+      const errorMsg = e.response?.data?.error || 'Produk tidak ditemukan atau gagal dimasukkan.'
+      alert(errorMsg)
+    }
+    closeSearchModal()
+  }
+}
+
+const deleteDetailRowFromServer = async () => {
+  if (focusedCoordinate.value.y === -1 || localDetails.value.length === 0) return
+  const targetRow = localDetails.value[focusedCoordinate.value.y]
+  if (!targetRow || !targetRow.id) return
+
+  if (confirm('Hapus baris item belanja ini?')) {
+    try {
+      const response = await api.delete(`/${formKey.value}/delete-details`, {
+        params: {
+          header_key: activeNotaId.value,
+          details_key: targetRow.id
+        }
+      })
+      if (response.data) {
+        applyDataToComponent(response.data)
+        focusedCoordinate.value = { x: -1, y: -1 }
+      }
+    } catch (e) {
+      alert('Gagal menghapus detail item.')
+    }
+  }
+}
+
+const cancelTransactionFromServer = async (id) => {
+  if (!confirm('Apakah anda yakin ingin membatalkan & menghapus permanen nota transaksi ini?')) return
+  try {
+    await api.delete(`/${formKey.value}/cancel-transaction`, {
+      params: { header_key: id }
+    })
+
+    if (activeNotaId.value === id) {
+      activeNotaId.value = null
+      localHeader.value = {}
+      localDetails.value = []
+    }
+    await fetchInitialLoad()
+  } catch (e) {
+    alert('Gagal membatalkan transaksi pada server database.')
+  }
+}
+
+const triggerAction = async (actionKey) => {
+  if (!activeNotaId.value) return
+
+  if (actionKey === 'pay') {
+    if (!localHeader.value.customerId) return alert('Silahkan pilih Customer terlebih dahulu!')
+    if (localDetails.value.length === 0) return alert('Daftar barang belanja kosong!')
+
+    try {
+      await api.put(
+        `/${formKey.value}/update-header`,
+        { isFinalSubmit: true },
+        { params: { header_key: activeNotaId.value } }
+      )
+      alert('Transaksi Berhasil Disimpan & Dicetak!')
+
+      activeNotaId.value = null
+      await fetchInitialLoad()
+    } catch (error) {
+      alert('Gagal memproses simpan transaksi.')
+    }
+  }
+}
+
 const afterFocus = (e) => {
   lastActiveGrid.value = 'detail'
   focusedCoordinate.value = { x: e.detail.colIndex, y: e.detail.rowIndex }
@@ -567,4 +605,42 @@ const handleGlobalShortcuts = (e) => {
     triggerAction('pay')
   }
 }
+
+// ==========================================
+//    LIFECYCLE HOOKS & ROUTE WATCHERS
+// ==========================================
+onMounted(() => {
+  window.addEventListener('keydown', handleGlobalShortcuts)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleGlobalShortcuts)
+})
+
+watch(() => route.path, async () => {
+  await fetchHeaderRelations()
+
+  if (props.schema.data) {
+    initComponentSchema(props.schema.data)
+    applyDataToComponent(props.schema.data)
+  } else {
+    await fetchInitialLoad()
+  }
+}, { immediate: true })
 </script>
+
+<style scoped>
+.animate-fade-in {
+  animation: fadeIn 0.15s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+</style>

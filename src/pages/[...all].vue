@@ -49,6 +49,9 @@ const ensureDashboardTabExists = () => {
     }
 }
 
+// =========================================================================
+// SINKRONISASI ENDPOINT METADATA KEDUANYA MENJADI GET-MODULE-SCHEMA
+// =========================================================================
 const fetchSchemaFromApi = async () => {
     const currentPath = route.path
     ensureDashboardTabExists()
@@ -60,7 +63,6 @@ const fetchSchemaFromApi = async () => {
         return
     }
 
-    // Reset state visual sebelum memulai request baru
     isError.value = false
     isLoading.value = true
     errorMessage.value = ''
@@ -80,14 +82,12 @@ const fetchSchemaFromApi = async () => {
     try {
         const activeFilters = filterStore.getFiltersByTab(currentPath)
 
-        // 1. Tentukan target endpoint secara dinamis
-        // Jika modul berupa transaksi, muat metadata via `/get-last-transaction`
-        const cleanPath = currentPath.replace(/\/+$/, '') // Hilangkan trailing slash
-        const isTransaction = matchedMenu.type?.includes('transaction')
-        const requestUrl = isTransaction
-            ? `${cleanPath}/get-last-transaction`
-            : `${cleanPath}/get-all`
-        console.log(requestUrl)
+        // Hilangkan trailing slash dari path jika ada
+        const cleanPath = currentPath.replace(/\/+$/, '')
+
+        // 🟢 SEKARANG KEDUANYA MENGGUNAKAN GET-MODULE-SCHEMA
+        const requestUrl = `${cleanPath}/get-module-schema`
+
         const response = await api.get(requestUrl, {
             params: {
                 filter: JSON.stringify(activeFilters)
@@ -95,7 +95,7 @@ const fetchSchemaFromApi = async () => {
         })
 
         const responseData = response.data
-        console.log('API Response for', currentPath, ':', responseData)
+        console.log('Response for', requestUrl, ':', responseData)
 
         if (responseData) {
             const existingTab = tabStore.openedTabs.find(t => t.id === currentPath)
@@ -115,7 +115,7 @@ const fetchSchemaFromApi = async () => {
             tabStore.activeTabId = currentPath
         } else {
             isError.value = true
-            errorMessage.value = 'Server mengembalikan data kosong.'
+            errorMessage.value = 'Server mengembalikan skema kosong.'
         }
     } catch (err) {
         console.error('Fetch metadata failed:', err)
@@ -187,11 +187,9 @@ watch(() => route.path, fetchSchemaFromApi, { immediate: true })
 
         <div
             class="flex-1 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 h-screen max-h-screen flex flex-col overflow-hidden w-full min-w-0">
-
             <TabHeader />
 
             <div class="flex-1 min-h-0 relative overflow-hidden w-full">
-
                 <div v-if="isLoading"
                     class="absolute inset-0 bg-gray-50/60 dark:bg-gray-900/60 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-50 animate-delayed-fade">
                     <Icon icon="heroicons:arrow-path-20-solid"
@@ -225,7 +223,6 @@ watch(() => route.path, fetchSchemaFromApi, { immediate: true })
                         <span>Coba Lagi</span>
                     </button>
                 </div>
-
             </div>
         </div>
     </div>

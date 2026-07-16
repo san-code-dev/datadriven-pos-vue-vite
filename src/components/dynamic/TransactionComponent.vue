@@ -12,7 +12,7 @@
             : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'"
           class="px-3 py-1.5 font-medium rounded-lg transition-all flex items-center gap-1.5 focus:outline-none">
           <span>{{ primaryKeyLabel }} #{{ nota.id }} <span v-if="nota.customer" class="opacity-90">({{ nota.customer
-          }})</span></span>
+              }})</span></span>
           <span @click.stop="cancelTransactionFromServer(nota.id)"
             :class="activeNotaId === nota.id ? 'hover:bg-emerald-700 text-emerald-200' : 'hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-400'"
             class="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold transition ml-0.5">✕</span>
@@ -190,7 +190,7 @@ import { evaluate } from 'mathjs'
 
 const props = defineProps({
   menu: { type: Object, required: true },
-  schema: { type: Object, default: null }
+  schemaData: { type: Object, default: null }
 })
 
 const route = useRoute()
@@ -372,7 +372,7 @@ const fetchInitialLoad = async () => {
   try {
     const response = await api.get(`/${formKey.value}/get-last-transaction`)
     if (response.data) {
-      props.schema.data = response.data
+      props.schemaData.data = response.data
     }
     console.log(response)
   } catch (error) {
@@ -620,9 +620,9 @@ onBeforeUnmount(() => {
 watch(() => route.path, async () => {
   await fetchHeaderRelations()
 
-  if (props.schema.data) {
-    initComponentSchema(props.schema.data)
-    applyDataToComponent(props.schema.data)
+  if (props.schemaData.data) {
+    initComponentSchema(props.schemaData.data)
+    applyDataToComponent(props.schemaData.data)
   } else {
     await fetchInitialLoad()
   }

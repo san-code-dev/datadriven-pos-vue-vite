@@ -1,646 +1,740 @@
 <template>
   <div
-    class="flex flex-col h-full max-h-full overflow-hidden min-h-0 bg-slate-100 dark:bg-slate-900 w-full p-3 gap-3 font-sans select-none">
+    class="flex h-full max-h-full overflow-hidden min-h-0 bg-slate-50 dark:bg-slate-950 w-full text-slate-800 dark:text-slate-100">
 
-    <!-- Antrian / Queue Header -->
-    <div
-      class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 flex-shrink-0 text-xs">
-      <div class="flex flex-wrap items-center gap-2">
-        <button v-for="nota in localQueue" :key="nota.id" @click="setActiveAntrian(nota.id)"
-          :class="activeNotaId === nota.id
-            ? 'bg-emerald-600 text-white shadow-sm'
-            : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'"
-          class="px-3 py-1.5 font-medium rounded-lg transition-all flex items-center gap-1.5 focus:outline-none">
-          <span>{{ primaryKeyLabel }} #{{ nota.id }} <span v-if="nota.customer" class="opacity-90">({{ nota.customer
-              }})</span></span>
-          <span @click.stop="cancelTransactionFromServer(nota.id)"
-            :class="activeNotaId === nota.id ? 'hover:bg-emerald-700 text-emerald-200' : 'hover:bg-slate-300 dark:hover:bg-slate-500 text-slate-400'"
-            class="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold transition ml-0.5">✕</span>
-        </button>
-
-        <button @click="tambahAntrianServer"
-          class="px-3 py-1.5 font-medium bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg transition-all flex items-center gap-1 border border-dashed border-slate-300 dark:border-slate-600 focus:outline-none">
-          <Icon icon="mdi:plus" class="w-3.5 h-3.5" />
-          <span>Buat {{ headerLabel }}</span>
-          <kbd
-            class="opacity-60 text-[10px] bg-slate-100 dark:bg-slate-900 px-1 rounded border border-slate-200 dark:border-slate-700 font-mono">[F2]</kbd>
+    <!-- ==================== SIDEBAR PENJUALAN TERSIMPAN (SHOW/HIDE) ==================== -->
+    <div :class="[
+      'border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col h-full shrink-0 transition-all duration-300 relative',
+      isSidebarOpen ? 'w-80' : 'w-0 overflow-hidden border-r-0'
+    ]">
+      <!-- Header Sidebar -->
+      <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
+        <h3
+          class="font-bold text-xs tracking-wider text-slate-500 dark:text-slate-400 uppercase flex items-center gap-2">
+          <Icon icon="heroicons:archive-box-20-solid" class="w-4 h-4 text-slate-400" />
+          Penjualan Disimpan
+        </h3>
+        <button @click="isSidebarOpen = false"
+          class="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          title="Sembunyikan Sidebar">
+          <Icon icon="heroicons:chevron-double-left-20-solid" class="w-5 h-5" />
         </button>
       </div>
 
-      <div class="flex items-center gap-2">
-        <span class="font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-[10px]">Mode: {{
-          schemaLabel }}</span>
+      <!-- List Penjualan yang Sudah Disimpan -->
+      <div class="flex-1 overflow-y-auto p-2 space-y-1.5">
+        <div v-if="savedTransactions.length === 0" class="text-center py-8 text-xs text-slate-400">
+          Belum ada transaksi disimpan.
+        </div>
+        <div v-for="item in savedTransactions" :key="item.id" @click="loadTransaction(item.id)" :class="[
+          'p-3 rounded-lg border cursor-pointer transition-all flex flex-col gap-1',
+          activeHeaderId === item.id
+            ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800/80 ring-1 ring-emerald-100 dark:ring-emerald-900/30'
+            : 'bg-white border-slate-100 dark:bg-slate-900 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+        ]">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono font-semibold text-slate-400 dark:text-slate-500">ID: #{{ item.id }}</span>
+            <span
+              class="text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400">
+              Saved
+            </span>
+          </div>
+          <span class="text-sm font-semibold truncate">{{ item.label || item.customer?.name || 'Pelanggan Umum'
+            }}</span>
+          <div
+            class="flex items-center justify-between text-xs text-slate-400 mt-1 border-t border-dashed border-slate-100 dark:border-slate-850 pt-1">
+            <span>{{ item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID') : '-' }}</span>
+            <span class="font-bold text-slate-700 dark:text-slate-300">{{ formatCurrency(item.total_harga || item.total)
+              }}</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Main Workspace Area -->
-    <div class="flex-1 grid grid-cols-12 gap-3 min-h-0 w-full items-stretch">
+    <!-- TRIGGER BUTTON SAAT SIDEBAR DISEMBUNYIKAN -->
+    <button v-if="!isSidebarOpen" @click="isSidebarOpen = true"
+      class="absolute left-0 top-1/2 -translate-y-1/2 z-40 bg-white dark:bg-slate-900 border border-l-0 border-slate-200 dark:border-slate-800 p-2 rounded-r-xl shadow-md hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-blue-500 transition-all text-slate-400"
+      title="Tampilkan Riwayat Simpan">
+      <Icon icon="heroicons:chevron-double-right-20-solid" class="w-5 h-5" />
+    </button>
 
-      <!-- Left Column: RevoGrid Detail Section -->
+    <!-- ==================== MAIN TRANSACTION AREA ==================== -->
+    <div class="flex-1 flex flex-col h-full overflow-hidden min-h-0 relative">
+
+      <!-- HEADER STATUS & CONTROL ACTIONS -->
       <div
-        class="col-span-12 lg:col-span-9 flex flex-col bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl overflow-hidden p-4 relative min-h-0 gap-3">
-
-        <div v-if="!activeNotaId"
-          class="absolute inset-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-20 rounded-xl">
-          <p class="text-slate-400 text-sm font-semibold flex items-center gap-2">
-            <Icon icon="mdi:form-select" class="w-5 h-5 text-slate-400" />
-            Silahkan buat atau pilih transaksi {{ headerLabel }} [F2] terlebih dahulu
-          </p>
+        class="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
+        <div class="flex items-center gap-3 select-none">
+          <span class="font-bold text-base tracking-tight text-slate-800 dark:text-slate-200">
+            {{ schemaData.label || 'Transaksi' }}
+          </span>
+          <div class="flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-700 text-xs">
+            <template v-if="syncStatus.state === 'loading'">
+              <Icon icon="heroicons:arrow-path-20-solid" class="w-4 h-4 animate-spin text-emerald-500" />
+              <span class="text-slate-500">{{ syncStatus.message }}</span>
+            </template>
+            <template v-else-if="syncStatus.state === 'success'">
+              <Icon icon="heroicons:check-circle-20-solid" class="w-4 h-4 text-emerald-500" />
+              <span class="text-emerald-600 dark:text-emerald-400 font-medium">{{ syncStatus.message }}</span>
+            </template>
+            <template v-else-if="syncStatus.state === 'error'">
+              <Icon icon="heroicons:exclamation-circle-20-solid" class="w-4 h-4 text-rose-500" />
+              <span class="text-rose-600 dark:text-rose-400 font-medium animate-pulse">{{ syncStatus.message }}</span>
+            </template>
+          </div>
         </div>
 
-        <div class="flex justify-between items-center flex-shrink-0">
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ detailLabel }}</span>
-          <button @click="openSearchModalDirect('detail')"
-            class="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400 px-2.5 py-1 rounded-lg transition-colors">
-            <Icon icon="mdi:playlist-plus" class="w-4 h-4" /> Tambah Item (Scan/Cari)
+        <div class="flex items-center gap-2">
+          <!-- Tombol Tambah Detil Produk Langsung -->
+          <button @click="openSearchProduct('')" type="button"
+            class="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-500 transition-colors shadow-sm flex items-center gap-1.5">
+            <Icon icon="heroicons:plus-circle-20-solid" class="w-4 h-4" />
+            <span>Tambah Item</span>
+            <kbd class="ml-1 text-[9px] bg-blue-750 px-1 py-0.5 rounded text-blue-100 font-mono">[F4]</kbd>
+          </button>
+
+          <!-- Dinamis Actions dari schema (print, pay dll) -->
+          <button v-for="action in (schemaData.actions || [])" :key="action.key"
+            @click="triggerCustomAction(action.key)" class="btn-action-slate">
+            <span>{{ action.label }}</span>
+          </button>
+
+          <button @click="handleSaveTransaction" type="button"
+            class="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-500 transition-colors shadow-sm">
+            <span>Simpan Transaksi</span>
+            <kbd class="ml-1.5 text-[9px] bg-emerald-700 px-1 py-0.5 rounded text-emerald-100 font-mono">[F9]</kbd>
+          </button>
+
+          <button @click="handleCancelTransaction" type="button"
+            class="px-3 py-1.5 bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 rounded-lg text-xs font-medium hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors">
+            <span>Batal</span>
           </button>
         </div>
+      </div>
 
-        <div
-          class="flex-1 min-h-0 relative rounded-lg border border-slate-200/60 dark:border-slate-700/60 overflow-hidden">
-          <RevoGrid ref="gridRef" class="w-full h-full max-h-full focus:outline-none" :columns="detailColumns"
-            :source="localDetails" :theme="isDark ? 'darkCompact' : 'compact'" resize="true" @afterfocus="afterFocus"
-            @afteredit="handleServerGridEdit" @keydown="handleKeyDown" />
-        </div>
+      <!-- ==================== TABS ANTREAN (DRAFTS) ==================== -->
+      <div
+        class="flex items-center gap-3 px-4 py-2 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shrink-0 overflow-hidden">
+        <span
+          class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0 flex items-center gap-1">
+          <Icon icon="heroicons:clock-20-solid" class="w-3.5 h-3.5" />
+          Antrean Aktif (Draft)
+        </span>
+        <div class="flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <button v-for="item in queueData" :key="item.id" @click="loadTransaction(item.id)" :class="[
+            'px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 shadow-sm',
+            activeHeaderId === item.id
+              ? 'bg-blue-600 border-blue-600 text-white dark:bg-blue-500 dark:border-blue-500'
+              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800'
+          ]">
+            <span class="w-1.5 h-1.5 rounded-full"
+              :class="activeHeaderId === item.id ? 'bg-white animate-pulse' : 'bg-slate-400'"></span>
+            <span>{{ item.label || `Draft #${item.id}` }}</span>
+          </button>
 
-        <!-- Dynamic Quick Action Bar -->
-        <div
-          class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-100 dark:border-slate-800 flex-shrink-0">
-          <div :class="lastActiveGrid === 'header' ? 'bg-amber-500' : 'bg-emerald-500'"
-            class="text-white p-2 rounded-lg flex-shrink-0">
-            <Icon :icon="lastActiveGrid === 'header' ? 'mdi:account-box-outline' : 'mdi:barcode-scan'"
-              class="w-4 h-4" />
-          </div>
-          <input type="text"
-            :placeholder="lastActiveGrid === 'header' ? 'Mode Header: Cari Data Relator...' : 'Mode Detail: Masukkan Barcode / ID Produk...'"
-            class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs px-3 py-2 rounded-lg focus:outline-none cursor-pointer font-medium shadow-sm"
-            @click="openSearchModal" readonly />
+          <!-- Tombol Tambah Draft Antrean Baru -->
+          <button @click="handleNewTransaction"
+            class="p-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all flex items-center justify-center shrink-0"
+            title="Tambah Antrean Baru (F2)">
+            <Icon icon="heroicons:plus-20-solid" class="w-4 h-4" />
+          </button>
         </div>
       </div>
 
-      <!-- Right Column: Sidebar Form Header Info & Highlights -->
-      <div class="col-span-12 lg:col-span-3 flex flex-col gap-3 min-h-0 overflow-y-auto scrollbar-none">
-        <div
-          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-4 flex flex-col gap-3 flex-shrink-0">
-          <div
-            class="font-bold uppercase tracking-wider text-[10px] text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700 pb-2">
-            {{ headerLabel }}
+      <!-- FORM HEADER (INFORMASI UTAMA NOTA) -->
+      <div v-if="headerForm"
+        class="p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-colors">
+        <div v-for="field in (schemaData.header?.schema || [])" :key="field.key" class="flex flex-col gap-1.5">
+          <label class="text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase">{{
+            field.label
+          }}</label>
+
+          <!-- Type: Display / Readonly -->
+          <div v-if="field.readonly" :class="[
+            'px-3 py-2 text-sm rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-medium',
+            field.highlight ? 'text-blue-600 dark:text-blue-400 font-bold text-lg border-blue-100 dark:border-blue-900/50' : 'text-slate-600 dark:text-slate-300'
+          ]">
+            <template v-if="field.type === 'currency'">
+              {{ formatCurrency(headerForm[field.key]) }}
+            </template>
+            <template v-else>
+              {{ headerForm[field.key] || '-' }}
+            </template>
           </div>
 
-          <div v-if="activeNotaId" class="flex flex-col gap-3 text-xs">
-            <div v-for="field in filteredHeaderSchema" :key="field.key" class="flex flex-col gap-1">
-              <label class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ field.label }}</label>
+          <!-- Type: Relation (Select Customer) -->
+          <select v-else-if="field.type === 'relation' && field.relation" v-model="headerForm[field.key]"
+            @change="updateHeaderField(field.key)"
+            class="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
+            <option :value="null">-- Pilih {{ field.label }} --</option>
+            <option v-for="opt in relationOptions[field.relation.entity] || []" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
 
-              <div v-if="field.readonly || field.primary"
-                class="font-bold text-slate-700 dark:text-slate-300 py-1.5 px-2 bg-slate-50 dark:bg-slate-900 rounded-lg font-mono border border-slate-200/50 dark:border-slate-700/50">
-                {{ field.type === 'currency' ? formatCurrency(localHeader[field.key]) : localHeader[field.key] || '-' }}
-              </div>
+          <!-- Type: Standard (Date, Text, Number) -->
+          <input v-else :type="field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'"
+            v-model="headerForm[field.key]" @change="updateHeaderField(field.key)"
+            class="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
+        </div>
+      </div>
 
-              <select v-else-if="field.type === 'relation'" v-model="localHeader[field.key]"
-                @change="updateHeaderToServer(field.key, localHeader[field.key])"
-                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 dark:text-slate-100 font-medium">
-                <option value="" disabled>Pilih {{ field.label }}</option>
-                <option v-for="opt in masterRelations[field.relation?.entity]" :key="opt.id" :value="opt.id">
-                  {{ opt[field.relation?.displayField] || opt.name }}
-                </option>
-              </select>
+      <!-- ==================== TABLE DETAILS (DAFTAR BARANG BELANJA) ==================== -->
+      <div class="flex-1 flex flex-col min-h-0 w-full overflow-hidden relative">
+        <div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
 
-              <input v-else-if="field.type === 'date'" type="date" v-model="localHeader[field.key]"
-                @change="updateHeaderToServer(field.key, localHeader[field.key])"
-                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-slate-800 dark:text-slate-100" />
+          <RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
+            :columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
+            :auto-size-column="true" @beforeeditstart="beforeEditStart" @afteredit="afterEdit" @beforeedit="beforeEdit"
+            @keydown="handleKeyDown" :column-types="columnTypes" />
 
-              <input v-else-if="field.type === 'currency' || field.type === 'number'" type="number"
-                v-model.number="localHeader[field.key]" @blur="updateHeaderToServer(field.key, localHeader[field.key])"
-                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-slate-800 dark:text-slate-100 text-right" />
+          <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
 
-              <input v-else type="text" v-model="localHeader[field.key]"
-                @blur="updateHeaderToServer(field.key, localHeader[field.key])"
-                class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium text-slate-800 dark:text-slate-100" />
+          <!-- Modal Pencarian Produk Cepat -->
+          <div v-if="showSearchModal" @click.self="closeSearchModal"
+            class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-start justify-center pt-20 z-50 transition-all">
+            <div
+              class="bg-white dark:bg-slate-800 w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden p-3 mx-4"
+              @keydown.stop>
+              <form @submit.prevent="handleSearchSubmit" class="relative flex items-center">
+                <div class="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
+                  <Icon icon="heroicons:magnifying-glass-20-solid" class="w-5 h-5" />
+                </div>
+
+                <input ref="searchInputRef" v-model="searchQuery" type="text"
+                  placeholder="Ketik Kode/Nama barang lalu tekan Enter untuk menambah..."
+                  class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-slate-400 transition-all" />
+
+                <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none">
+                  <kbd
+                    class="px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-600 rounded shadow-sm">
+                    Enter ↩
+                  </kbd>
+                  <button type="button" @click="closeSearchModal"
+                    class="pointer-events-auto text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    Esc
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-          <div v-else class="text-center py-4 text-slate-400 text-xs italic">Belum ada transaksi aktif.</div>
-        </div>
 
-        <!-- Highlight Panel (Grand Total, dsb - Terkalkulasi Lokal secara Real-time) -->
-        <div v-for="hl in highlightConfig" :key="hl.key"
-          class="bg-slate-900 text-emerald-400 dark:bg-slate-950 p-4 rounded-xl flex flex-col justify-between shadow-md border border-slate-800 min-h-[90px] flex-shrink-0">
-          <div class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">{{ hl.label }}</div>
-          <div class="text-xl md:text-2xl lg:text-3xl font-black tracking-tight text-right font-mono break-all w-full">
-            {{ displayHighlightValue(hl.field, hl.type) }}
-          </div>
         </div>
       </div>
+
     </div>
-
-    <!-- Footer Action Toolbar -->
-    <div
-      class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-4 flex-shrink-0">
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-medium text-slate-400">
-        <span class="text-slate-500 font-bold dark:text-slate-300">CORE ERP AGNOSTIC ENGINE</span>
-        <div class="h-3 w-px bg-slate-200 dark:bg-slate-700 hidden sm:inline-block"></div>
-        <div><kbd
-            class="bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-mono">[DEL]</kbd>
-          Hapus Baris</div>
-        <div><kbd
-            class="bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-mono">[F4]</kbd>
-          Bayar & Simpan</div>
-      </div>
-
-      <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-        <button v-for="action in actionButtons" :key="action.key" @click="triggerAction(action.key)"
-          :class="action.type === 'payment' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-100'"
-          class="px-5 py-2.5 text-xs font-bold text-white rounded-xl transition whitespace-nowrap shadow-md flex items-center gap-1.5">
-          <Icon :icon="action.type === 'payment' ? 'mdi:credit-card-outline' : 'mdi:printer'" class="w-4 h-4" />
-          <span>{{ action.label }}</span>
-          <span class="opacity-70 text-[10px] font-mono font-normal">({{ action.type === 'payment' ? 'F4' : 'Ctrl'
-          }})</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Global Floating Search Modal Input -->
-    <div v-if="showSearchModal" @click.self="closeSearchModal"
-      class="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-      <div
-        class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 w-full max-w-md mx-4">
-        <label class="block text-xs font-bold mb-2 uppercase tracking-wider"
-          :class="lastActiveGrid === 'header' ? 'text-amber-500' : 'text-emerald-500'">
-          {{ lastActiveGrid === 'header' ? 'Masukkan ID Entitas Master' : 'Masukkan ID / Scan Barcode Produk' }}
-        </label>
-        <input ref="searchInputRef" v-model="searchQuery" type="text"
-          placeholder="Ketik angka / scan barcode lalu enter..."
-          class="w-full text-lg font-mono font-bold px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 text-slate-800 dark:text-slate-100 shadow-inner"
-          :class="lastActiveGrid === 'header' ? 'focus:ring-amber-500' : 'focus:ring-emerald-500'"
-          @keydown.enter="handleSearchSubmit" @keydown.esc="closeSearchModal" />
-      </div>
-    </div>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import api from '@/lib/axios'
+import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import { isDark } from '@/composables/dark'
-import { useNumberFormat } from '@/composables/number-format'
 import RevoGrid from '@revolist/vue3-datagrid'
-import { evaluate } from 'mathjs'
+import GridNavigator from '@/components/GridNavigator.vue'
+
+import api from '@/lib/axios'
+import { useTabStore } from '@/stores/tabs'
+import { useRoute } from 'vue-router'
+
+import NumberColumnType from '@revolist/revogrid-column-numeral'
+import SelectTypePlugin from '@revolist/revogrid-column-select'
+import DateTypePlugin from '@revolist/revogrid-column-date'
 
 const props = defineProps({
   menu: { type: Object, required: true },
-  schemaData: { type: Object, default: null }
+  schemaData: { type: Object, required: true }
 })
 
 const route = useRoute()
-const { formatNumber, formatCurrency } = useNumberFormat()
+const tabStore = useTabStore()
 
-const formKey = computed(() => props.menu.key.toLowerCase())
-
-// Permanent Schema Lock
-const originalSchema = ref<any>(null)
-
-// Metadata & Schema Labels State
-const schemaLabel = ref('')
-const headerLabel = ref('TRANSAKSI')
-const detailLabel = ref('ITEM')
-const primaryKeyLabel = ref('ID')
-const headerSchemaRaw = ref([])
-const detailSchemaRaw = ref([])
-const detailColumns = ref([])
-const actionButtons = ref([])
-const highlightConfig = ref([])
-
-// Active Queue & Record State
-const localQueue = ref([])
-const activeNotaId = ref(null)
-const localHeader = ref<Record<string, any>>({})
-const localDetails = ref([])
-
-// Dropdown Relation Cache Map
-const masterRelations = ref<{ [key: string]: any[] }>({ customer: [] })
-
-// UI Controllers State
 const gridRef = ref(null)
+const navigatorRef = ref(null)
+
+const isSidebarOpen = ref(true)
+const queueData = ref<any[]>([])
+const savedTransactions = ref<any[]>([])
+
+const activeHeaderId = ref<number | null>(null)
+const headerForm = ref<any>(null)
+const rows = ref<any[]>([])
+
+const columns = ref([])
+const primaryKey = ref('id')
+const permission = ref<Record<string, boolean | undefined>>({})
+
+// ==================== STATE PENCAIRAN PRODUK (addDetails) ====================
 const showSearchModal = ref(false)
 const searchQuery = ref('')
 const searchInputRef = ref(null)
-const lastActiveGrid = ref('detail')
-const focusedCoordinate = ref({ x: -1, y: -1 })
 
-const headerRelationField = computed(() => headerSchemaRaw.value.find(f => f.type === 'relation') || null)
-const filteredHeaderSchema = computed(() => {
-  const highlights = highlightConfig.value.map(h => h.field)
-  return headerSchemaRaw.value.filter(f => !highlights.includes(f.key))
-})
+const syncStatus = ref({ state: 'idle', message: '' })
+let statusResetTimeout = null
+let apiLoadingTimeout = null
 
-// ==========================================
-//   CLIENT-SIDE CALCULATED AGGREGATE ENGINE
-// ==========================================
-const displayHighlightValue = computed(() => {
-  return (fieldKey: string, fieldType: string) => {
-    const targetDetailField = detailSchemaRaw.value.find(f => f.type === 'computed' && f.key === fieldKey)
+const relationOptions = ref<{ [entityName: string]: Array<{ value: any, label: string }> }>({})
 
-    if (targetDetailField && targetDetailField.formula) {
-      let grandTotal = 0
-      localDetails.value.forEach(rowData => {
-        let formulaString = targetDetailField.formula
-        formulaString = formulaString.replace(/\{([^}]+)\}/g, (_, key) => String(Number(rowData[key]) || 0))
-        try {
-          grandTotal += evaluate(formulaString)
-        } catch (err) {
-          console.error(`Gagal mengevaluasi akumulasi total untuk ${fieldKey}:`, err)
-        }
-      })
-      return fieldType === 'currency' ? formatCurrency(grandTotal) : grandTotal
-    }
+const formKey = computed(() => props.menu.key.toLowerCase())
 
-    const fallbackValue = localHeader.value[fieldKey] || 0
-    return fieldType === 'currency' ? formatCurrency(fallbackValue) : fallbackValue
+const getGrid = () => (gridRef.value?.$el || gridRef.value || {})
+
+const getActiveCellState = async () => {
+  const grid = getGrid()
+  if (typeof grid.getFocused !== 'function') return { x: 0, y: 0, column: {}, model: {} }
+  const focused = await grid.getFocused()
+  return {
+    x: focused?.cell?.x ?? 0,
+    y: focused?.cell?.y ?? 0,
+    column: focused?.column || {},
+    model: focused?.model || {}
   }
-})
-
-// ==========================================
-//        COMPONENTS STRUCT INITIALIZER
-// ==========================================
-const initComponentSchema = (schema: any) => {
-  if (!schema) return
-  originalSchema.value = schema
-
-  schemaLabel.value = schema.label || ''
-  actionButtons.value = schema.actions || []
-  headerLabel.value = schema.header?.label || 'INFORMASI UTAMA'
-  detailLabel.value = schema.details?.label || 'DAFTAR ITEM'
-  headerSchemaRaw.value = schema.header?.schema || []
-  detailSchemaRaw.value = schema.details?.schema || []
-
-  primaryKeyLabel.value = headerSchemaRaw.value.find(f => f.primary)?.label || 'ID'
-  highlightConfig.value = headerSchemaRaw.value
-    .filter(f => f.highlight)
-    .map(f => ({ key: f.key, label: f.label, field: f.key, type: f.type }))
-
-  buildRevoGridColumnsConfig()
 }
 
-// ==========================================
-//          PURE TRANSACTION DATA MAPPER
-// ==========================================
-const applyDataToComponent = (resData: any) => {
-  if (!resData) return
-
-  const headerData = resData.header?.data || resData.header || resData
-  const detailsData = resData.details?.data || resData.details || []
-
-  localHeader.value = headerData
-  localDetails.value = Array.isArray(detailsData) ? detailsData : []
-  activeNotaId.value = headerData?.id || null
-
-  if (resData.queue && Array.isArray(resData.queue.data)) {
-    localQueue.value = resData.queue.data
-  } else if (Array.isArray(resData.queue)) {
-    localQueue.value = resData.queue
-  }
-
-  nextTick(() => {
-    if (gridRef.value?.$el) {
-      gridRef.value.$el.requestGridRowsRedraw?.()
-    }
-  })
+const columnTypes = {
+  numeric: new NumberColumnType('0,0'),
+  decimal: new NumberColumnType('0,0.00'),
+  select: new SelectTypePlugin(),
+  date: new DateTypePlugin()
 }
 
-// ==========================================
-//          RENDERING GRID MODIFIERS
-// ==========================================
-const buildRevoGridColumnsConfig = () => {
-  detailColumns.value = detailSchemaRaw.value.map(field => {
-    const config: any = { prop: field.key, name: field.label, readonly: field.readonly || false }
+const formatCurrency = (val: any) => {
+  if (val === undefined || val === null) return 'Rp 0'
+  const numeric = typeof val === 'object' && val.d ? Number(val.d[0]) : Number(val)
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(numeric)
+}
 
-    if (field.type === 'computed' && field.formula) {
-      config.cellTemplate = (createElement, linkProps) => {
-        let formulaString = field.formula
-        const rowData = linkProps.model || {}
+const relationCellRenderer = (createElement, cellProps, displayField, fieldKey, optionsList) => {
+  const rawValue = cellProps.model[fieldKey]
+  if (!rawValue) return createElement('span', {}, '')
+  if (typeof rawValue === 'object' && rawValue !== null) {
+    return createElement('span', {}, rawValue[displayField] || rawValue.name || '')
+  }
+  const matchedOption = optionsList.find(opt => opt.value === rawValue)
+  return createElement('span', {}, matchedOption ? matchedOption.label : rawValue)
+}
 
-        formulaString = formulaString.replace(/\{([^}]+)\}/g, (match, key) => {
-          return Number(rowData[key]) || 0
-        })
+const setSyncStatus = (state, message, autoResetDelay = 3000) => {
+  if (statusResetTimeout) clearTimeout(statusResetTimeout)
+  if (apiLoadingTimeout) clearTimeout(apiLoadingTimeout)
 
-        let computedValue = 0
-        try {
-          computedValue = evaluate(formulaString)
-        } catch (err) {
-          console.error(`Gagal mengevaluasi formula untuk ${field.key}:`, err)
-        }
+  if (state === 'loading') {
+    apiLoadingTimeout = setTimeout(() => {
+      syncStatus.value = { state, message }
+    }, 400)
+  } else {
+    syncStatus.value = { state, message }
+  }
 
-        return createElement(
-          'span',
-          { class: 'font-mono text-right block w-full text-blue-600 dark:text-blue-400 font-semibold bg-slate-50/50 dark:bg-slate-900/30 px-1' },
-          formatCurrency(computedValue)
+  if ((state === 'success' || state === 'error') && autoResetDelay) {
+    statusResetTimeout = setTimeout(() => {
+      syncStatus.value = { state: 'idle', message: '' }
+    }, autoResetDelay)
+  }
+}
+
+// AMBIL DAFTAR RELASI
+const fetchRelationOptions = async () => {
+  const headerSchema = props.schemaData?.header?.schema || []
+  const detailsSchema = props.schemaData?.details?.schema || []
+  const allFields = [...headerSchema, ...detailsSchema]
+  const relationFields = allFields.filter(f => f.type === 'relation' && f.relation)
+
+  for (const field of relationFields) {
+    const entity = field.relation.entity
+    const displayField = field.relation.displayField || 'name'
+    if (relationOptions.value[entity]) continue
+
+    try {
+      const response = await api.get(`/${entity}/get-all`)
+      const rawData = response.data?.schema?.data || response.data?.data || response.data || []
+      relationOptions.value[entity] = rawData.map((item: any) => ({
+        value: item.id,
+        label: item[displayField] || item.name
+      }))
+    } catch (err) {
+      console.error(`Gagal memuat opsi relasi untuk entitas ${entity}:`, err)
+    }
+  }
+}
+
+// AMBIL ANTREAN AKTIF (DRAFTS)
+const fetchQueue = async () => {
+  try {
+    const response = await api.get(`/${formKey.value}/get-queue`)
+    queueData.value = response.data || []
+  } catch (err) {
+    console.error("Gagal mengambil antrean:", err)
+  }
+}
+
+// AMBIL DAFTAR TRANSAKSI YANG SUDAH SELESAI / DISIMPAN
+const fetchSavedTransactions = async () => {
+  try {
+    const response = await api.get(`/${formKey.value}/get-all`)
+    const rawData = response.data?.schema?.data || response.data?.data || response.data || []
+    savedTransactions.value = rawData.filter((tx: any) => tx.status !== 'draft')
+  } catch (err) {
+    console.error("Gagal mengambil daftar transaksi disimpan:", err)
+  }
+}
+
+// MUAT DETAIL SATU TRANSAKSI UTAMA (HEADER & DETAILS)
+const loadTransaction = async (id: number) => {
+  setSyncStatus('loading', 'Memuat dokumen transaksi..')
+  try {
+    const response = await api.get(`/${formKey.value}/get-transaction`, { params: { id } })
+    const { header, details } = response.data || { header: null, details: [] }
+
+    activeHeaderId.value = id
+    headerForm.value = header
+    rows.value = details
+
+    await nextTick()
+    getGrid().requestGridRowsRedraw?.()
+    setSyncStatus('success', 'Transaksi dimuat')
+  } catch (err: any) {
+    setSyncStatus('error', `Gagal memuat transaksi: ${err.message}`)
+  }
+}
+
+// INITIAL LOAD
+const loadComponentData = async () => {
+  const res = props.schemaData
+  if (!res) return
+
+  await fetchRelationOptions()
+
+  columns.value = (res.details?.schema || []).map(field => {
+    const columnConfig: Record<string, any> = {
+      prop: field.key,
+      name: field.label,
+      readonly: field.readonly || false,
+      required: field.required || false,
+      _type: field.type || 'text',
+      _primary: field.primary || false,
+    }
+
+    if (['number', 'integer'].includes(field.type)) columnConfig.columnType = 'numeric'
+    else if (['decimal', 'currency'].includes(field.type)) columnConfig.columnType = 'decimal'
+    else if (field.type === 'date') columnConfig.columnType = 'date'
+    else if (field.type === 'select') {
+      columnConfig.columnType = 'select'
+      columnConfig.labelKey = 'label'
+      columnConfig.valueKey = 'value'
+      columnConfig.source = field.options || []
+      columnConfig.editorProperties = { appendToBody: true }
+    }
+    else if (field.type === 'relation' && field.relation) {
+      const entity = field.relation.entity
+      columnConfig.columnType = 'select'
+      columnConfig.labelKey = 'label'
+      columnConfig.valueKey = 'value'
+      columnConfig.source = relationOptions.value[entity] || []
+      columnConfig.editorProperties = { appendToBody: true }
+      columnConfig.cellTemplate = (createElement, linkProps) =>
+        relationCellRenderer(
+          createElement,
+          linkProps,
+          field.relation.displayField,
+          field.key,
+          relationOptions.value[entity] || []
         )
-      }
     }
-    else if (field.type === 'currency') {
-      config.cellTemplate = (createElement, linkProps) => createElement('span', { class: 'font-mono text-right block w-full text-emerald-600 font-semibold' }, formatCurrency(linkProps.model[field.key] || 0))
-    }
-    else if (field.type === 'number') {
-      config.cellTemplate = (createElement, linkProps) => createElement('span', { class: 'font-mono text-center block w-full' }, formatNumber(linkProps.model[field.key] || 0))
-    }
-    else if (field.type === 'relation' && field.relation?.entity === 'product') {
-      config.cellTemplate = (createElement, linkProps) => {
-        const productName = linkProps.model.productName || linkProps.model.product?.name || `Product ID: ${linkProps.model[field.key]}`
-        return createElement('span', { class: 'font-medium block w-full pl-1' }, productName)
-      }
-    }
-
-    return config
+    return columnConfig
   })
-}
 
-// ==========================================
-//       SERVERSIDE CONFIG & RECORD FETCH
-// ==========================================
-const fetchHeaderRelations = async () => {
-  // try {
-  //   const resCustomer = await api.get(`/${formKey.value}/customer`).catch(() => ({ data: [] }))
-  //   masterRelations.value.customer = resCustomer.data || []
-  // } catch (e) {
-  //   console.error('Gagal memuat relasi master data:', e)
-  // }
-}
+  primaryKey.value = (res.details?.schema || []).find(f => f.primary)?.key || 'id'
+  permission.value = res.permissions || {}
 
-const fetchInitialLoad = async () => {
-  try {
-    const response = await api.get(`/${formKey.value}/get-last-transaction`)
-    if (response.data) {
-      props.schemaData.data = response.data
-    }
-    console.log(response)
-  } catch (error) {
-    console.error('Gagal melakukan inisialisasi data transaksi akhir:', error)
+  await fetchQueue()
+  await fetchSavedTransactions()
+
+  if (queueData.value.length > 0) {
+    await loadTransaction(queueData.value[0].id)
+  } else {
+    await handleNewTransaction()
   }
 }
 
-// ==========================================
-//        SYNCHRONIZED CORE OPERATION
-// ==========================================
-const tambahAntrianServer = async () => {
-  try {
-    const response = await api.post(`/${formKey.value}/new-transaction`, {})
-    if (response.data) {
-      applyDataToComponent(response.data)
-      await fetchInitialLoad()
-    }
-  } catch (e) {
-    alert('Gagal membuat antrian transaksi baru.')
-  }
-}
+// UPDATE FORM HEADER (AUTO-SAVE)
+const updateHeaderField = async (fieldKey: string) => {
+  if (!activeHeaderId.value || !headerForm.value) return
 
-const setActiveAntrian = async (id) => {
+  setSyncStatus('loading', 'Menyimpan perubahan header..')
   try {
-    const response = await api.get(`/${formKey.value}/get-transaction`, {
-      params: { header_key: id }
+    const response = await api.put(`/${formKey.value}/update-header`, headerForm.value, {
+      params: { id: activeHeaderId.value }
     })
-    if (response.data) {
-      applyDataToComponent(response.data)
-    }
-  } catch (e) {
-    console.error('Gagal memuat detail transaksi antrian:', e)
+    headerForm.value = response.data
+
+    await fetchQueue()
+    setSyncStatus('success', 'Header disimpan')
+  } catch (err: any) {
+    setSyncStatus('error', `Gagal update header: ${err.message}`)
   }
 }
 
-const updateHeaderToServer = async (key, val) => {
-  if (!activeNotaId.value) return
+// AKSI EDIT DETIL BARANG (GRID CELLS)
+const beforeEditStart = () => { console.log('Mempersiapkan pengeditan data detail..') }
+
+const beforeEdit = (event) => {
+  const { val, prop } = event.detail
+  const originalField = props.schemaData?.details?.schema?.find(f => f.key === prop)
+  if (!originalField) return
+
+  const columnLabel = originalField.label || prop
+  const fieldType = originalField.type
+  const isRequired = originalField.required || false
+
+  if (isRequired && (val === null || val === undefined || val === '')) {
+    setSyncStatus('error', `${columnLabel} wajib diisi!`)
+    event.preventDefault()
+    return
+  }
+
+  if (['number', 'integer', 'decimal', 'currency'].includes(fieldType)) {
+    if (val !== '' && val !== null && isNaN(Number(val))) {
+      setSyncStatus('error', `${columnLabel} harus berupa angka!`)
+      event.preventDefault()
+      return
+    }
+    if (originalField.validation?.min !== undefined && Number(val) < originalField.validation.min) {
+      setSyncStatus('error', `${columnLabel} minimal bernilai ${originalField.validation.min}!`)
+      event.preventDefault()
+      return
+    }
+  }
+}
+
+const afterEdit = async (event) => {
+  if (event.detail.oldValue === event.detail.value) return
+
+  const updatedModel = event.detail.model
+  const detailId = updatedModel[primaryKey.value]
+  if (!detailId || !activeHeaderId.value) return
+
+  setSyncStatus('loading', 'Memperbarui baris belanja..')
   try {
-    const patchPayload = { [key]: val }
-    const response = await api.put(`/${formKey.value}/update-header`, patchPayload, {
-      params: { header_key: activeNotaId.value }
-    })
-
-    if (response.data) {
-      applyDataToComponent(response.data)
-
-      if (key === headerRelationField.value?.key) {
-        const currentIdx = localQueue.value.findIndex(q => q.id === activeNotaId.value)
-        const custObj = masterRelations.value.customer.find(c => c.id === Number(val))
-        if (currentIdx !== -1 && custObj) {
-          const queueCopy = [...localQueue.value]
-          queueCopy[currentIdx] = {
-            ...queueCopy[currentIdx],
-            customer: custObj[headerRelationField.value.relation?.displayField] || custObj.name
-          }
-          localQueue.value = queueCopy
-        }
+    const response = await api.put(`/${formKey.value}/update-details`, updatedModel, {
+      params: {
+        headerId: activeHeaderId.value,
+        id: detailId
       }
+    })
+
+    if (response.status === 200) {
+      await loadTransaction(activeHeaderId.value)
+      setSyncStatus('success', 'Perubahan barang disimpan')
     }
-  } catch (e) {
-    console.error('Gagal sinkronisasi data header ke server:', e)
+  } catch (err: any) {
+    setSyncStatus('error', `Gagal merubah baris belanja: ${err.message}`)
   }
 }
 
+// EVENT SHORTCUT KEYBOARD
 const handleKeyDown = async (e) => {
   if (e.repeat) return
 
-  if (e.key === 'Delete') {
+  // F2: Transaksi Baru
+  if (e.key === 'F2') {
+    handleNewTransaction()
     e.preventDefault()
-    deleteDetailRowFromServer()
+    return
+  }
+
+  // F4: Cari & Tambah Detail Baru
+  if (e.key === 'F4') {
+    openSearchProduct('')
+    e.preventDefault()
+    return
+  }
+
+  // F9: Simpan Transaksi
+  if (e.key === 'F9') {
+    handleSaveTransaction()
+    e.preventDefault()
+    return
+  }
+
+  // Delete: Hapus item aktif
+  if (e.key === 'Delete') {
+    handleDeleteDetailRow()
+    e.preventDefault()
+    return
+  }
+
+  // Cek apakah user sedang mengetik teks pada sel pencarian utama
+  const { column } = await getActiveCellState()
+  if (column?._primary && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    openSearchProduct(e.key)
+    e.preventDefault()
   }
 }
 
-const handleServerGridEdit = async (event) => {
-  const detail = event.detail || event
-  const prop = detail.prop
-  const val = detail.val
-  const rowIndex = detail.rowIndex
-
-  const targetRow = localDetails.value[rowIndex]
-  if (!targetRow || !targetRow.id) return
-
-  try {
-    const processedValue = !isNaN(Number(val)) && val !== '' ? Number(val) : val
-    const patchItemPayload = { [prop]: processedValue }
-
-    const response = await api.put(
-      `/${formKey.value}/update-details`,
-      patchItemPayload,
-      {
-        params: {
-          header_key: activeNotaId.value,
-          details_key: targetRow.id
-        }
-      }
-    )
-
-    if (response.data) {
-      applyDataToComponent(response.data)
-    }
-  } catch (e) {
-    console.error("Gagal mengirim update dinamis ke server:", e)
-    alert('Gagal mengubah data item di server.')
-  }
+// ==================== FITUR ADD DETAILS & PENCARIAN PRODUK ====================
+const openSearchProduct = async (char: string) => {
+  searchQuery.value = char
+  showSearchModal.value = true
+  await nextTick()
+  searchInputRef.value?.focus()
 }
 
 const handleSearchSubmit = async () => {
-  const inputCode = searchQuery.value.trim()
-  if (!inputCode) return
+  const query = searchQuery.value.trim()
+  if (!query || !activeHeaderId.value) return
 
-  if (lastActiveGrid.value === 'header') {
-    if (headerRelationField.value) {
-      await updateHeaderToServer(headerRelationField.value.key, Number(inputCode))
-    }
-    closeSearchModal()
-  } else {
-    try {
-      const res = await api.post(
-        `/${formKey.value}/add-details`,
-        { query: inputCode },
-        { params: { header_key: activeNotaId.value } }
-      )
-      console.log(res)
-      if (res.data) {
-        applyDataToComponent(res.data)
-      }
-    } catch (e: any) {
-      const errorMsg = e.response?.data?.error || 'Produk tidak ditemukan atau gagal dimasukkan.'
-      alert(errorMsg)
-    }
-    closeSearchModal()
-  }
-}
-
-const deleteDetailRowFromServer = async () => {
-  if (focusedCoordinate.value.y === -1 || localDetails.value.length === 0) return
-  const targetRow = localDetails.value[focusedCoordinate.value.y]
-  if (!targetRow || !targetRow.id) return
-
-  if (confirm('Hapus baris item belanja ini?')) {
-    try {
-      const response = await api.delete(`/${formKey.value}/delete-details`, {
-        params: {
-          header_key: activeNotaId.value,
-          details_key: targetRow.id
-        }
-      })
-      if (response.data) {
-        applyDataToComponent(response.data)
-        focusedCoordinate.value = { x: -1, y: -1 }
-      }
-    } catch (e) {
-      alert('Gagal menghapus detail item.')
-    }
-  }
-}
-
-const cancelTransactionFromServer = async (id) => {
-  if (!confirm('Apakah anda yakin ingin membatalkan & menghapus permanen nota transaksi ini?')) return
+  setSyncStatus('loading', 'Menambahkan barang..')
   try {
-    await api.delete(`/${formKey.value}/cancel-transaction`, {
-      params: { header_key: id }
+    // Memanggil endpoint backend `add-details` dengan query parameter dari text input pencarian
+    const response = await api.post(`/${formKey.value}/add-details`, { query }, {
+      params: { headerId: activeHeaderId.value }
     })
 
-    if (activeNotaId.value === id) {
-      activeNotaId.value = null
-      localHeader.value = {}
-      localDetails.value = []
+    if (response.status === 201 || response.status === 200) {
+      await loadTransaction(activeHeaderId.value)
+      closeSearchModal()
+      setSyncStatus('success', 'Barang berhasil ditambahkan')
     }
-    await fetchInitialLoad()
-  } catch (e) {
-    alert('Gagal membatalkan transaksi pada server database.')
+  } catch (err: any) {
+    setSyncStatus('error', `Gagal menambah barang: ${err.response?.data?.message || err.message}`)
   }
-}
-
-const triggerAction = async (actionKey) => {
-  if (!activeNotaId.value) return
-
-  if (actionKey === 'pay') {
-    if (!localHeader.value.customerId) return alert('Silahkan pilih Customer terlebih dahulu!')
-    if (localDetails.value.length === 0) return alert('Daftar barang belanja kosong!')
-
-    try {
-      await api.put(
-        `/${formKey.value}/update-header`,
-        { isFinalSubmit: true },
-        { params: { header_key: activeNotaId.value } }
-      )
-      alert('Transaksi Berhasil Disimpan & Dicetak!')
-
-      activeNotaId.value = null
-      await fetchInitialLoad()
-    } catch (error) {
-      alert('Gagal memproses simpan transaksi.')
-    }
-  }
-}
-
-const afterFocus = (e) => {
-  lastActiveGrid.value = 'detail'
-  focusedCoordinate.value = { x: e.detail.colIndex, y: e.detail.rowIndex }
-}
-
-const openSearchModalDirect = (mode) => {
-  lastActiveGrid.value = mode
-  openSearchModal()
-}
-
-const openSearchModal = () => {
-  if (!activeNotaId.value) return
-  showSearchModal.value = true
-  searchQuery.value = ''
-  nextTick(() => {
-    if (searchInputRef.value) searchInputRef.value.focus()
-  })
 }
 
 const closeSearchModal = () => {
   showSearchModal.value = false
+  searchQuery.value = ''
+  nextTick(() => { getGrid().focus?.() })
 }
 
-const handleGlobalShortcuts = (e) => {
-  if (showSearchModal.value) return
-  if (e.key === 'F2') {
-    e.preventDefault()
-    tambahAntrianServer()
-  }
-  if (e.key === 'F4') {
-    e.preventDefault()
-    triggerAction('pay')
+// HAPUS DETAIL BARANG (Delete key)
+const handleDeleteDetailRow = async () => {
+  if (!activeHeaderId.value) return
+
+  const { y: targetIndex } = await getActiveCellState()
+  const selectedData = rows.value[targetIndex]
+  const detailId = selectedData?.[primaryKey.value]
+
+  if (!detailId) return
+
+  if (confirm(`Hapus item belanja: ${selectedData?.name || 'barang ini'}?`)) {
+    setSyncStatus('loading', 'Menghapus item..')
+    try {
+      const response = await api.delete(`/${formKey.value}/delete-details`, {
+        params: {
+          headerId: activeHeaderId.value,
+          id: detailId
+        }
+      })
+
+      if (response.status === 200) {
+        await loadTransaction(activeHeaderId.value)
+        setSyncStatus('success', 'Item belanja dihapus')
+      }
+    } catch (err: any) {
+      setSyncStatus('error', `Gagal menghapus item: ${err.message}`)
+    }
   }
 }
 
-// ==========================================
-//    LIFECYCLE HOOKS & ROUTE WATCHERS
-// ==========================================
-onMounted(() => {
-  window.addEventListener('keydown', handleGlobalShortcuts)
-})
+// BUAT TRANSAKSI BARU (Draft Baru)
+const handleNewTransaction = async () => {
+  setSyncStatus('loading', 'Membuat transaksi baru..')
+  try {
+    const response = await api.post(`/${formKey.value}/new-transaction`, {})
+    const newTx = response.data
+    await fetchQueue()
+    await loadTransaction(newTx.id)
+    setSyncStatus('success', 'Transaksi baru siap')
+  } catch (err: any) {
+    setSyncStatus('error', `Gagal membuat transaksi: ${err.message}`)
+  }
+}
+
+// SIMPAN TRANSAKSI
+const handleSaveTransaction = async () => {
+  if (!activeHeaderId.value) return
+  if (!confirm('Apakah Anda yakin ingin menyelesaikan dan menyimpan transaksi ini?')) return
+
+  setSyncStatus('loading', 'Menyimpan final transaksi..')
+  try {
+    await api.post(`/${formKey.value}/save-transaction`, {}, { params: { id: activeHeaderId.value } })
+    setSyncStatus('success', 'Transaksi berhasil disimpan!')
+
+    await fetchQueue()
+    await fetchSavedTransactions()
+
+    if (queueData.value.length > 0) {
+      await loadTransaction(queueData.value[0].id)
+    } else {
+      await handleNewTransaction()
+    }
+  } catch (err: any) {
+    setSyncStatus('error', `Gagal menyimpan transaksi: ${err.message}`)
+  }
+}
+
+// BATALKAN TRANSAKSI
+const handleCancelTransaction = async () => {
+  if (!activeHeaderId.value) return
+  if (!confirm('Apakah Anda yakin ingin membatalkan transaksi draft ini? (Data akan dihapus)')) return
+
+  setSyncStatus('loading', 'Membatalkan transaksi..')
+  try {
+    await api.post(`/${formKey.value}/cancel-transaction`, {}, { params: { id: activeHeaderId.value } })
+    setSyncStatus('success', 'Transaksi dibatalkan')
+
+    await fetchQueue()
+    await fetchSavedTransactions()
+
+    if (queueData.value.length > 0) {
+      await loadTransaction(queueData.value[0].id)
+    } else {
+      await handleNewTransaction()
+    }
+  } catch (err: any) {
+    setSyncStatus('error', `Gagal membatalkan transaksi: ${err.message}`)
+  }
+}
+
+// CUSTOM ACTIONS (Printer, Payment dll)
+const triggerCustomAction = (actionKey: string) => {
+  if (actionKey === 'print') {
+    window.print()
+  } else {
+    console.log(`Trigger action: ${actionKey} untuk transaksi ID: ${activeHeaderId.value}`)
+  }
+}
 
 onBeforeUnmount(() => {
-  window.removeEventListener('keydown', handleGlobalShortcuts)
+  if (statusResetTimeout) clearTimeout(statusResetTimeout)
+  if (apiLoadingTimeout) clearTimeout(apiLoadingTimeout)
+  rows.value = []
+  columns.value = []
 })
 
-watch(() => route.path, async () => {
-  await fetchHeaderRelations()
+watch(() => props.schemaData, loadComponentData)
 
-  if (props.schemaData.data) {
-    initComponentSchema(props.schemaData.data)
-    applyDataToComponent(props.schemaData.data)
-  } else {
-    await fetchInitialLoad()
-  }
-}, { immediate: true })
+onMounted(() => {
+  loadComponentData()
+})
 </script>
 
 <style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.15s ease-out forwards;
+:deep(revo-grid) {
+  z-index: 10 !important;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 
-  to {
-    opacity: 1;
-  }
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.btn-action-slate {
+  @apply flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors shadow-sm;
 }
 </style>

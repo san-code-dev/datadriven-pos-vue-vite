@@ -81,7 +81,8 @@
 					<RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
 						:columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
 						:auto-size-column="true" @beforeeditstart="beforeEditStart" @afteredit="afterEdit"
-						@beforeedit="beforeEdit" @keydown="handleKeyDown" :column-types="columnTypes" />
+						@beforeedit="beforeEdit" @keydown="handleKeyDown" :column-types="columnTypes"
+						@aftercolumnresize="aftercolumnresize" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
 
@@ -282,6 +283,7 @@ const loadComponentData = async () => {
 		const columnConfig: Record<string, any> = {
 			prop: field.key,
 			name: field.label,
+			size: field.size,
 			readonly: field.readonly || false,
 			required: field.required || false,
 			_type: field.type || 'text',
@@ -383,6 +385,10 @@ const beforeEdit = (event) => {
 			return;
 		}
 	}
+}
+
+const aftercolumnresize = (event) => {
+	console.log(event)
 }
 
 const afterEdit = async (event) => {

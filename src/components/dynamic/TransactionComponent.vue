@@ -2,7 +2,7 @@
   <div
     class="flex h-full max-h-full overflow-hidden min-h-0 bg-slate-50 dark:bg-slate-950 w-full text-slate-800 dark:text-slate-100">
 
-    <!-- ==================== SIDEBAR PENJUALAN TERSIMPAN (SHOW/HIDE) ==================== -->
+    <!-- ==================== SIDEBAR TANSAKSI TERSIMPAN (SHOW/HIDE) ==================== -->
     <div :class="[
       'border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col h-full shrink-0 transition-all duration-300 relative',
       isSidebarOpen ? 'w-80' : 'w-0 overflow-hidden border-r-0'
@@ -12,7 +12,7 @@
         <h3
           class="font-bold text-xs tracking-wider text-slate-500 dark:text-slate-400 uppercase flex items-center gap-2">
           <Icon icon="heroicons:archive-box-20-solid" class="w-4 h-4 text-slate-400" />
-          Penjualan Disimpan
+          Transaksi tersimpan
         </h3>
         <button @click="isSidebarOpen = false"
           class="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -21,7 +21,7 @@
         </button>
       </div>
 
-      <!-- List Penjualan yang Sudah Disimpan -->
+      <!-- List Transaksi yang Sudah Disimpan -->
       <div class="flex-1 overflow-y-auto p-2 space-y-1.5">
         <div v-if="savedTransactions.length === 0" class="text-center py-8 text-xs text-slate-400">
           Belum ada transaksi disimpan.
@@ -40,12 +40,12 @@
             </span>
           </div>
           <span class="text-sm font-semibold truncate">{{ item.label || item.customer?.name || 'Pelanggan Umum'
-            }}</span>
+          }}</span>
           <div
             class="flex items-center justify-between text-xs text-slate-400 mt-1 border-t border-dashed border-slate-100 dark:border-slate-850 pt-1">
             <span>{{ item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID') : '-' }}</span>
             <span class="font-bold text-slate-700 dark:text-slate-300">{{ formatCurrency(item.total_harga || item.total)
-              }}</span>
+            }}</span>
           </div>
         </div>
       </div>

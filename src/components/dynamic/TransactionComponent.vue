@@ -1,195 +1,87 @@
 <template>
   <div
     class="flex h-full max-h-full overflow-hidden min-h-0 bg-slate-50 dark:bg-slate-950 w-full text-slate-800 dark:text-slate-100">
-
-    <!-- ==================== SIDEBAR TANSAKSI TERSIMPAN (SHOW/HIDE) ==================== -->
-    <div :class="[
-      'border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col h-full shrink-0 transition-all duration-300 relative',
-      isSidebarOpen ? 'w-80' : 'w-0 overflow-hidden border-r-0'
-    ]">
-      <!-- Header Sidebar -->
-      <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
-        <h3
-          class="font-bold text-xs tracking-wider text-slate-500 dark:text-slate-400 uppercase flex items-center gap-2">
-          <Icon icon="heroicons:archive-box-20-solid" class="w-4 h-4 text-slate-400" />
-          Transaksi tersimpan
-        </h3>
-        <button @click="isSidebarOpen = false"
-          class="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          title="Sembunyikan Sidebar">
-          <Icon icon="heroicons:chevron-double-left-20-solid" class="w-5 h-5" />
-        </button>
-      </div>
-
-      <!-- List Transaksi yang Sudah Disimpan -->
-      <div class="flex-1 overflow-y-auto p-2 space-y-1.5">
-        <div v-if="savedTransactions.length === 0" class="text-center py-8 text-xs text-slate-400">
-          Belum ada transaksi disimpan.
-        </div>
-        <div v-for="item in savedTransactions" :key="item.id" @click="loadTransaction(item.id)" :class="[
-          'p-3 rounded-lg border cursor-pointer transition-all flex flex-col gap-1',
-          activeHeaderId === item.id
-            ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800/80 ring-1 ring-emerald-100 dark:ring-emerald-900/30'
-            : 'bg-white border-slate-100 dark:bg-slate-900 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/40'
-        ]">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-mono font-semibold text-slate-400 dark:text-slate-500">ID: #{{ item.id }}</span>
-            <span
-              class="text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400">
-              Saved
-            </span>
-          </div>
-          <span class="text-sm font-semibold truncate">{{ item.label || item.customer?.name || 'Pelanggan Umum'
-          }}</span>
-          <div
-            class="flex items-center justify-between text-xs text-slate-400 mt-1 border-t border-dashed border-slate-100 dark:border-slate-850 pt-1">
-            <span>{{ item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID') : '-' }}</span>
-            <span class="font-bold text-slate-700 dark:text-slate-300">{{ formatCurrency(item.total_harga || item.total)
-            }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TRIGGER BUTTON SAAT SIDEBAR DISEMBUNYIKAN -->
-    <button v-if="!isSidebarOpen" @click="isSidebarOpen = true"
-      class="absolute left-0 top-1/2 -translate-y-1/2 z-40 bg-white dark:bg-slate-900 border border-l-0 border-slate-200 dark:border-slate-800 p-2 rounded-r-xl shadow-md hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-blue-500 transition-all text-slate-400"
-      title="Tampilkan Riwayat Simpan">
-      <Icon icon="heroicons:chevron-double-right-20-solid" class="w-5 h-5" />
-    </button>
-
     <!-- ==================== MAIN TRANSACTION AREA ==================== -->
     <div class="flex-1 flex flex-col h-full overflow-hidden min-h-0 relative">
-
       <!-- HEADER STATUS & CONTROL ACTIONS -->
       <div
         class="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
-        <div class="flex items-center gap-3 select-none">
-          <span class="font-bold text-base tracking-tight text-slate-800 dark:text-slate-200">
+        <div class="flex items-center gap-3 select-none"> <span
+            class="font-bold text-base tracking-tight text-slate-800 dark:text-slate-200">
             {{ schemaData.label || 'Transaksi' }}
           </span>
           <div class="flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-700 text-xs">
             <template v-if="syncStatus.state === 'loading'">
-              <Icon icon="heroicons:arrow-path-20-solid" class="w-4 h-4 animate-spin text-emerald-500" />
-              <span class="text-slate-500">{{ syncStatus.message }}</span>
+              <Icon icon="heroicons:arrow-path-20-solid" class="w-4 h-4 animate-spin text-emerald-500" /> <span
+                class="text-slate-500">{{ syncStatus.message }}</span>
             </template>
             <template v-else-if="syncStatus.state === 'success'">
-              <Icon icon="heroicons:check-circle-20-solid" class="w-4 h-4 text-emerald-500" />
-              <span class="text-emerald-600 dark:text-emerald-400 font-medium">{{ syncStatus.message }}</span>
+              <Icon icon="heroicons:check-circle-20-solid" class="w-4 h-4 text-emerald-500" /> <span
+                class="text-emerald-600 dark:text-emerald-400 font-medium">{{ syncStatus.message }}</span>
             </template>
             <template v-else-if="syncStatus.state === 'error'">
-              <Icon icon="heroicons:exclamation-circle-20-solid" class="w-4 h-4 text-rose-500" />
-              <span class="text-rose-600 dark:text-rose-400 font-medium animate-pulse">{{ syncStatus.message }}</span>
+              <Icon icon="heroicons:exclamation-circle-20-solid" class="w-4 h-4 text-rose-500" /> <span
+                class="text-rose-600 dark:text-rose-400 font-medium animate-pulse">{{ syncStatus.message }}</span>
             </template>
           </div>
         </div>
-
         <div class="flex items-center gap-2">
           <!-- Tombol Tambah Detil Produk Langsung -->
           <button @click="openSearchProduct('')" type="button"
-            class="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-500 transition-colors shadow-sm flex items-center gap-1.5">
-            <Icon icon="heroicons:plus-circle-20-solid" class="w-4 h-4" />
-            <span>Tambah Item</span>
-            <kbd class="ml-1 text-[9px] bg-blue-750 px-1 py-0.5 rounded text-blue-100 font-mono">[F4]</kbd>
+            class="px-3.5 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-500 transition-colors shadow-sm flex items-center gap-1.5">
+            <Icon icon="heroicons:plus-circle-20-solid" class="w-4 h-4" /> <span>Tambah Item</span> <kbd
+              class="ml-1 text-[9px] bg-emerald-750 px-1 py-0.5 rounded text-emerald-100 font-mono">[F4]</kbd>
           </button>
-
           <!-- Dinamis Actions dari schema (print, pay dll) -->
           <button v-for="action in (schemaData.actions || [])" :key="action.key"
-            @click="triggerCustomAction(action.key)" class="btn-action-slate">
-            <span>{{ action.label }}</span>
+            @click="triggerCustomAction(action.key)" class="btn-action-slate"> <span>{{ action.label }}</span>
           </button>
-
           <button @click="handleSaveTransaction" type="button"
             class="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-500 transition-colors shadow-sm">
-            <span>Simpan Transaksi</span>
-            <kbd class="ml-1.5 text-[9px] bg-emerald-700 px-1 py-0.5 rounded text-emerald-100 font-mono">[F9]</kbd>
+            <span>Simpan Transaksi</span> <kbd
+              class="ml-1.5 text-[9px] bg-emerald-700 px-1 py-0.5 rounded text-emerald-100 font-mono">[F9]</kbd>
           </button>
-
           <button @click="handleCancelTransaction" type="button"
             class="px-3 py-1.5 bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 rounded-lg text-xs font-medium hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors">
             <span>Batal</span>
           </button>
         </div>
       </div>
-
       <!-- ==================== TABS ANTREAN (DRAFTS) ==================== -->
       <div
         class="flex items-center gap-3 px-4 py-2 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shrink-0 overflow-hidden">
         <span
           class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0 flex items-center gap-1">
-          <Icon icon="heroicons:clock-20-solid" class="w-3.5 h-3.5" />
-          Antrean Aktif (Draft)
+          <icon icon="heroicons:clock-20-solid" class="w-3.5 h-3.5"></icon>(Draft)
         </span>
-        <div class="flex-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+        <div class="flex flex-1 flex-wrap gap-1.5 items-center no-scrollbar overflow-x-auto py-0.5">
           <button v-for="item in queueData" :key="item.id" @click="loadTransaction(item.id)" :class="[
             'px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 shadow-sm',
             activeHeaderId === item.id
-              ? 'bg-blue-600 border-blue-600 text-white dark:bg-blue-500 dark:border-blue-500'
+              ? 'bg-emerald-600 border-emerald-600 text-white dark:bg-emerald-500 dark:border-emerald-500'
               : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800'
-          ]">
-            <span class="w-1.5 h-1.5 rounded-full"
-              :class="activeHeaderId === item.id ? 'bg-white animate-pulse' : 'bg-slate-400'"></span>
-            <span>{{ item.label || `Draft #${item.id}` }}</span>
+          ]"> <span class="w-1.5 h-1.5 rounded-full"
+              :class="activeHeaderId === item.id ? 'bg-white animate-pulse' : 'bg-slate-400'"></span> <span>{{
+                item.label ||
+                `Draft #${item.id}` }}</span>
           </button>
-
           <!-- Tombol Tambah Draft Antrean Baru -->
           <button @click="handleNewTransaction"
-            class="p-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all flex items-center justify-center shrink-0"
+            class="p-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-center shrink-0"
             title="Tambah Antrean Baru (F2)">
             <Icon icon="heroicons:plus-20-solid" class="w-4 h-4" />
           </button>
         </div>
       </div>
-
       <!-- FORM HEADER (INFORMASI UTAMA NOTA) -->
-      <div v-if="headerForm"
-        class="p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-colors">
-        <div v-for="field in (schemaData.header?.schema || [])" :key="field.key" class="flex flex-col gap-1.5">
-          <label class="text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase">{{
-            field.label
-          }}</label>
-
-          <!-- Type: Display / Readonly -->
-          <div v-if="field.readonly" :class="[
-            'px-3 py-2 text-sm rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-medium',
-            field.highlight ? 'text-blue-600 dark:text-blue-400 font-bold text-lg border-blue-100 dark:border-blue-900/50' : 'text-slate-600 dark:text-slate-300'
-          ]">
-            <template v-if="field.type === 'currency'">
-              {{ formatCurrency(headerForm[field.key]) }}
-            </template>
-            <template v-else>
-              {{ headerForm[field.key] || '-' }}
-            </template>
-          </div>
-
-          <!-- Type: Relation (Select Customer) -->
-          <select v-else-if="field.type === 'relation' && field.relation" v-model="headerForm[field.key]"
-            @change="updateHeaderField(field.key)"
-            class="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
-            <option :value="null">-- Pilih {{ field.label }} --</option>
-            <option v-for="opt in relationOptions[field.relation.entity] || []" :key="opt.value" :value="opt.value">
-              {{ opt.label }}
-            </option>
-          </select>
-
-          <!-- Type: Standard (Date, Text, Number) -->
-          <input v-else :type="field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'"
-            v-model="headerForm[field.key]" @change="updateHeaderField(field.key)"
-            class="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
-        </div>
-      </div>
-
       <!-- ==================== TABLE DETAILS (DAFTAR BARANG BELANJA) ==================== -->
-      <div class="flex-1 flex flex-col min-h-0 w-full overflow-hidden relative">
+      <div class="flex flex-1 flex-row min-h-0 overflow-hidden relative w-full">
         <div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
-
           <RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
             :columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
             :auto-size-column="true" @beforeeditstart="beforeEditStart" @afteredit="afterEdit" @beforeedit="beforeEdit"
             @keydown="handleKeyDown" :column-types="columnTypes" />
-
           <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
-
           <!-- Modal Pencarian Produk Cepat -->
           <div v-if="showSearchModal" @click.self="closeSearchModal"
             class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-start justify-center pt-20 z-50 transition-all">
@@ -200,13 +92,10 @@
                 <div class="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
                   <Icon icon="heroicons:magnifying-glass-20-solid" class="w-5 h-5" />
                 </div>
-
                 <input ref="searchInputRef" v-model="searchQuery" type="text"
                   placeholder="Ketik Kode/Nama barang lalu tekan Enter untuk menambah..."
-                  class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-slate-400 transition-all" />
-
-                <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none">
-                  <kbd
+                  class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 transition-all" />
+                <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none"> <kbd
                     class="px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-600 rounded shadow-sm">
                     Enter ↩
                   </kbd>
@@ -218,14 +107,45 @@
               </form>
             </div>
           </div>
-
+        </div>
+        <div v-if="headerForm"
+          class="bg-white border-b border-slate-200 flex flex-col gap-4 grid-cols-1 p-4 transition-colors dark:bg-slate-900 dark:border-slate-800 sm:grid-cols-2 lg:grid-cols-4">
+          <div v-for="field in (schemaData.header?.schema || [])" :key="field.key" class="flex flex-col gap-1.5">
+            <label class="text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase">{{
+              field.label
+            }}
+            </label>
+            <!-- Type: Display / Readonly -->
+            <div v-if="field.readonly" :class="[
+              'px-3 py-2 text-sm rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-medium',
+              field.highlight ? 'text-emerald-600 dark:text-emerald-400 font-bold text-lg border-emerald-100 dark:border-emerald-900/50' : 'text-slate-600 dark:text-slate-300'
+            ]">
+              <template v-if="field.type === 'currency'">
+                {{ formatCurrency(headerForm[field.key]) }}
+              </template>
+              <template v-else>
+                {{ headerForm[field.key] || '-' }}
+              </template>
+            </div>
+            <!-- Type: Relation (Select Customer) -->
+            <select v-else-if="field.type === 'relation' && field.relation" v-model="headerForm[field.key]"
+              @change="updateHeaderField(field.key)"
+              class="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+              <option :value="null">-- Pilih {{ field.label }} --</option>
+              <option v-for="opt in relationOptions[field.relation.entity] || []" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+            <!-- Type: Standard (Date, Text, Number) -->
+            <input v-else :type="field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'"
+              v-model="headerForm[field.key]" @change="updateHeaderField(field.key)"
+              class="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all" />
+          </div>
         </div>
       </div>
-
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -409,6 +329,7 @@ const loadComponentData = async () => {
     const columnConfig: Record<string, any> = {
       prop: field.key,
       name: field.label,
+      size: field.size,
       readonly: field.readonly || false,
       required: field.required || false,
       _type: field.type || 'text',
@@ -719,7 +640,6 @@ onMounted(() => {
   loadComponentData()
 })
 </script>
-
 <style scoped>
 :deep(revo-grid) {
   z-index: 10 !important;
@@ -732,9 +652,5 @@ onMounted(() => {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-.btn-action-slate {
-  @apply flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors shadow-sm;
 }
 </style>

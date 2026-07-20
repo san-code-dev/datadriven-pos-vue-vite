@@ -4,6 +4,30 @@
     <!-- ==================== MAIN TRANSACTION AREA ==================== -->
     <div class="flex-1 flex flex-col h-full overflow-hidden min-h-0 relative">
       <!-- HEADER STATUS & CONTROL ACTIONS -->
+      <div v-if="showSearchModal" @click.self="closeSearchModal"
+        class="absolute backdrop-blur-sm bg-slate-900/40 flex inset-0 items-center justify-center transition-all z-50">
+        <div
+          class="bg-white dark:bg-slate-800 w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden p-3 mx-4"
+          @keydown.stop>
+          <form @submit.prevent="handleSearchSubmit" class="flex items-center relative">
+            <div class="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
+              <Icon icon="heroicons:magnifying-glass-20-solid" class="w-5 h-5" />
+            </div>
+            <input ref="searchInputRef" v-model="searchQuery" type="text"
+              placeholder="Ketik Kode/Nama barang lalu tekan Enter untuk menambah..."
+              class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 transition-all" />
+            <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none"> <kbd
+                class="px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-600 rounded shadow-sm">
+                Enter ↩
+              </kbd>
+              <button type="button" @click="closeSearchModal"
+                class="pointer-events-auto text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                Esc
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
       <div
         class="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
         <div class="flex items-center gap-3 select-none"> <span
@@ -83,30 +107,6 @@
             @keydown="handleKeyDown" :column-types="columnTypes" />
           <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
           <!-- Modal Pencarian Produk Cepat -->
-          <div v-if="showSearchModal" @click.self="closeSearchModal"
-            class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-start justify-center pt-20 z-50 transition-all">
-            <div
-              class="bg-white dark:bg-slate-800 w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden p-3 mx-4"
-              @keydown.stop>
-              <form @submit.prevent="handleSearchSubmit" class="relative flex items-center">
-                <div class="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
-                  <Icon icon="heroicons:magnifying-glass-20-solid" class="w-5 h-5" />
-                </div>
-                <input ref="searchInputRef" v-model="searchQuery" type="text"
-                  placeholder="Ketik Kode/Nama barang lalu tekan Enter untuk menambah..."
-                  class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 transition-all" />
-                <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none"> <kbd
-                    class="px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-600 rounded shadow-sm">
-                    Enter ↩
-                  </kbd>
-                  <button type="button" @click="closeSearchModal"
-                    class="pointer-events-auto text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                    Esc
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
         </div>
         <div v-if="headerForm"
           class="bg-white border-b border-slate-200 flex flex-col gap-4 grid-cols-1 p-4 transition-colors dark:bg-slate-900 dark:border-slate-800 sm:grid-cols-2 lg:grid-cols-4">
@@ -181,7 +181,7 @@ const headerForm = ref<any>(null)
 const rows = ref<any[]>([])
 
 const columns = ref([])
-const primaryKey = ref('id')
+const primaryKeyFieldName = ref('id')
 const permission = ref<Record<string, boolean | undefined>>({})
 
 // ==================== STATE PENCAIRAN PRODUK (addDetails) ====================
@@ -288,16 +288,6 @@ const fetchQueue = async () => {
   }
 }
 
-// AMBIL DAFTAR TRANSAKSI YANG SUDAH SELESAI / DISIMPAN
-const fetchSavedTransactions = async () => {
-  try {
-    const response = await api.get(`/${formKey.value}/get-all`)
-    const rawData = response.data?.schema?.data || response.data?.data || response.data || []
-    savedTransactions.value = rawData.filter((tx: any) => tx.status !== 'draft')
-  } catch (err) {
-    console.error("Gagal mengambil daftar transaksi disimpan:", err)
-  }
-}
 
 // MUAT DETAIL SATU TRANSAKSI UTAMA (HEADER & DETAILS)
 const loadTransaction = async (id: number) => {
@@ -365,11 +355,10 @@ const loadComponentData = async () => {
     return columnConfig
   })
 
-  primaryKey.value = (res.details?.schema || []).find(f => f.primary)?.key || 'id'
+  primaryKeyFieldName.value = (res.details?.schema || []).find(f => f.primary)?.key || 'id'
   permission.value = res.permissions || {}
 
   await fetchQueue()
-  await fetchSavedTransactions()
 
   if (queueData.value.length > 0) {
     await loadTransaction(queueData.value[0].id)
@@ -432,7 +421,7 @@ const afterEdit = async (event) => {
   if (event.detail.oldValue === event.detail.value) return
 
   const updatedModel = event.detail.model
-  const detailId = updatedModel[primaryKey.value]
+  const detailId = updatedModel[primaryKeyFieldName.value]
   if (!detailId || !activeHeaderId.value) return
 
   setSyncStatus('loading', 'Memperbarui baris belanja..')
@@ -508,8 +497,9 @@ const handleSearchSubmit = async () => {
   setSyncStatus('loading', 'Menambahkan barang..')
   try {
     // Memanggil endpoint backend `add-details` dengan query parameter dari text input pencarian
-    const response = await api.post(`/${formKey.value}/add-details`, { query }, {
-      params: { headerId: activeHeaderId.value }
+    const response = await api.post(`/${formKey.value}/add-details`, {
+      headerId: activeHeaderId.value,
+      query
     })
 
     if (response.status === 201 || response.status === 200) {
@@ -530,12 +520,16 @@ const closeSearchModal = () => {
 
 // HAPUS DETAIL BARANG (Delete key)
 const handleDeleteDetailRow = async () => {
-  if (!activeHeaderId.value) return
+  if (!activeHeaderId.value) {
+    console.log('tidak ada headerId')
+    return
+  }
+
 
   const { y: targetIndex } = await getActiveCellState()
   const selectedData = rows.value[targetIndex]
-  const detailId = selectedData?.[primaryKey.value]
-
+  const detailId = selectedData?.[primaryKeyFieldName.value]
+  console.log(primaryKeyFieldName.value, selectedData)
   if (!detailId) return
 
   if (confirm(`Hapus item belanja: ${selectedData?.name || 'barang ini'}?`)) {
@@ -583,7 +577,6 @@ const handleSaveTransaction = async () => {
     setSyncStatus('success', 'Transaksi berhasil disimpan!')
 
     await fetchQueue()
-    await fetchSavedTransactions()
 
     if (queueData.value.length > 0) {
       await loadTransaction(queueData.value[0].id)
@@ -606,7 +599,6 @@ const handleCancelTransaction = async () => {
     setSyncStatus('success', 'Transaksi dibatalkan')
 
     await fetchQueue()
-    await fetchSavedTransactions()
 
     if (queueData.value.length > 0) {
       await loadTransaction(queueData.value[0].id)

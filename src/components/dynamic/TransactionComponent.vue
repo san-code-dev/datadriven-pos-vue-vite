@@ -145,6 +145,7 @@
       </div>
     </div>
   </div>
+  <MasterDialog :relation="MasterDialogRelation" :is-open="isMasterDialogOpen" @close="closeMasterDialog" />
 </template>
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
@@ -160,6 +161,7 @@ import { useRoute } from 'vue-router'
 import NumberColumnType from '@revolist/revogrid-column-numeral'
 import SelectTypePlugin from '@revolist/revogrid-column-select'
 import DateTypePlugin from '@revolist/revogrid-column-date'
+import MasterDialog from '../MasterDialog.vue'
 
 const props = defineProps({
   menu: { type: Object, required: true },
@@ -173,12 +175,14 @@ const gridRef = ref(null)
 const navigatorRef = ref(null)
 
 const isSidebarOpen = ref(true)
+const isMasterDialogOpen = ref(true)
 const queueData = ref<any[]>([])
 const savedTransactions = ref<any[]>([])
 
 const activeHeaderId = ref<number | null>(null)
 const headerForm = ref<any>(null)
 const rows = ref<any[]>([])
+const MasterDialogRelation = ref({ entity: 'customer', displayField: 'name', valueField: 'id' })
 
 const columns = ref([])
 const primaryKeyFieldName = ref('id')
@@ -198,6 +202,14 @@ const relationOptions = ref<{ [entityName: string]: Array<{ value: any, label: s
 const formKey = computed(() => props.menu.key.toLowerCase())
 
 const getGrid = () => (gridRef.value?.$el || gridRef.value || {})
+
+
+
+
+const closeMasterDialog = () => {
+  isMasterDialogOpen.value = false
+}
+
 
 const getActiveCellState = async () => {
   const grid = getGrid()
@@ -386,7 +398,10 @@ const updateHeaderField = async (fieldKey: string) => {
 }
 
 // AKSI EDIT DETIL BARANG (GRID CELLS)
-const beforeEditStart = () => { console.log('Mempersiapkan pengeditan data detail..') }
+const beforeEditStart = (event) => {
+  console.log('Mempersiapkan pengeditan data detail..', event)
+
+}
 
 const beforeEdit = (event) => {
   const { val, prop } = event.detail

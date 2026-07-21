@@ -145,7 +145,7 @@
   </div>
   <!-- MASTER DIALOG FOR RELATIONS -->
   <MasterDialog :relation="MasterDialogRelation" :schemaData="schemaData" :is-open="isMasterDialogOpen"
-    @close="closeMasterDialog" @select="handleRelationSelect" />
+    @close="closeMasterDialog" @select="handleRelationSelect" :keyword="searchQuery" />
 </template>
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
@@ -506,7 +506,7 @@ const handleKeyDown = async (e: KeyboardEvent) => {
 
   // F4: Cari & Tambah Detail Baru
   if (e.key === 'F4') {
-    openSearchProduct('')
+    openSearchItemsDialog('')
     e.preventDefault()
     return
   }
@@ -528,7 +528,7 @@ const handleKeyDown = async (e: KeyboardEvent) => {
   // Auto Search Modal pada Kolom Utama (Primary)
   const { column } = await getActiveCellState()
   if (column?._primary && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-    openSearchProduct(e.key)
+    openSearchItemsDialog(e.key)
     e.preventDefault()
   }
 }
@@ -540,7 +540,7 @@ const handleSearchKeydown = (event) => {
 }
 
 // ADD DETAILS / SEARCH MODAL
-const openSearchProduct = async (char: string) => {
+const openSearchItemsDialog = async (char: string) => {
   searchQuery.value = char
   showSearchModal.value = true
   await nextTick()
@@ -705,7 +705,7 @@ const handleGlobalKeyDown = (e) => {
     e.stopPropagation()
     e.stopImmediatePropagation()
     searchQuery.value += e.key
-    openSearchProduct(searchQuery.value)
+    openSearchItemsDialog(searchQuery.value)
   }
 }
 

@@ -36,42 +36,6 @@
                         </div>
                     </div>
 
-                    <!-- DYNAMIC FILTER -->
-                    <div v-if="props.schemaData?.schema" class="w-full">
-                        <DynamicFilter :schema="props.schemaData.schema"
-                            :tabId="props.relation?.entity || 'picker-master'" @filter-changed="handleFilterChanged"
-                            @escape-filter="focusBackToGrid" />
-                    </div>
-
-                    <!-- SUB-BAR: METADATA & STATUS -->
-                    <div
-                        class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800/60 pt-2">
-                        <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 select-none">
-                            <div class="flex items-center gap-1">
-                                <span class="font-medium text-slate-700 dark:text-slate-300">{{ rows.length }}</span>
-                                <span>items,</span>
-                            </div>
-                            <div class="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700">
-                                <template v-if="syncStatus.state === 'loading'">
-                                    <Icon icon="heroicons:arrow-path-20-solid"
-                                        class="w-3.5 h-3.5 animate-spin text-emerald-500" />
-                                    <span>{{ syncStatus.message }}</span>
-                                </template>
-                                <template v-if="syncStatus.state === 'success'">
-                                    <Icon icon="heroicons:check-circle-20-solid" class="w-3.5 h-3.5 text-emerald-500" />
-                                    <span class="text-emerald-600 dark:text-emerald-400 font-medium">{{
-                                        syncStatus.message }}</span>
-                                </template>
-                                <template v-if="syncStatus.state === 'error'">
-                                    <Icon icon="heroicons:exclamation-circle-20-solid"
-                                        class="w-3.5 h-3.5 text-rose-500" />
-                                    <span class="text-rose-600 dark:text-rose-400 font-medium animate-pulse">{{
-                                        syncStatus.message }}</span>
-                                </template>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
 
                 <!-- BODY / GRID CONTAINER -->
@@ -159,7 +123,8 @@ interface Props {
     schemaData: {
         schema: any[]
         [key: string]: any
-    }
+    },
+    keyword?: string
 }
 
 const props = defineProps<Props>()
@@ -240,7 +205,7 @@ const fetchRelationOptions = async () => {
         if (relationOptions.value[entity]) continue
 
         try {
-            const response = await api.get(`/${entity}/get-all`)
+            const response = await api.get(`/${entity}/search-data`, { params: { keyword: props.keyword } })
             const rawData = response.data?.schema?.data || response.data?.data || []
             relationOptions.value[entity] = rawData.map((item: any) => ({
                 value: item.id,
@@ -258,9 +223,9 @@ const fetchGridData = async () => {
     setSyncStatus('loading', 'Mengambil data..')
 
     try {
-        const response = await api.get(`/${props.relation.entity}/get-all`, {
+        const response = await api.get(`/${props.relation.entity}/search-data`, {
             params: {
-                filter: JSON.stringify(activeFilters.value)
+                keyword: props.keyword
             }
         })
 
@@ -270,9 +235,9 @@ const fetchGridData = async () => {
         gridKey.value += 1
         await nextTick()
 
-        if (typeof getGridEl().requestGridRowsRedraw === 'function') {
-            getGridEl().requestGridRowsRedraw()
-        }
+        // if (typeof getGridEl().requestGridRowsRedraw === 'function') {
+        //     getGridEl().requestGridRowsRedraw()
+        // }
 
         setSyncStatus('success', 'Selesai sinkronisasi')
         await triggerGridRedrawAndFocus()

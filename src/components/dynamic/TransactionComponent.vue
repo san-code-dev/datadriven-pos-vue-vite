@@ -3,7 +3,6 @@
     class="flex h-full max-h-full overflow-hidden min-h-0 bg-slate-50 dark:bg-slate-950 w-full text-slate-800 dark:text-slate-100">
     <!-- ==================== MAIN TRANSACTION AREA ==================== -->
     <div class="flex-1 flex flex-col h-full overflow-hidden min-h-0 relative">
-
       <!-- MODAL PENCARIAN PRODUK CEPAI (ADD DETAILS / F4) -->
       <div v-if="showSearchModal" @click.self="closeSearchModal"
         class="absolute backdrop-blur-sm bg-slate-900/40 flex inset-0 items-center justify-center transition-all z-50">
@@ -14,11 +13,10 @@
             <div class="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
               <Icon icon="heroicons:magnifying-glass-20-solid" class="w-5 h-5" />
             </div>
-            <input ref="searchInputRef" v-model="searchQuery" type="text"
+            <input ref="searchInputRef" v-model="searchQuery" type="text" @keydown="handleSearchKeydown"
               placeholder="Ketik Kode/Nama barang lalu tekan Enter untuk menambah..."
               class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 transition-all" />
-            <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none">
-              <kbd
+            <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none"> <kbd
                 class="px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-600 rounded shadow-sm">
                 Enter ↩
               </kbd>
@@ -30,57 +28,7 @@
           </form>
         </div>
       </div>
-
       <!-- HEADER STATUS & CONTROL ACTIONS -->
-      <div
-        class="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
-        <div class="flex items-center gap-3 select-none">
-          <span class="font-bold text-base tracking-tight text-slate-800 dark:text-slate-200">
-            {{ schemaData.label || 'Transaksi' }}
-          </span>
-          <div class="flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-700 text-xs">
-            <template v-if="syncStatus.state === 'loading'">
-              <Icon icon="heroicons:arrow-path-20-solid" class="w-4 h-4 animate-spin text-emerald-500" />
-              <span class="text-slate-500">{{ syncStatus.message }}</span>
-            </template>
-            <template v-else-if="syncStatus.state === 'success'">
-              <Icon icon="heroicons:check-circle-20-solid" class="w-4 h-4 text-emerald-500" />
-              <span class="text-emerald-600 dark:text-emerald-400 font-medium">{{ syncStatus.message }}</span>
-            </template>
-            <template v-else-if="syncStatus.state === 'error'">
-              <Icon icon="heroicons:exclamation-circle-20-solid" class="w-4 h-4 text-rose-500" />
-              <span class="text-rose-600 dark:text-rose-400 font-medium animate-pulse">{{ syncStatus.message }}</span>
-            </template>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button @click="openSearchProduct('')" type="button"
-            class="px-3.5 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-500 transition-colors shadow-sm flex items-center gap-1.5">
-            <Icon icon="heroicons:plus-circle-20-solid" class="w-4 h-4" />
-            <span>Tambah Item</span>
-            <kbd class="ml-1 text-[9px] bg-emerald-700 px-1 py-0.5 rounded text-emerald-100 font-mono">[F4]</kbd>
-          </button>
-
-          <button v-for="action in (schemaData.actions || [])" :key="action.key"
-            @click="triggerCustomAction(action.key)"
-            class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors">
-            <span>{{ action.label }}</span>
-          </button>
-
-          <button @click="handleSaveTransaction" type="button"
-            class="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-500 transition-colors shadow-sm">
-            <span>Simpan Transaksi</span>
-            <kbd class="ml-1.5 text-[9px] bg-emerald-700 px-1 py-0.5 rounded text-emerald-100 font-mono">[F9]</kbd>
-          </button>
-
-          <button @click="handleCancelTransaction" type="button"
-            class="px-3 py-1.5 bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 rounded-lg text-xs font-medium hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors">
-            <span>Batal</span>
-          </button>
-        </div>
-      </div>
-
       <!-- ==================== TABS ANTREAN (DRAFTS) ==================== -->
       <div
         class="flex items-center gap-3 px-4 py-2 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shrink-0 overflow-hidden">
@@ -94,12 +42,10 @@
             activeHeaderId === item.id
               ? 'bg-emerald-600 border-emerald-600 text-white dark:bg-emerald-500 dark:border-emerald-500'
               : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800'
-          ]">
-            <span class="w-1.5 h-1.5 rounded-full"
-              :class="activeHeaderId === item.id ? 'bg-white animate-pulse' : 'bg-slate-400'"></span>
-            <span>{{ item.label || `Draft #${item.id}` }}</span>
+          ]"> <span class="w-1.5 h-1.5 rounded-full"
+              :class="activeHeaderId === item.id ? 'bg-white animate-pulse' : 'bg-slate-400'"></span> <span>{{
+                item.label || `Draft #${item.id}` }}</span>
           </button>
-
           <button @click="handleNewTransaction"
             class="p-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-center shrink-0"
             title="Tambah Antrean Baru (F2)">
@@ -107,18 +53,16 @@
           </button>
         </div>
       </div>
-
       <!-- ==================== FORM HEADER & TABLE DETAILS ==================== -->
       <div class="flex flex-1 flex-col min-h-0 overflow-hidden relative w-full">
-
         <!-- FORM HEADER -->
         <div v-if="headerForm"
           class="bg-white border-b border-slate-200 grid grid-cols-1 gap-4 p-4 transition-colors dark:bg-slate-900 dark:border-slate-800 sm:grid-cols-2 lg:grid-cols-4">
-          <div v-for="field in (schemaData.header?.schema || [])" :key="field.key" class="flex flex-col gap-1.5">
+          <div v-for="field in (schemaData.header?.schema || [])" :key="field.key" class="flex flex-col gap-1.5"
+            :class="{ 'invisible': field.isHidden }">
             <label class="text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
               {{ field.label }}
             </label>
-
             <!-- Readonly Field -->
             <div v-if="field.readonly" :class="[
               'px-3 py-2 text-sm rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-medium',
@@ -131,25 +75,22 @@
                 {{ headerForm[field.key] || '-' }}
               </template>
             </div>
-
             <!-- Type: Relation Input Trigger (Master Search) -->
             <div v-else-if="field.type === 'relation' && field.relation" class="relative">
-              <input type="text" readonly
+              <input type="text"
                 :value="headerRelationDisplay[field.key] || getRelationDisplayLabel(field, headerForm[field.key])"
-                :placeholder="`Pilih ${field.label}...`" @click="openHeaderRelationModal(field)"
-                @keydown.enter.prevent="openHeaderRelationModal(field)"
-                class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all pr-8" />
+                :placeholder="`Pilih ${field.label}...`" @keydown.enter.prevent="openHeaderRelationModal(field)"
+                class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all pr-8" />
               <Icon icon="heroicons:magnifying-glass-20-solid"
-                class="w-4 h-4 absolute right-2.5 top-3 text-slate-400 pointer-events-none" />
+                class="w-4 h-4 absolute right-2.5 top-3 text-slate-400 cursor-pointer"
+                @click="openHeaderRelationModal(field)" />
             </div>
-
             <!-- Standard Input (Date, Text, Number) -->
             <input v-else :type="field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'"
               v-model="headerForm[field.key]" @change="updateHeaderField(field.key)"
-              class="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all" />
+              class="dark:[color-scheme:dark] px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all" />
           </div>
         </div>
-
         <!-- REVO GRID DETAILS -->
         <div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
           <RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
@@ -158,16 +99,54 @@
             @keydown="handleKeyDown" :column-types="columnTypes" />
           <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
         </div>
-
+      </div>
+      <div
+        class="bg-white border-b border-slate-200 flex flex-wrap gap-3 items-center justify-between px-4 py-2 transition-colors dark:bg-slate-900 dark:border-slate-800">
+        <div class="flex items-center gap-3 select-none">
+          <template v-for="field in (schemaData.header?.schema || [])" :key="field.key">
+            <span v-if="field.highlight" class="font-semibold text-xl text-emerald-400">
+              {{ field.label }} : {{
+                (field.type === 'currency') ? formatCurrency(headerForm?.[field.key]) : headerForm?.[field.key] }}
+            </span>
+          </template>
+          <div class="flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-700 text-xs">
+            <template v-if="syncStatus.state === 'loading'">
+              <Icon icon="heroicons:arrow-path-20-solid" class="w-4 h-4 animate-spin text-emerald-500" /> <span
+                class="text-slate-500">{{ syncStatus.message }}</span>
+            </template>
+            <template v-else-if="syncStatus.state === 'success'">
+              <Icon icon="heroicons:check-circle-20-solid" class="w-4 h-4 text-emerald-500" /> <span
+                class="text-emerald-600 dark:text-emerald-400 font-medium">{{ syncStatus.message }}</span>
+            </template>
+            <template v-else-if="syncStatus.state === 'error'">
+              <Icon icon="heroicons:exclamation-circle-20-solid" class="w-4 h-4 text-rose-500" /> <span
+                class="text-rose-600 dark:text-rose-400 font-medium animate-pulse">{{ syncStatus.message }}</span>
+            </template>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button v-for="action in (schemaData.actions || [])" :key="action.key"
+            @click="triggerCustomAction(action.key)"
+            class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors">
+            <span>{{ action.label }}</span>
+          </button>
+          <button @click="handleSaveTransaction" type="button"
+            class="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-500 transition-colors shadow-sm">
+            <span>Simpan Transaksi</span> <kbd
+              class="ml-1.5 text-[9px] bg-emerald-700 px-1 py-0.5 rounded text-emerald-100 font-mono">[F9]</kbd>
+          </button>
+          <button @click="handleCancelTransaction" type="button"
+            class="px-3 py-1.5 bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 rounded-lg text-xs font-medium hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors">
+            <span>Batal</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
-
   <!-- MASTER DIALOG FOR RELATIONS -->
-  <MasterDialog :relation="MasterDialogRelation" :is-open="isMasterDialogOpen" @close="closeMasterDialog"
-    @select="handleRelationSelect" />
+  <MasterDialog :relation="MasterDialogRelation" :schemaData="schemaData" :is-open="isMasterDialogOpen"
+    @close="closeMasterDialog" @select="handleRelationSelect" />
 </template>
-
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -456,7 +435,6 @@ const updateHeaderField = async (fieldKey: string) => {
 // EDIT GRID CELLS
 const beforeEditStart = (event: any) => {
   if (!event.detail) return;
-  console.log("membuka relasi...")
   if (event.detail.column._type === "relation") {
     openDetailRelationModal(event.detail.prop, event.detail.rowIndex, event.detail.column._relation)
   }
@@ -555,6 +533,12 @@ const handleKeyDown = async (e: KeyboardEvent) => {
   }
 }
 
+const handleSearchKeydown = (event) => {
+  if (event.key == 'Escape') {
+    closeSearchModal()
+  }
+}
+
 // ADD DETAILS / SEARCH MODAL
 const openSearchProduct = async (char: string) => {
   searchQuery.value = char
@@ -576,12 +560,12 @@ const handleSearchSubmit = async () => {
 
     if (response.status === 201 || response.status === 200) {
       await loadTransaction(activeHeaderId.value)
-      closeSearchModal()
       setSyncStatus('success', 'Barang berhasil ditambahkan')
     }
   } catch (err: any) {
     setSyncStatus('error', `Gagal menambah barang: ${err.response?.data?.message || err.message}`)
   }
+  closeSearchModal()
 }
 
 const closeSearchModal = () => {
@@ -695,11 +679,45 @@ onBeforeUnmount(() => {
 
 watch(() => props.schemaData, loadComponentData)
 
+
+
+const handleGlobalKeyDown = (e) => {
+  // 1. CEK FOKUS: Jika user lagi mengetik di input/textarea/editable element, jangan jalankan fungsi
+  const target = e.target
+  if (
+    target.tagName === 'DIV' ||
+    target.tagName === 'INPUT' ||
+    target.tagName === 'TEXTAREA' ||
+    target.isContentEditable ||
+    isMasterDialogOpen.value
+  ) {
+    return
+  }
+
+  // 2. Cek tombol kombinasi (Ctrl, Alt, Meta)
+  if (e.ctrlKey || e.altKey || e.metaKey) return
+
+  // 3. Cek karakter alfanumerik
+  const isAlphanumeric = /^[a-zA-Z0-9]$/.test(e.key)
+
+  if (isAlphanumeric) {
+    e.preventDefault()
+    e.stopPropagation()
+    e.stopImmediatePropagation()
+    searchQuery.value += e.key
+    openSearchProduct(searchQuery.value)
+  }
+}
+
 onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeyDown, true)
   loadComponentData()
 })
-</script>
 
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeyDown, true)
+})
+</script>
 <style scoped>
 :deep(revo-grid) {
   z-index: 10 !important;

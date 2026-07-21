@@ -10,7 +10,7 @@ const route = useRoute()
 const openCategory = ref(null)
 
 // State untuk Pencarian (Ctrl + K)
-const isSearchOpen = ref(false)
+const isSearchMenuOpen = ref(false)
 const searchQuery = ref('')
 const selectedIndex = ref(0)
 const searchInputRef = ref(null)
@@ -64,12 +64,12 @@ const formatIcon = (iconString) => {
 
 const handleMenuClick = (menu) => {
     router.push(menu.route)
-    isSearchOpen.value = false
+    isSearchMenuOpen.value = false
 }
 
 // Keyboard Control untuk Navigasi Modal Pencarian
 const handleKeyDown = (e) => {
-    if (!isSearchOpen.value) return
+    if (!isSearchMenuOpen.value) return
     e.stopPropagation()
 
     if (e.key === 'ArrowDown') {
@@ -91,7 +91,7 @@ const handleKeyDown = (e) => {
         }
     } else if (e.key === 'Escape') {
         e.preventDefault()
-        isSearchOpen.value = false
+        isSearchMenuOpen.value = false
     }
 }
 
@@ -108,7 +108,7 @@ watch(searchQuery, () => {
     selectedIndex.value = 0
 })
 
-watch(isSearchOpen, (isOpen) => {
+watch(isSearchMenuOpen, (isOpen) => {
     if (isOpen) {
         searchQuery.value = ''
         selectedIndex.value = 0
@@ -123,18 +123,16 @@ const handleGlobalKeyDown = (e) => {
         e.preventDefault()
         e.stopPropagation()
         e.stopImmediatePropagation()
-        isSearchOpen.value = !isSearchOpen.value
+        isSearchMenuOpen.value = !isSearchMenuOpen.value
     }
 }
 
 onMounted(() => {
     window.addEventListener('keydown', handleGlobalKeyDown, true)
-    window.addEventListener('keydown', handleKeyDown, true)
 })
 
 onUnmounted(() => {
     window.removeEventListener('keydown', handleGlobalKeyDown, true)
-    window.removeEventListener('keydown', handleKeyDown, true)
 })
 </script>
 
@@ -160,7 +158,7 @@ onUnmounted(() => {
                 </div>
 
                 <div class="px-1 mb-4">
-                    <button @click="isSearchOpen = true"
+                    <button @click="isSearchMenuOpen = true"
                         class="w-full flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 rounded-xl transition-all duration-200 text-slate-400 dark:text-slate-500 h-10 px-3 justify-between">
                         <div class="flex items-center gap-2.5 min-w-0 flex-1">
                             <Icon icon="heroicons:magnifying-glass-20-solid" class="text-lg flex-shrink-0" />
@@ -267,9 +265,9 @@ onUnmounted(() => {
     </nav>
 
     <Teleport to="body">
-        <div v-if="isSearchOpen"
+        <div v-if="isSearchMenuOpen"
             class="fixed inset-0 z-[999] flex items-start justify-center pt-[12vh] p-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm"
-            @click.self="isSearchOpen = false">
+            @click.self="isSearchMenuOpen = false">
 
             <div
                 class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-xl rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-[480px] animate-fadeInFast">
@@ -278,9 +276,9 @@ onUnmounted(() => {
                     <Icon icon="heroicons:magnifying-glass-20-solid"
                         class="text-xl text-slate-400 dark:text-slate-500" />
                     <input ref="searchInputRef" v-model="searchQuery" type="text"
-                        placeholder="Ketik nama menu atau kategori halaman..."
+                        placeholder="Ketik nama menu atau kategori halaman..." @keydown="handleKeyDown"
                         class="flex-1 bg-transparent border-none text-sm outline-none focus:ring-0 text-slate-800 dark:text-slate-100 placeholder-slate-400 h-full" />
-                    <button @click="isSearchOpen = false"
+                    <button @click="isSearchMenuOpen = false"
                         class="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-600">
                         ESC
                     </button>

@@ -88,13 +88,11 @@ async function login() {
                     </div>
                 </div>
                 <div v-if="error" class="flex items-center space-x-2 p-3 rounded-lg text-xs bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200/50 dark:border-red-900/50">
-                    <Icon icon="mdi:alert-circle-outline" class="text-base flex-shrink-0"/>
-                    <span class="font-medium">{{ error }}</span>
+                    <Icon icon="mdi:alert-circle-outline" class="text-base flex-shrink-0"/><span class="font-medium">{{ error }}</span>
                 </div>
                 <button type="submit" :disabled="loading" class="w-full h-11 flex items-center justify-center space-x-2 rounded-lg font-semibold text-sm text-white transition-all shadow-md shadow-emerald-600/10 active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none
                            bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 dark:from-emerald-600 dark:to-emerald-700 dark:hover:from-emerald-500 dark:hover:to-emerald-600">
-                    <Icon v-if="loading" icon="line-md:loading-twotone-loop" class="w-5 h-5"/>
-                    <span>{{ loading ? '' : 'Masuk Aplikasi' }}</span>
+                    <Icon v-if="loading" icon="line-md:loading-twotone-loop" class="w-5 h-5"/><span>{{ loading ? '' : 'Masuk Aplikasi' }}</span>
                 </button>
             </form>
         </div>

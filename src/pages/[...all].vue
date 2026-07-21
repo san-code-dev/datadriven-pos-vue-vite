@@ -179,55 +179,35 @@ onBeforeUnmount(() => {
 })
 
 watch(() => route.path, fetchSchemaFromApi, { immediate: true })
-</script>
-
-<template>
-    <div class="flex min-h-screen bg-gray-100 dark:bg-gray-950 select-none">
-        <Menu />
-
-        <div
-            class="flex-1 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 h-screen max-h-screen flex flex-col overflow-hidden w-full min-w-0">
-            <TabHeader />
-
-            <div class="flex-1 min-h-0 relative overflow-hidden w-full">
-                <div v-if="isLoading"
-                    class="absolute inset-0 bg-gray-50/60 dark:bg-gray-900/60 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-50 animate-delayed-fade">
-                    <Icon icon="heroicons:arrow-path-20-solid"
-                        class="w-7 h-7 text-emerald-500 dark:text-emerald-400 animate-spin" />
-                    <span class="text-xs font-medium text-emerald-600 dark:text-emerald-400">Memuat data
-                        halaman...</span>
-                </div>
-
-                <keep-alive :max="5">
-                    <div v-for="tab in tabStore.openedTabs" :key="tab.id + (tab.refreshKey || 0)"
-                        v-show="tabStore.activeTabId === tab.id && !isError" :data-tab-id="tab.id"
-                        class="w-full h-full">
-
-                        <component v-if="tab.apiResponse && getComponentByType(tab.apiResponse.type)"
-                            :is="getComponentByType(tab.apiResponse.type)" :menu="tab.currentMenu"
-                            :schemaData="tab.apiResponse" />
-                    </div>
-                </keep-alive>
-
-                <div v-if="isError && !isLoading"
-                    class="flex flex-col items-center justify-center h-full p-6 text-center animate-fade-in max-w-sm mx-auto">
-                    <Icon icon="heroicons:exclamation-triangle-20-solid" class="w-10 h-10 text-rose-500 mb-2" />
-                    <h1 class="text-base font-bold text-gray-800 dark:text-gray-100">Gagal Memuat Halaman</h1>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words line-clamp-3">
-                        {{ errorMessage }}
-                    </p>
-
-                    <button @click="fetchSchemaFromApi" type="button"
-                        class="mt-4 px-4 py-1.5 bg-transparent border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-xs">
-                        <Icon icon="heroicons:arrow-path-16-solid" class="w-3.5 h-3.5" />
-                        <span>Coba Lagi</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</template>
-
+</script> 
+<template> 
+    <div class="flex min-h-screen bg-gray-100 dark:bg-gray-950 select-none"> 
+        <Menu/> 
+        <div class="flex-1 bg-gray-50 dark:bg-gray-900 transition-colors duration-200 h-screen max-h-screen flex flex-col overflow-hidden w-full min-w-0"> 
+            <TabHeader/> 
+            <div class="flex-1 min-h-0 relative overflow-hidden w-full"> 
+                <div v-if="isLoading" class="absolute inset-0 bg-gray-50/60 dark:bg-gray-900/60 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-50 animate-delayed-fade"> 
+                    <Icon icon="heroicons:arrow-path-20-solid" class="w-7 h-7 text-emerald-500 dark:text-emerald-400 animate-spin"/> <span class="text-xs font-medium text-emerald-600 dark:text-emerald-400">Memuat data
+                        halaman...</span> 
+                </div>                 
+                <keep-alive :max="5"> 
+                    <div v-for="tab in tabStore.openedTabs" :key="tab.id + (tab.refreshKey || 0)" v-show="tabStore.activeTabId === tab.id && !isError" :data-tab-id="tab.id" class="w-full h-full"> 
+                        <component v-if="tab.apiResponse && getComponentByType(tab.apiResponse.type)" :is="getComponentByType(tab.apiResponse.type)" :menu="tab.currentMenu" :schemaData="tab.apiResponse"/> 
+                    </div>                     
+                </keep-alive>                 
+                <div v-if="isError && !isLoading" class="flex flex-col items-center justify-center h-full p-6 text-center animate-fade-in max-w-sm mx-auto"> 
+                    <Icon icon="heroicons:exclamation-triangle-20-solid" class="w-10 h-10 text-rose-500 mb-2"/> 
+                    <h1 class="text-base font-bold text-gray-800 dark:text-gray-100">Gagal Memuat Halaman</h1> 
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words line-clamp-3"> 
+                        {{ errorMessage }} </p> 
+                    <button @click="fetchSchemaFromApi" type="button" class="mt-4 px-4 py-1.5 bg-transparent border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-xs"> 
+                        <Icon icon="heroicons:arrow-path-16-solid" class="w-3.5 h-3.5"/> <span>Coba Lagi</span> 
+                    </button>                     
+                </div>                 
+            </div>             
+        </div>         
+    </div>     
+</template> 
 <style scoped>
 @keyframes delayedFade {
     0% {

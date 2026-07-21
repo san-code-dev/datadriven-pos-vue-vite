@@ -3,7 +3,8 @@
     class="flex h-full max-h-full overflow-hidden min-h-0 bg-slate-50 dark:bg-slate-950 w-full text-slate-800 dark:text-slate-100">
     <!-- ==================== MAIN TRANSACTION AREA ==================== -->
     <div class="flex-1 flex flex-col h-full overflow-hidden min-h-0 relative">
-      <!-- HEADER STATUS & CONTROL ACTIONS -->
+
+      <!-- MODAL PENCARIAN PRODUK CEPAI (ADD DETAILS / F4) -->
       <div v-if="showSearchModal" @click.self="closeSearchModal"
         class="absolute backdrop-blur-sm bg-slate-900/40 flex inset-0 items-center justify-center transition-all z-50">
         <div
@@ -16,7 +17,8 @@
             <input ref="searchInputRef" v-model="searchQuery" type="text"
               placeholder="Ketik Kode/Nama barang lalu tekan Enter untuk menambah..."
               class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 transition-all" />
-            <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none"> <kbd
+            <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none">
+              <kbd
                 class="px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-600 rounded shadow-sm">
                 Enter ↩
               </kbd>
@@ -28,55 +30,63 @@
           </form>
         </div>
       </div>
+
+      <!-- HEADER STATUS & CONTROL ACTIONS -->
       <div
         class="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors">
-        <div class="flex items-center gap-3 select-none"> <span
-            class="font-bold text-base tracking-tight text-slate-800 dark:text-slate-200">
+        <div class="flex items-center gap-3 select-none">
+          <span class="font-bold text-base tracking-tight text-slate-800 dark:text-slate-200">
             {{ schemaData.label || 'Transaksi' }}
           </span>
           <div class="flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-700 text-xs">
             <template v-if="syncStatus.state === 'loading'">
-              <Icon icon="heroicons:arrow-path-20-solid" class="w-4 h-4 animate-spin text-emerald-500" /> <span
-                class="text-slate-500">{{ syncStatus.message }}</span>
+              <Icon icon="heroicons:arrow-path-20-solid" class="w-4 h-4 animate-spin text-emerald-500" />
+              <span class="text-slate-500">{{ syncStatus.message }}</span>
             </template>
             <template v-else-if="syncStatus.state === 'success'">
-              <Icon icon="heroicons:check-circle-20-solid" class="w-4 h-4 text-emerald-500" /> <span
-                class="text-emerald-600 dark:text-emerald-400 font-medium">{{ syncStatus.message }}</span>
+              <Icon icon="heroicons:check-circle-20-solid" class="w-4 h-4 text-emerald-500" />
+              <span class="text-emerald-600 dark:text-emerald-400 font-medium">{{ syncStatus.message }}</span>
             </template>
             <template v-else-if="syncStatus.state === 'error'">
-              <Icon icon="heroicons:exclamation-circle-20-solid" class="w-4 h-4 text-rose-500" /> <span
-                class="text-rose-600 dark:text-rose-400 font-medium animate-pulse">{{ syncStatus.message }}</span>
+              <Icon icon="heroicons:exclamation-circle-20-solid" class="w-4 h-4 text-rose-500" />
+              <span class="text-rose-600 dark:text-rose-400 font-medium animate-pulse">{{ syncStatus.message }}</span>
             </template>
           </div>
         </div>
+
         <div class="flex items-center gap-2">
-          <!-- Tombol Tambah Detil Produk Langsung -->
           <button @click="openSearchProduct('')" type="button"
             class="px-3.5 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-500 transition-colors shadow-sm flex items-center gap-1.5">
-            <Icon icon="heroicons:plus-circle-20-solid" class="w-4 h-4" /> <span>Tambah Item</span> <kbd
-              class="ml-1 text-[9px] bg-emerald-750 px-1 py-0.5 rounded text-emerald-100 font-mono">[F4]</kbd>
+            <Icon icon="heroicons:plus-circle-20-solid" class="w-4 h-4" />
+            <span>Tambah Item</span>
+            <kbd class="ml-1 text-[9px] bg-emerald-700 px-1 py-0.5 rounded text-emerald-100 font-mono">[F4]</kbd>
           </button>
-          <!-- Dinamis Actions dari schema (print, pay dll) -->
+
           <button v-for="action in (schemaData.actions || [])" :key="action.key"
-            @click="triggerCustomAction(action.key)" class="btn-action-slate"> <span>{{ action.label }}</span>
+            @click="triggerCustomAction(action.key)"
+            class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors">
+            <span>{{ action.label }}</span>
           </button>
+
           <button @click="handleSaveTransaction" type="button"
             class="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-500 transition-colors shadow-sm">
-            <span>Simpan Transaksi</span> <kbd
-              class="ml-1.5 text-[9px] bg-emerald-700 px-1 py-0.5 rounded text-emerald-100 font-mono">[F9]</kbd>
+            <span>Simpan Transaksi</span>
+            <kbd class="ml-1.5 text-[9px] bg-emerald-700 px-1 py-0.5 rounded text-emerald-100 font-mono">[F9]</kbd>
           </button>
+
           <button @click="handleCancelTransaction" type="button"
             class="px-3 py-1.5 bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 rounded-lg text-xs font-medium hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors">
             <span>Batal</span>
           </button>
         </div>
       </div>
+
       <!-- ==================== TABS ANTREAN (DRAFTS) ==================== -->
       <div
         class="flex items-center gap-3 px-4 py-2 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shrink-0 overflow-hidden">
         <span
           class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0 flex items-center gap-1">
-          <icon icon="heroicons:clock-20-solid" class="w-3.5 h-3.5"></icon>(Draft)
+          <Icon icon="heroicons:clock-20-solid" class="w-3.5 h-3.5" />(Draft)
         </span>
         <div class="flex flex-1 flex-wrap gap-1.5 items-center no-scrollbar overflow-x-auto py-0.5">
           <button v-for="item in queueData" :key="item.id" @click="loadTransaction(item.id)" :class="[
@@ -84,12 +94,12 @@
             activeHeaderId === item.id
               ? 'bg-emerald-600 border-emerald-600 text-white dark:bg-emerald-500 dark:border-emerald-500'
               : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800'
-          ]"> <span class="w-1.5 h-1.5 rounded-full"
-              :class="activeHeaderId === item.id ? 'bg-white animate-pulse' : 'bg-slate-400'"></span> <span>{{
-                item.label ||
-                `Draft #${item.id}` }}</span>
+          ]">
+            <span class="w-1.5 h-1.5 rounded-full"
+              :class="activeHeaderId === item.id ? 'bg-white animate-pulse' : 'bg-slate-400'"></span>
+            <span>{{ item.label || `Draft #${item.id}` }}</span>
           </button>
-          <!-- Tombol Tambah Draft Antrean Baru -->
+
           <button @click="handleNewTransaction"
             class="p-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-center shrink-0"
             title="Tambah Antrean Baru (F2)">
@@ -97,25 +107,19 @@
           </button>
         </div>
       </div>
-      <!-- FORM HEADER (INFORMASI UTAMA NOTA) -->
-      <!-- ==================== TABLE DETAILS (DAFTAR BARANG BELANJA) ==================== -->
-      <div class="flex flex-1 flex-row min-h-0 overflow-hidden relative w-full">
-        <div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
-          <RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
-            :columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
-            :auto-size-column="true" @beforeeditstart="beforeEditStart" @afteredit="afterEdit" @beforeedit="beforeEdit"
-            @keydown="handleKeyDown" :column-types="columnTypes" />
-          <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
-          <!-- Modal Pencarian Produk Cepat -->
-        </div>
+
+      <!-- ==================== FORM HEADER & TABLE DETAILS ==================== -->
+      <div class="flex flex-1 flex-col min-h-0 overflow-hidden relative w-full">
+
+        <!-- FORM HEADER -->
         <div v-if="headerForm"
-          class="bg-white border-b border-slate-200 flex flex-col gap-4 grid-cols-1 p-4 transition-colors dark:bg-slate-900 dark:border-slate-800 sm:grid-cols-2 lg:grid-cols-4">
+          class="bg-white border-b border-slate-200 grid grid-cols-1 gap-4 p-4 transition-colors dark:bg-slate-900 dark:border-slate-800 sm:grid-cols-2 lg:grid-cols-4">
           <div v-for="field in (schemaData.header?.schema || [])" :key="field.key" class="flex flex-col gap-1.5">
-            <label class="text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase">{{
-              field.label
-            }}
+            <label class="text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
+              {{ field.label }}
             </label>
-            <!-- Type: Display / Readonly -->
+
+            <!-- Readonly Field -->
             <div v-if="field.readonly" :class="[
               'px-3 py-2 text-sm rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-medium',
               field.highlight ? 'text-emerald-600 dark:text-emerald-400 font-bold text-lg border-emerald-100 dark:border-emerald-900/50' : 'text-slate-600 dark:text-slate-300'
@@ -127,26 +131,43 @@
                 {{ headerForm[field.key] || '-' }}
               </template>
             </div>
-            <!-- Type: Relation (Select Customer) -->
-            <select v-else-if="field.type === 'relation' && field.relation" v-model="headerForm[field.key]"
-              @change="updateHeaderField(field.key)"
-              class="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
-              <option :value="null">-- Pilih {{ field.label }} --</option>
-              <option v-for="opt in relationOptions[field.relation.entity] || []" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </select>
-            <!-- Type: Standard (Date, Text, Number) -->
+
+            <!-- Type: Relation Input Trigger (Master Search) -->
+            <div v-else-if="field.type === 'relation' && field.relation" class="relative">
+              <input type="text" readonly
+                :value="headerRelationDisplay[field.key] || getRelationDisplayLabel(field, headerForm[field.key])"
+                :placeholder="`Pilih ${field.label}...`" @click="openHeaderRelationModal(field)"
+                @keydown.enter.prevent="openHeaderRelationModal(field)"
+                class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all pr-8" />
+              <Icon icon="heroicons:magnifying-glass-20-solid"
+                class="w-4 h-4 absolute right-2.5 top-3 text-slate-400 pointer-events-none" />
+            </div>
+
+            <!-- Standard Input (Date, Text, Number) -->
             <input v-else :type="field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'"
               v-model="headerForm[field.key]" @change="updateHeaderField(field.key)"
               class="px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all" />
           </div>
         </div>
+
+        <!-- REVO GRID DETAILS -->
+        <div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
+          <RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
+            :columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
+            :auto-size-column="true" @beforeeditstart="beforeEditStart" @afteredit="afterEdit" @beforeedit="beforeEdit"
+            @keydown="handleKeyDown" :column-types="columnTypes" />
+          <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
+        </div>
+
       </div>
     </div>
   </div>
-  <MasterDialog :relation="MasterDialogRelation" :is-open="isMasterDialogOpen" @close="closeMasterDialog" />
+
+  <!-- MASTER DIALOG FOR RELATIONS -->
+  <MasterDialog :relation="MasterDialogRelation" :is-open="isMasterDialogOpen" @close="closeMasterDialog"
+    @select="handleRelationSelect" />
 </template>
+
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -171,45 +192,96 @@ const props = defineProps({
 const route = useRoute()
 const tabStore = useTabStore()
 
-const gridRef = ref(null)
-const navigatorRef = ref(null)
+const gridRef = ref<any>(null)
+const navigatorRef = ref<any>(null)
 
-const isSidebarOpen = ref(true)
-const isMasterDialogOpen = ref(true)
+const isMasterDialogOpen = ref(false)
 const queueData = ref<any[]>([])
-const savedTransactions = ref<any[]>([])
 
 const activeHeaderId = ref<number | null>(null)
 const headerForm = ref<any>(null)
 const rows = ref<any[]>([])
-const MasterDialogRelation = ref({ entity: 'customer', displayField: 'name', valueField: 'id' })
 
-const columns = ref([])
+// State Relation Modal
+const MasterDialogRelation = ref<any>({ entity: '', displayField: 'name', valueField: 'id' })
+const activeRelationContext = ref<{ type: 'header' | 'detail'; fieldKey: string; rowIndex?: number } | null>(null)
+const headerRelationDisplay = ref<Record<string, string>>({})
+
+const columns = ref<any[]>([])
 const primaryKeyFieldName = ref('id')
 const permission = ref<Record<string, boolean | undefined>>({})
 
-// ==================== STATE PENCAIRAN PRODUK (addDetails) ====================
+// State Search Details
 const showSearchModal = ref(false)
 const searchQuery = ref('')
-const searchInputRef = ref(null)
+const searchInputRef = ref<HTMLInputElement | null>(null)
 
 const syncStatus = ref({ state: 'idle', message: '' })
-let statusResetTimeout = null
-let apiLoadingTimeout = null
+let statusResetTimeout: any = null
+let apiLoadingTimeout: any = null
 
-const relationOptions = ref<{ [entityName: string]: Array<{ value: any, label: string }> }>({})
-
+const relationOptions = ref<{ [entityName: string]: Array<{ value: any; label: string }> }>({})
 const formKey = computed(() => props.menu.key.toLowerCase())
 
-const getGrid = () => (gridRef.value?.$el || gridRef.value || {})
+const getGrid = () => gridRef.value?.$el || gridRef.value || {}
 
+// Format Tampilan Opsi Relasi pada Header Input
+const getRelationDisplayLabel = (field: any, val: any) => {
+  if (!val) return ''
+  const entity = field.relation?.entity
+  const opts = relationOptions.value[entity] || []
+  const found = opts.find((o) => o.value === val)
+  return found ? found.label : val
+}
 
+// Buka Dialog dari Form Header
+const openHeaderRelationModal = (field: any) => {
+  MasterDialogRelation.value = {
+    entity: field.relation.entity,
+    displayField: field.relation.displayField || 'name',
+    valueField: field.relation.valueField || 'id'
+  }
+  activeRelationContext.value = { type: 'header', fieldKey: field.key }
+  isMasterDialogOpen.value = true
+}
 
+// Buka Dialog dari RevoGrid Details
+const openDetailRelationModal = (fieldKey: string, rowIndex: number, relationConfig: any) => {
+  MasterDialogRelation.value = {
+    entity: relationConfig.entity,
+    displayField: relationConfig.displayField || 'name',
+    valueField: relationConfig.valueField || 'id'
+  }
+  activeRelationContext.value = { type: 'detail', fieldKey, rowIndex }
+  isMasterDialogOpen.value = true
+}
+
+// Handler Pilihan Data dari MasterDialog Modal (Enter / Double Click)
+const handleRelationSelect = async (selected: { value: any; display: string; item: any }) => {
+  if (!activeRelationContext.value) return
+
+  const { type, fieldKey, rowIndex } = activeRelationContext.value
+
+  if (type === 'header') {
+    headerForm.value[fieldKey] = selected.value
+    headerRelationDisplay.value[fieldKey] = selected.display
+    await updateHeaderField(fieldKey)
+  } else if (type === 'detail' && typeof rowIndex === 'number') {
+    const row = rows.value[rowIndex]
+    if (row) {
+      row[fieldKey] = selected.value
+      row[`_${fieldKey}_display`] = selected.display
+      await afterEdit({ detail: { model: row, oldValue: null, value: selected.value } })
+    }
+  }
+  closeMasterDialog()
+}
 
 const closeMasterDialog = () => {
   isMasterDialogOpen.value = false
+  activeRelationContext.value = null
+  nextTick(() => getGrid().focus?.())
 }
-
 
 const getActiveCellState = async () => {
   const grid = getGrid()
@@ -236,17 +308,7 @@ const formatCurrency = (val: any) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(numeric)
 }
 
-const relationCellRenderer = (createElement, cellProps, displayField, fieldKey, optionsList) => {
-  const rawValue = cellProps.model[fieldKey]
-  if (!rawValue) return createElement('span', {}, '')
-  if (typeof rawValue === 'object' && rawValue !== null) {
-    return createElement('span', {}, rawValue[displayField] || rawValue.name || '')
-  }
-  const matchedOption = optionsList.find(opt => opt.value === rawValue)
-  return createElement('span', {}, matchedOption ? matchedOption.label : rawValue)
-}
-
-const setSyncStatus = (state, message, autoResetDelay = 3000) => {
+const setSyncStatus = (state: string, message: string, autoResetDelay = 3000) => {
   if (statusResetTimeout) clearTimeout(statusResetTimeout)
   if (apiLoadingTimeout) clearTimeout(apiLoadingTimeout)
 
@@ -290,7 +352,7 @@ const fetchRelationOptions = async () => {
   }
 }
 
-// AMBIL ANTREAN AKTIF (DRAFTS)
+// AMBIL ANTREAN DRAFTS
 const fetchQueue = async () => {
   try {
     const response = await api.get(`/${formKey.value}/get-queue`)
@@ -300,8 +362,7 @@ const fetchQueue = async () => {
   }
 }
 
-
-// MUAT DETAIL SATU TRANSAKSI UTAMA (HEADER & DETAILS)
+// MUAT DETAIL TRANSAKSI
 const loadTransaction = async (id: number) => {
   setSyncStatus('loading', 'Memuat dokumen transaksi..')
   try {
@@ -320,22 +381,22 @@ const loadTransaction = async (id: number) => {
   }
 }
 
-// INITIAL LOAD
+// INITIAL LOAD & MAPPING SCHEMA
 const loadComponentData = async () => {
   const res = props.schemaData
   if (!res) return
 
   await fetchRelationOptions()
 
-  columns.value = (res.details?.schema || []).map(field => {
+  columns.value = (res.details?.schema || []).map((field: any) => {
     const columnConfig: Record<string, any> = {
       prop: field.key,
       name: field.label,
-      size: field.size,
+      size: field.size || 150,
       readonly: field.readonly || false,
       required: field.required || false,
       _type: field.type || 'text',
-      _primary: field.primary || false,
+      _primary: field.primary || false
     }
 
     if (['number', 'integer'].includes(field.type)) columnConfig.columnType = 'numeric'
@@ -347,27 +408,22 @@ const loadComponentData = async () => {
       columnConfig.valueKey = 'value'
       columnConfig.source = field.options || []
       columnConfig.editorProperties = { appendToBody: true }
-    }
-    else if (field.type === 'relation' && field.relation) {
-      const entity = field.relation.entity
-      columnConfig.columnType = 'select'
-      columnConfig.labelKey = 'label'
-      columnConfig.valueKey = 'value'
-      columnConfig.source = relationOptions.value[entity] || []
-      columnConfig.editorProperties = { appendToBody: true }
-      columnConfig.cellTemplate = (createElement, linkProps) =>
-        relationCellRenderer(
-          createElement,
-          linkProps,
-          field.relation.displayField,
-          field.key,
-          relationOptions.value[entity] || []
-        )
+    } else if (field.type === 'relation' && field.relation) {
+      columnConfig._relation = field.relation
+      columnConfig.cellTemplate = (h: any, cellProps: any) => {
+        const row = cellProps.model
+        const val = row[field.key]
+        const displayVal = row[`_${field.key}_display`] || getRelationDisplayLabel(field, val) || ''
+        return h('div', { class: 'flex items-center justify-between w-full px-1 cursor-pointer' }, [
+          h('span', {}, displayVal),
+          h('span', { class: 'text-slate-400 text-[10px]' }, '🔍')
+        ])
+      }
     }
     return columnConfig
   })
 
-  primaryKeyFieldName.value = (res.details?.schema || []).find(f => f.primary)?.key || 'id'
+  primaryKeyFieldName.value = (res.details?.schema || []).find((f: any) => f.primary)?.key || 'id'
   permission.value = res.permissions || {}
 
   await fetchQueue()
@@ -379,7 +435,7 @@ const loadComponentData = async () => {
   }
 }
 
-// UPDATE FORM HEADER (AUTO-SAVE)
+// UPDATE HEADER (AUTO-SAVE)
 const updateHeaderField = async (fieldKey: string) => {
   if (!activeHeaderId.value || !headerForm.value) return
 
@@ -397,15 +453,18 @@ const updateHeaderField = async (fieldKey: string) => {
   }
 }
 
-// AKSI EDIT DETIL BARANG (GRID CELLS)
-const beforeEditStart = (event) => {
-  console.log('Mempersiapkan pengeditan data detail..', event)
-
+// EDIT GRID CELLS
+const beforeEditStart = (event: any) => {
+  if (!event.detail) return;
+  console.log("membuka relasi...")
+  if (event.detail.column._type === "relation") {
+    openDetailRelationModal(event.detail.prop, event.detail.rowIndex, event.detail.column._relation)
+  }
 }
 
-const beforeEdit = (event) => {
+const beforeEdit = (event: any) => {
   const { val, prop } = event.detail
-  const originalField = props.schemaData?.details?.schema?.find(f => f.key === prop)
+  const originalField = props.schemaData?.details?.schema?.find((f: any) => f.key === prop)
   if (!originalField) return
 
   const columnLabel = originalField.label || prop
@@ -432,7 +491,7 @@ const beforeEdit = (event) => {
   }
 }
 
-const afterEdit = async (event) => {
+const afterEdit = async (event: any) => {
   if (event.detail.oldValue === event.detail.value) return
 
   const updatedModel = event.detail.model
@@ -441,11 +500,10 @@ const afterEdit = async (event) => {
 
   setSyncStatus('loading', 'Memperbarui baris belanja..')
   try {
-    const response = await api.put(`/${formKey.value}/update-details`, updatedModel, {
-      params: {
-        headerId: activeHeaderId.value,
-        id: detailId
-      }
+    const response = await api.put(`/${formKey.value}/update-details`, {
+      ...updatedModel,
+      headerId: activeHeaderId.value,
+      id: detailId
     })
 
     if (response.status === 200) {
@@ -458,7 +516,7 @@ const afterEdit = async (event) => {
 }
 
 // EVENT SHORTCUT KEYBOARD
-const handleKeyDown = async (e) => {
+const handleKeyDown = async (e: KeyboardEvent) => {
   if (e.repeat) return
 
   // F2: Transaksi Baru
@@ -489,7 +547,7 @@ const handleKeyDown = async (e) => {
     return
   }
 
-  // Cek apakah user sedang mengetik teks pada sel pencarian utama
+  // Auto Search Modal pada Kolom Utama (Primary)
   const { column } = await getActiveCellState()
   if (column?._primary && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
     openSearchProduct(e.key)
@@ -497,7 +555,7 @@ const handleKeyDown = async (e) => {
   }
 }
 
-// ==================== FITUR ADD DETAILS & PENCARIAN PRODUK ====================
+// ADD DETAILS / SEARCH MODAL
 const openSearchProduct = async (char: string) => {
   searchQuery.value = char
   showSearchModal.value = true
@@ -511,7 +569,6 @@ const handleSearchSubmit = async () => {
 
   setSyncStatus('loading', 'Menambahkan barang..')
   try {
-    // Memanggil endpoint backend `add-details` dengan query parameter dari text input pencarian
     const response = await api.post(`/${formKey.value}/add-details`, {
       headerId: activeHeaderId.value,
       query
@@ -533,18 +590,13 @@ const closeSearchModal = () => {
   nextTick(() => { getGrid().focus?.() })
 }
 
-// HAPUS DETAIL BARANG (Delete key)
+// HAPUS DETAIL BARANG (Delete Key)
 const handleDeleteDetailRow = async () => {
-  if (!activeHeaderId.value) {
-    console.log('tidak ada headerId')
-    return
-  }
-
+  if (!activeHeaderId.value) return
 
   const { y: targetIndex } = await getActiveCellState()
   const selectedData = rows.value[targetIndex]
   const detailId = selectedData?.[primaryKeyFieldName.value]
-  console.log(primaryKeyFieldName.value, selectedData)
   if (!detailId) return
 
   if (confirm(`Hapus item belanja: ${selectedData?.name || 'barang ini'}?`)) {
@@ -567,7 +619,7 @@ const handleDeleteDetailRow = async () => {
   }
 }
 
-// BUAT TRANSAKSI BARU (Draft Baru)
+// NEW TRANSACTION (Draft Baru)
 const handleNewTransaction = async () => {
   setSyncStatus('loading', 'Membuat transaksi baru..')
   try {
@@ -581,7 +633,7 @@ const handleNewTransaction = async () => {
   }
 }
 
-// SIMPAN TRANSAKSI
+// SAVE TRANSACTION
 const handleSaveTransaction = async () => {
   if (!activeHeaderId.value) return
   if (!confirm('Apakah Anda yakin ingin menyelesaikan dan menyimpan transaksi ini?')) return
@@ -603,14 +655,14 @@ const handleSaveTransaction = async () => {
   }
 }
 
-// BATALKAN TRANSAKSI
+// CANCEL TRANSACTION
 const handleCancelTransaction = async () => {
   if (!activeHeaderId.value) return
   if (!confirm('Apakah Anda yakin ingin membatalkan transaksi draft ini? (Data akan dihapus)')) return
 
   setSyncStatus('loading', 'Membatalkan transaksi..')
   try {
-    await api.post(`/${formKey.value}/cancel-transaction`, {}, { params: { id: activeHeaderId.value } })
+    await api.post(`/${formKey.value}/cancel-transaction`, { id: activeHeaderId.value })
     setSyncStatus('success', 'Transaksi dibatalkan')
 
     await fetchQueue()
@@ -625,7 +677,7 @@ const handleCancelTransaction = async () => {
   }
 }
 
-// CUSTOM ACTIONS (Printer, Payment dll)
+// CUSTOM ACTIONS
 const triggerCustomAction = (actionKey: string) => {
   if (actionKey === 'print') {
     window.print()
@@ -647,6 +699,7 @@ onMounted(() => {
   loadComponentData()
 })
 </script>
+
 <style scoped>
 :deep(revo-grid) {
   z-index: 10 !important;

@@ -13,7 +13,7 @@
             <div class="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
               <Icon icon="heroicons:magnifying-glass-20-solid" class="w-5 h-5" />
             </div>
-            <input ref="searchInputRef" v-model="searchQuery" type="text" @keydown="handleSearchKeydown"
+            <input ref="searchInputRef" v-model="detailSearchQuery" type="text" @keydown="handleSearchKeydown"
               placeholder="Ketik Kode/Nama barang lalu tekan Enter untuk menambah..."
               class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 transition-all" />
             <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none"> <kbd
@@ -75,16 +75,26 @@
                 {{ headerForm[field.key] || '-' }}
               </template>
             </div>
+
+
+
             <!-- Type: Relation Input Trigger (Master Search) -->
             <div v-else-if="field.type === 'relation' && field.relation" class="relative">
-              <input type="text"
-                :value="headerRelationDisplay[field.key] || getRelationDisplayLabel(field, headerForm[field.key])"
-                :placeholder="`Pilih ${field.label}...`" @keydown.enter.prevent="openHeaderRelationModal(field)"
+              <span>
+
+
+              </span>
+
+              <input type="text" v-model="headerSearchQuery[field.key]" :placeholder="`Pilih ${field.label}...`"
+                @keydown.enter.prevent="searchRelationHeaderData(field)"
                 class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all pr-8" />
               <Icon icon="heroicons:magnifying-glass-20-solid"
                 class="w-4 h-4 absolute right-2.5 top-3 text-slate-400 cursor-pointer"
-                @click="openHeaderRelationModal(field)" />
+                @click="searchRelationHeaderData(field)" />
             </div>
+
+
+
             <!-- Standard Input (Date, Text, Number) -->
             <input v-else :type="field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'"
               v-model="headerForm[field.key]" @change="updateHeaderField(field.key)"
@@ -144,8 +154,8 @@
     </div>
   </div>
   <!-- MASTER DIALOG FOR RELATIONS -->
-  <MasterDialog :relation="MasterDialogRelation" :schemaData="schemaData" :is-open="isMasterDialogOpen"
-    @close="closeMasterDialog" @select="handleRelationSelect" :keyword="searchQuery" />
+  <MasterDialog :schema-data-entity="searchDataSchema" :is-open="isMasterDialogOpen" @close="closeMasterDialog"
+    @select="selectData" />
 </template>
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
@@ -173,6 +183,7 @@ const tabStore = useTabStore()
 
 const gridRef = ref<any>(null)
 const navigatorRef = ref<any>(null)
+const searchDataSchema = ref<any>(null)
 
 const isMasterDialogOpen = ref(false)
 const queueData = ref<any[]>([])
@@ -182,7 +193,6 @@ const headerForm = ref<any>(null)
 const rows = ref<any[]>([])
 
 // State Relation Modal
-const MasterDialogRelation = ref<any>({ entity: '', displayField: 'name', valueField: 'id' })
 const activeRelationContext = ref<{ type: 'header' | 'detail'; fieldKey: string; rowIndex?: number } | null>(null)
 const headerRelationDisplay = ref<Record<string, string>>({})
 
@@ -192,7 +202,8 @@ const permission = ref<Record<string, boolean | undefined>>({})
 
 // State Search Details
 const showSearchModal = ref(false)
-const searchQuery = ref('')
+const headerSearchQuery = ref<Record<string, string>>({})
+const detailSearchQuery = ref<Record<string, string>>({})
 const searchInputRef = ref<HTMLInputElement | null>(null)
 
 const syncStatus = ref({ state: 'idle', message: '' })
@@ -213,48 +224,35 @@ const getRelationDisplayLabel = (field: any, val: any) => {
   return found ? found.label : val
 }
 
-// Buka Dialog dari Form Header
-const openHeaderRelationModal = (field: any) => {
-  MasterDialogRelation.value = {
-    entity: field.relation.entity,
-    displayField: field.relation.displayField || 'name',
-    valueField: field.relation.valueField || 'id'
-  }
-  activeRelationContext.value = { type: 'header', fieldKey: field.key }
-  isMasterDialogOpen.value = true
-}
 
-// Buka Dialog dari RevoGrid Details
-const openDetailRelationModal = (fieldKey: string, rowIndex: number, relationConfig: any) => {
-  MasterDialogRelation.value = {
-    entity: relationConfig.entity,
-    displayField: relationConfig.displayField || 'name',
-    valueField: relationConfig.valueField || 'id'
-  }
-  activeRelationContext.value = { type: 'detail', fieldKey, rowIndex }
-  isMasterDialogOpen.value = true
-}
+const searchRelationHeaderData = async (field: any) => {
+  const keyword = headerSearchQuery.value[field.key] || ''
 
-// Handler Pilihan Data dari MasterDialog Modal (Enter / Double Click)
-const handleRelationSelect = async (selected: { value: any; display: string; item: any }) => {
-  if (!activeRelationContext.value) return
+  try {
+    const response = await api.get(`${field.relation.entity}/search-data`, {
+      params: { keyword }
+    })
 
-  const { type, fieldKey, rowIndex } = activeRelationContext.value
-
-  if (type === 'header') {
-    headerForm.value[fieldKey] = selected.value
-    headerRelationDisplay.value[fieldKey] = selected.display
-    await updateHeaderField(fieldKey)
-  } else if (type === 'detail' && typeof rowIndex === 'number') {
-    const row = rows.value[rowIndex]
-    if (row) {
-      row[fieldKey] = selected.value
-      row[`_${fieldKey}_display`] = selected.display
-      await afterEdit({ detail: { model: row, oldValue: null, value: selected.value } })
+    if (response.data.data.length <= 1) {
+      console.log("data ketemu 1 langsung pilih")
+      selectData(response.data.data)
+    } else {
+      searchDataSchema.value = response.data
+      isMasterDialogOpen.value = true
     }
+  } catch (err: any) {
+    console.log('error', `Gagal mencari data: ${err.message}`)
   }
+}
+
+
+const selectData = async (data: any) => {
+  console.log(data)
+  console.log(headerForm.value)
   closeMasterDialog()
 }
+
+
 
 const closeMasterDialog = () => {
   isMasterDialogOpen.value = false
@@ -436,7 +434,7 @@ const updateHeaderField = async (fieldKey: string) => {
 const beforeEditStart = (event: any) => {
   if (!event.detail) return;
   if (event.detail.column._type === "relation") {
-    openDetailRelationModal(event.detail.prop, event.detail.rowIndex, event.detail.column._relation)
+    console.log('ini adalah relation..')
   }
 }
 
@@ -541,14 +539,14 @@ const handleSearchKeydown = (event) => {
 
 // ADD DETAILS / SEARCH MODAL
 const openSearchItemsDialog = async (char: string) => {
-  searchQuery.value = char
+  detailSearchQuery.value = char
   showSearchModal.value = true
   await nextTick()
   searchInputRef.value?.focus()
 }
 
 const handleSearchSubmit = async () => {
-  const query = searchQuery.value.trim()
+  const query = detailSearchQuery.value
   if (!query || !activeHeaderId.value) return
 
   setSyncStatus('loading', 'Menambahkan barang..')
@@ -570,7 +568,7 @@ const handleSearchSubmit = async () => {
 
 const closeSearchModal = () => {
   showSearchModal.value = false
-  searchQuery.value = ''
+  detailSearchQuery.value = ''
   nextTick(() => { getGrid().focus?.() })
 }
 
@@ -704,8 +702,8 @@ const handleGlobalKeyDown = (e) => {
     e.preventDefault()
     e.stopPropagation()
     e.stopImmediatePropagation()
-    searchQuery.value += e.key
-    openSearchItemsDialog(searchQuery.value)
+    detailSearchQuery.value += e.key
+    openSearchItemsDialog(detailSearchQuery.value)
   }
 }
 

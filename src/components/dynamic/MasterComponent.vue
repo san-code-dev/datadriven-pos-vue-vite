@@ -18,32 +18,12 @@
 						<span class="font-medium text-slate-700 dark:text-slate-300">{{ rows.length }}</span>
 						<span>items,</span>
 					</div>
-					<div class="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700 ">
-						<template v-if="syncStatus.state === 'loading'">
-							<Icon icon="heroicons:arrow-path-20-solid"
-								class="w-3.5 h-3.5 animate-spin text-emerald-500" />
-							<span class="text-slate-500 dark:text-slate-400">
-								{{ syncStatus.message }}
-							</span>
-						</template>
-
-						<template v-if="syncStatus.state === 'success'">
-							<Icon icon="heroicons:check-circle-20-solid" class="w-3.5 h-3.5 text-emerald-500" />
-							<span class="text-emerald-600 dark:text-emerald-400 font-medium">{{ syncStatus.message
-							}}</span>
-						</template>
-
-						<template v-if="syncStatus.state === 'error'">
-							<Icon icon="heroicons:exclamation-circle-20-solid" class="w-3.5 h-3.5 text-rose-500" />
-							<span class="text-rose-600 dark:text-rose-400 font-medium animate-pulse">{{
-								syncStatus.message }}</span>
-						</template>
-					</div>
+					<SyncStatus ref="syncStatusRef" />
 				</div>
 
 				<div class="flex flex-wrap items-center gap-2">
 					<button v-if="permission.create" @click="handleAddNewRow" type="button" class="btn-action-slate"
-						:disabled="syncStatus.state === 'loading'">
+						:disabled="syncStatusRef?.syncStatus.state === 'loading'">
 						<span>+ Tambah Baris</span>
 						<kbd class="btn-kbd">[F2]</kbd>
 					</button>
@@ -61,7 +41,7 @@
 					</button>
 
 					<button @click="fetchGridData" type="button" class="btn-action-slate">
-						<template v-if="syncStatus.state === 'loading'">
+						<template v-if="syncStatusRef?.syncStatus.state === 'loading'">
 							<Icon icon="heroicons:arrow-path-20-solid"
 								class="w-3.5 h-3.5 animate-spin text-emerald-500" />
 						</template>
@@ -126,7 +106,7 @@ import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from '@/components/GridNavigator.vue'
 import DynamicFilter from '@/components/DynamicFilter.vue'
-
+import SyncStatus from '@/components/SyncStatus.vue'
 import api from '@/lib/axios'
 import { useTabStore } from '@/stores/tabs'
 import { useFilterStore } from '@/stores/filter'
@@ -140,6 +120,7 @@ const props = defineProps({
 	menu: { type: Object, required: true },
 	schemaData: { type: Object, required: true }
 })
+
 
 const route = useRoute()
 const tabStore = useTabStore()
@@ -156,11 +137,17 @@ const showSearchModal = ref(false)
 const searchQuery = ref('')
 const searchInputRef = ref(null)
 
+let activeTimeoutId = null
+
+const syncStatusRef = ref<InstanceType<typeof SyncStatus> | null>(null)
+
+const setSyncStatus = (state: any, message: string, autoResetDelay = 3000) => {
+	syncStatusRef.value?.setStatus(state, message, autoResetDelay)
+}
+
+
 const activeFilters = ref(filterStore.getFiltersByTab(props.menu?.route || route.path) || {})
 
-const syncStatus = ref({ state: 'idle', message: '' })
-let statusResetTimeout = null
-let activeTimeoutId = null
 
 const relationOptions = ref<{ [entityName: string]: Array<{ value: any, label: string }> }>({})
 
@@ -201,26 +188,6 @@ const relationCellRenderer = (createElement, cellProps, displayField, fieldKey, 
 	return createElement('span', {}, matchedOption ? matchedOption.label : rawValue)
 }
 
-let apiLoadingTimeout = null
-
-const setSyncStatus = (state, message, autoResetDelay = 3000) => {
-	if (statusResetTimeout) clearTimeout(statusResetTimeout)
-	if (apiLoadingTimeout) clearTimeout(apiLoadingTimeout)
-
-	if (state === 'loading') {
-		apiLoadingTimeout = setTimeout(() => {
-			syncStatus.value = { state, message }
-		}, 400)
-	} else {
-		syncStatus.value = { state, message }
-	}
-
-	if ((state === 'success' || state === 'error') && autoResetDelay) {
-		statusResetTimeout = setTimeout(() => {
-			syncStatus.value = { state: 'idle', message: '' }
-		}, autoResetDelay)
-	}
-}
 
 const fetchRelationOptions = async () => {
 	const schema = props.schemaData?.schema || []
@@ -291,8 +258,14 @@ const loadComponentData = async () => {
 			_primary: field.primary || false,
 		}
 
-		if (['number', 'integer'].includes(field.type)) columnConfig.columnType = 'numeric'
-		else if (['decimal', 'currency'].includes(field.type)) columnConfig.columnType = 'decimal'
+		if (['number', 'integer'].includes(field.type)) {
+			columnConfig.columnType = 'numeric'
+			columnConfig.editor = 'number'
+		}
+		else if (['decimal', 'currency'].includes(field.type)) {
+			columnConfig.editor = 'number'
+			columnConfig.columnType = 'decimal'
+		}
 		else if (field.type === 'date') columnConfig.columnType = 'date'
 		else if (field.type === 'select') {
 			columnConfig.columnType = 'select'
@@ -391,9 +364,12 @@ const aftercolumnresize = (event) => {
 	console.log(event)
 }
 
+
+
+
 const afterEdit = async (event) => {
 	if (event.detail.oldValue === event.detail.value) return
-
+	console.log("cek old data", event.detail)
 	const updatedModel = event.detail.model
 	const recordId = updatedModel[primaryKey.value]
 	if (!recordId) return
@@ -594,7 +570,6 @@ const handleExport = () => { console.log("Ekspor data ke CSV/Excel...", rows.val
 
 onBeforeUnmount(() => {
 	if (activeTimeoutId) clearTimeout(activeTimeoutId)
-	if (statusResetTimeout) clearTimeout(statusResetTimeout)
 	document.removeEventListener('visibilitychange', handleWindowFocus)
 	getGrid().removeEventListener?.('mousedown', handleMouseDown)
 

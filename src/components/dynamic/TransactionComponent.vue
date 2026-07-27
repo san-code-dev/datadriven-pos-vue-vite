@@ -32,9 +32,10 @@
       <!-- ==================== TABS ANTREAN (DRAFTS) ==================== -->
       <div
         class="flex items-center gap-3 px-4 py-2 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shrink-0 overflow-hidden">
+        <DataCheck :variable="[headerForm]" />
         <span
           class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0 flex items-center gap-1">
-          <Icon icon="heroicons:clock-20-solid" class="w-3.5 h-3.5" />(Draft)
+          <Icon icon="heroicons:clock-20-solid" class="w-3.5 h-3.5" />Antrian:
         </span>
         <div class="flex flex-1 flex-wrap gap-1.5 items-center no-scrollbar overflow-x-auto py-0.5">
           <button v-for="item in queueData" :key="item.id" @click="loadTransaction(item.id)" :class="[
@@ -69,7 +70,7 @@
               field.highlight ? 'text-emerald-600 dark:text-emerald-400 font-bold text-lg border-emerald-100 dark:border-emerald-900/50' : 'text-slate-600 dark:text-slate-300'
             ]">
               <template v-if="field.type === 'currency'">
-                {{ formatCurrency(headerForm[field.key]) }}
+                {{ numberFormat.formatCurrency(headerForm[field.key]) }}
               </template>
               <template v-else>
                 {{ headerForm[field.key] || '-' }}
@@ -80,16 +81,13 @@
 
             <!-- Type: Relation Input Trigger (Master Search) -->
             <div v-else-if="field.type === 'relation' && field.relation" class="relative">
-              <span>
-
-
-              </span>
-
-              <input type="text" v-model="headerSearchQuery[field.key]" :placeholder="`Pilih ${field.label}...`"
-                @keydown.enter.prevent="searchRelationHeaderData(field)"
+              <input type="text"
+                :value="getRelationDisplayLabel(field, headerForm[field.key]) || headerSearchQuery[field.key]"
+                @input="e => headerSearchQuery[field.key] = (e.target as HTMLInputElement).value"
+                :placeholder="`Pilih ${field.label}...`" @keydown.enter.prevent="searchRelationHeaderData(field)"
                 class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all pr-8" />
               <Icon icon="heroicons:magnifying-glass-20-solid"
-                class="w-4 h-4 absolute right-2.5 top-3 text-slate-400 cursor-pointer"
+                class="w-4 h-4 absolute right-2.5 top-3 text-slate-400 cursor-pointer hover:text-emerald-500"
                 @click="searchRelationHeaderData(field)" />
             </div>
 
@@ -116,23 +114,11 @@
           <template v-for="field in (schemaData.header?.schema || [])" :key="field.key">
             <span v-if="field.highlight" class="font-semibold text-xl text-emerald-400">
               {{ field.label }} : {{
-                (field.type === 'currency') ? formatCurrency(headerForm?.[field.key]) : headerForm?.[field.key] }}
+                (field.type === 'currency') ? numberFormat.formatCurrency(headerForm?.[field.key]) :
+                  headerForm?.[field.key] }}
             </span>
           </template>
-          <div class="flex items-center gap-1.5 pl-3 border-l border-slate-200 dark:border-slate-700 text-xs">
-            <template v-if="syncStatus.state === 'loading'">
-              <Icon icon="heroicons:arrow-path-20-solid" class="w-4 h-4 animate-spin text-emerald-500" /> <span
-                class="text-slate-500">{{ syncStatus.message }}</span>
-            </template>
-            <template v-else-if="syncStatus.state === 'success'">
-              <Icon icon="heroicons:check-circle-20-solid" class="w-4 h-4 text-emerald-500" /> <span
-                class="text-emerald-600 dark:text-emerald-400 font-medium">{{ syncStatus.message }}</span>
-            </template>
-            <template v-else-if="syncStatus.state === 'error'">
-              <Icon icon="heroicons:exclamation-circle-20-solid" class="w-4 h-4 text-rose-500" /> <span
-                class="text-rose-600 dark:text-rose-400 font-medium animate-pulse">{{ syncStatus.message }}</span>
-            </template>
-          </div>
+          <SyncStatus ref="syncStatusRef" />
         </div>
         <div class="flex items-center gap-2">
           <button v-for="action in (schemaData.actions || [])" :key="action.key"
@@ -163,10 +149,12 @@ import { Icon } from '@iconify/vue'
 import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from '@/components/GridNavigator.vue'
+import SyncStatus from '../SyncStatus.vue'
 
 import api from '@/lib/axios'
-import { useTabStore } from '@/stores/tabs'
-import { useRoute } from 'vue-router'
+import { useNumberFormat } from '@/composables/number-format.ts'
+import { useSettingsStore } from '@/stores/setting.ts'
+import { getGrid, getActiveCellState } from '@/composables/grid.ts'
 
 import NumberColumnType from '@revolist/revogrid-column-numeral'
 import SelectTypePlugin from '@revolist/revogrid-column-select'
@@ -178,11 +166,10 @@ const props = defineProps({
   schemaData: { type: Object, required: true }
 })
 
-const route = useRoute()
-const tabStore = useTabStore()
+const settings = useSettingsStore()
+const numberFormat = useNumberFormat()
 
 const gridRef = ref<any>(null)
-const navigatorRef = ref<any>(null)
 const searchDataSchema = ref<any>(null)
 
 const isMasterDialogOpen = ref(false)
@@ -194,7 +181,6 @@ const rows = ref<any[]>([])
 
 // State Relation Modal
 const activeRelationContext = ref<{ type: 'header' | 'detail'; fieldKey: string; rowIndex?: number } | null>(null)
-const headerRelationDisplay = ref<Record<string, string>>({})
 
 const columns = ref<any[]>([])
 const primaryKeyFieldName = ref('id')
@@ -205,15 +191,15 @@ const showSearchModal = ref(false)
 const headerSearchQuery = ref<Record<string, string>>({})
 const detailSearchQuery = ref<Record<string, string>>({})
 const searchInputRef = ref<HTMLInputElement | null>(null)
+const syncStatusRef = ref<InstanceType<typeof SyncStatus> | null>(null)
 
-const syncStatus = ref({ state: 'idle', message: '' })
-let statusResetTimeout: any = null
-let apiLoadingTimeout: any = null
+const setSyncStatus = (state: any, message: string, autoResetDelay = 3000) => {
+  syncStatusRef.value?.setStatus(state, message)
+}
 
 const relationOptions = ref<{ [entityName: string]: Array<{ value: any; label: string }> }>({})
 const formKey = computed(() => props.menu.key.toLowerCase())
 
-const getGrid = () => gridRef.value?.$el || gridRef.value || {}
 
 // Format Tampilan Opsi Relasi pada Header Input
 const getRelationDisplayLabel = (field: any, val: any) => {
@@ -227,28 +213,37 @@ const getRelationDisplayLabel = (field: any, val: any) => {
 
 const searchRelationHeaderData = async (field: any) => {
   const keyword = headerSearchQuery.value[field.key] || ''
+  activeRelationContext.value = { type: 'header', fieldKey: field.key }
 
   try {
     const response = await api.get(`${field.relation.entity}/search-data`, {
       params: { keyword }
     })
 
-    if (response.data.data.length <= 1) {
-      console.log("data ketemu 1 langsung pilih")
-      selectData(response.data.data)
+    console.log(response)
+
+    const resultData = response.data?.data || response.data || []
+
+    if (resultData.length === 1) {
+      // Jika data hanya ketemu 1, langsung pilih otomatis
+      selectData(resultData[0])
     } else {
       searchDataSchema.value = response.data
       isMasterDialogOpen.value = true
     }
   } catch (err: any) {
-    console.log('error', `Gagal mencari data: ${err.message}`)
+    setSyncStatus('error', `Gagal mencari data: ${err.message}`)
   }
 }
 
-
-const selectData = async (data: any) => {
-  console.log(data)
-  console.log(headerForm.value)
+const selectData = async (selectedRow: any) => {
+  if (activeRelationContext.value?.type === 'header') {
+    const key = activeRelationContext.value.fieldKey
+    // Set nilai ID/Value ke header form
+    headerForm.value[key] = selectedRow.id || selectedRow.value
+    // Trigger update auto-save header ke backend
+    await updateHeaderField()
+  }
   closeMasterDialog()
 }
 
@@ -257,52 +252,18 @@ const selectData = async (data: any) => {
 const closeMasterDialog = () => {
   isMasterDialogOpen.value = false
   activeRelationContext.value = null
-  nextTick(() => getGrid().focus?.())
+  nextTick(() => getGrid(gridRef).focus?.())
 }
 
-const getActiveCellState = async () => {
-  const grid = getGrid()
-  if (typeof grid.getFocused !== 'function') return { x: 0, y: 0, column: {}, model: {} }
-  const focused = await grid.getFocused()
-  return {
-    x: focused?.cell?.x ?? 0,
-    y: focused?.cell?.y ?? 0,
-    column: focused?.column || {},
-    model: focused?.model || {}
-  }
-}
+
 
 const columnTypes = {
-  numeric: new NumberColumnType('0,0'),
-  decimal: new NumberColumnType('0,0.00'),
+  numeric: new NumberColumnType(useNumberFormat().getNumberPattern()),
+  decimal: new NumberColumnType(useNumberFormat().getCurrencyPattern()),
   select: new SelectTypePlugin(),
   date: new DateTypePlugin()
 }
 
-const formatCurrency = (val: any) => {
-  if (val === undefined || val === null) return 'Rp 0'
-  const numeric = typeof val === 'object' && val.d ? Number(val.d[0]) : Number(val)
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(numeric)
-}
-
-const setSyncStatus = (state: string, message: string, autoResetDelay = 3000) => {
-  if (statusResetTimeout) clearTimeout(statusResetTimeout)
-  if (apiLoadingTimeout) clearTimeout(apiLoadingTimeout)
-
-  if (state === 'loading') {
-    apiLoadingTimeout = setTimeout(() => {
-      syncStatus.value = { state, message }
-    }, 400)
-  } else {
-    syncStatus.value = { state, message }
-  }
-
-  if ((state === 'success' || state === 'error') && autoResetDelay) {
-    statusResetTimeout = setTimeout(() => {
-      syncStatus.value = { state: 'idle', message: '' }
-    }, autoResetDelay)
-  }
-}
 
 // AMBIL DAFTAR RELASI
 const fetchRelationOptions = async () => {
@@ -351,7 +312,7 @@ const loadTransaction = async (id: number) => {
     rows.value = details
 
     await nextTick()
-    getGrid().requestGridRowsRedraw?.()
+    getGrid(gridRef).requestGridRowsRedraw?.()
     setSyncStatus('success', 'Transaksi dimuat')
   } catch (err: any) {
     setSyncStatus('error', `Gagal memuat transaksi: ${err.message}`)
@@ -413,7 +374,7 @@ const loadComponentData = async () => {
 }
 
 // UPDATE HEADER (AUTO-SAVE)
-const updateHeaderField = async (fieldKey: string) => {
+const updateHeaderField = async () => {
   if (!activeHeaderId.value || !headerForm.value) return
 
   setSyncStatus('loading', 'Menyimpan perubahan header..')
@@ -524,7 +485,7 @@ const handleKeyDown = async (e: KeyboardEvent) => {
   }
 
   // Auto Search Modal pada Kolom Utama (Primary)
-  const { column } = await getActiveCellState()
+  const { column } = await getActiveCellState(gridRef)
   if (column?._primary && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
     openSearchItemsDialog(e.key)
     e.preventDefault()
@@ -566,17 +527,17 @@ const handleSearchSubmit = async () => {
   closeSearchModal()
 }
 
-const closeSearchModal = () => {
+const closeSearchModal = async () => {
   showSearchModal.value = false
   detailSearchQuery.value = ''
-  nextTick(() => { getGrid().focus?.() })
+  getGrid(gridRef).focus?.()
 }
 
 // HAPUS DETAIL BARANG (Delete Key)
 const handleDeleteDetailRow = async () => {
   if (!activeHeaderId.value) return
 
-  const { y: targetIndex } = await getActiveCellState()
+  const { y: targetIndex } = await getActiveCellState(gridRef)
   const selectedData = rows.value[targetIndex]
   const detailId = selectedData?.[primaryKeyFieldName.value]
   if (!detailId) return
@@ -669,8 +630,6 @@ const triggerCustomAction = (actionKey: string) => {
 }
 
 onBeforeUnmount(() => {
-  if (statusResetTimeout) clearTimeout(statusResetTimeout)
-  if (apiLoadingTimeout) clearTimeout(apiLoadingTimeout)
   rows.value = []
   columns.value = []
 })
@@ -712,7 +671,7 @@ onMounted(() => {
   loadComponentData()
 })
 
-onUnmounted(() => {
+onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalKeyDown, true)
 })
 </script>

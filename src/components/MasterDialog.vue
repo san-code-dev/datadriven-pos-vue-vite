@@ -37,10 +37,10 @@
 
                         <RevoGrid ref="gridRef" hide-attribution
                             class="absolute inset-0 w-full h-full focus:outline-none" :columns="columns" :source="rows"
-                            :theme="isDark ? 'darkCompact' : 'compact'" @keydown="handleKeyDown" />
+                            :theme="isDark ? 'darkCompact' : 'compact'" @keydown="handleKeyDown"
+                            @dblclick="selectData" />
 
                         <GridNavigator ref="gridNavigatorRef" :columns="columns" :rows="rows" :grid="gridRef" />
-
 
                     </div>
 
@@ -64,11 +64,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+// 🟢 FIX 1: Import watch & nextTick
+import { ref, watch, nextTick } from 'vue'
 import { Icon } from '@iconify/vue'
 import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from './GridNavigator.vue'
+import { getActiveCellState, getGrid, gridSelectsetSelectedFocusedCell } from '@/composables/grid.ts'
 
 interface Props {
     schemaDataEntity: any
@@ -83,63 +85,56 @@ const emit = defineEmits(['close', 'select'])
 const columns = ref<any[]>([])
 const rows = ref<any[]>([])
 
-
 const closeDialog = () => {
     emit('close')
 }
 
-
-const handleKeyDown = (e) => {
+const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter') {
         selectData()
     }
+    if (e.key === 'Escape') {
+        closeDialog()
+    }
 }
 
-
 const selectData = async () => {
-    const focusedColumn = await gridRef.value.$el.getFocused();
-    const selectedData = focusedColumn.model;
+    const focusedColumn = await getActiveCellState(gridRef)
+
+    // 🟢 FIX 2: Mencegah error jika focusedColumn null/undefined
+    if (!focusedColumn?.model) {
+        alert("gagal memilih data");
+        return
+    }
+
+    const selectedData = focusedColumn.model
     await emit('select', selectedData)
     emit('close')
 }
 
 watch(() => props.isOpen, async (isOpen) => {
-    if (!isOpen) return;
+    if (!isOpen || !props.schemaDataEntity) return;
 
-    columns.value = props.schemaDataEntity.schema.map((field: any) => ({
+    columns.value = (props.schemaDataEntity.schema || []).map((field: any) => ({
         prop: field.key,
         name: field.label,
         size: field.size || 150,
         readonly: true,
     }))
-
-    rows.value = props.schemaDataEntity.data
+    rows.value = props.schemaDataEntity.data || []
 
     await nextTick()
 
-    // 1. Dapatkan elemen RevoGrid
-    const gridEl = gridRef.value?.$el || gridRef.value
-
-    if (gridEl) {
-        // Beri sedikit jeda agar animasi Transition Vue selesai & DOM siap
-        setTimeout(async () => {
-            // Focus elemen HTML
-            gridEl.focus()
-
-            // 2. Set sel aktif ke (Row index 0, Column index 0) secara eksplisit via API RevoGrid
-            if (typeof gridEl.setSelectedFocusedCell === 'function') {
-                await gridEl.setSelectedFocusedCell({ rowIndex: 0, colIndex: 0 })
-            }
-
-            // Scroll ke baris pertama jika navigator ada
-            gridNavigatorRef.value?.scrollToFirstRow()
-        }, 50)
+    const grid = getGrid(gridRef)
+    if (grid) {
+        grid.focus?.()
+        await gridSelectsetSelectedFocusedCell(gridRef, { rowIndex: 0, colIndex: 0 })
+        gridNavigatorRef.value?.scrollToFirstRow?.()
     }
 })
 </script>
 
 <style scoped>
-/* Pastikan custom element RevoGrid benar-benar mengisi wrapper */
 :deep(revo-grid) {
     display: block;
     position: absolute;

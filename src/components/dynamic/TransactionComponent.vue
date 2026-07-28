@@ -95,7 +95,7 @@
 
             <!-- Standard Input (Date, Text, Number) -->
             <input v-else :type="field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'"
-              v-model="headerForm[field.key]" @change="updateHeaderField(field.key)"
+              v-model="headerForm[field.key]" @change="updateHeaderData(field.key)"
               class="dark:[color-scheme:dark] px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all" />
           </div>
         </div>
@@ -140,8 +140,8 @@
     </div>
   </div>
   <!-- MASTER DIALOG FOR RELATIONS -->
-  <MasterDialog :schema-data-entity="searchDataSchema" :is-open="isMasterDialogOpen" @close="closeMasterDialog"
-    @select="selectData" />
+  <SelectDialog :schema-data-entity="searchDataSchema" :is-open="isSelectDialogOpen" @close="closeSelectDialog"
+    @select="selectDialogSelectData" />
 </template>
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
@@ -157,9 +157,8 @@ import { useSettingsStore } from '@/stores/setting.ts'
 import { getGrid, getActiveCellState } from '@/composables/grid.ts'
 
 import NumberColumnType from '@revolist/revogrid-column-numeral'
-import SelectTypePlugin from '@revolist/revogrid-column-select'
 import DateTypePlugin from '@revolist/revogrid-column-date'
-import MasterDialog from '../MasterDialog.vue'
+import SelectDialog from '../SelectDialog.vue'
 
 const props = defineProps({
   menu: { type: Object, required: true },
@@ -172,7 +171,7 @@ const numberFormat = useNumberFormat()
 const gridRef = ref<any>(null)
 const searchDataSchema = ref<any>(null)
 
-const isMasterDialogOpen = ref(false)
+const isSelectDialogOpen = ref(false)
 const queueData = ref<any[]>([])
 
 const activeHeaderId = ref<number | null>(null)
@@ -193,7 +192,7 @@ const detailSearchQuery = ref<Record<string, string>>({})
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const syncStatusRef = ref<InstanceType<typeof SyncStatus> | null>(null)
 
-const setSyncStatus = (state: any, message: string, autoResetDelay = 3000) => {
+const setSyncStatus = (state: any, message: string) => {
   syncStatusRef.value?.setStatus(state, message)
 }
 
@@ -226,31 +225,31 @@ const searchRelationHeaderData = async (field: any) => {
 
     if (resultData.length === 1) {
       // Jika data hanya ketemu 1, langsung pilih otomatis
-      selectData(resultData[0])
+      selectDialogSelectData(resultData[0])
     } else {
       searchDataSchema.value = response.data
-      isMasterDialogOpen.value = true
+      isSelectDialogOpen.value = true
     }
   } catch (err: any) {
     setSyncStatus('error', `Gagal mencari data: ${err.message}`)
   }
 }
 
-const selectData = async (selectedRow: any) => {
+const selectDialogSelectData = async (selectedRow: any) => {
   if (activeRelationContext.value?.type === 'header') {
     const key = activeRelationContext.value.fieldKey
     // Set nilai ID/Value ke header form
     headerForm.value[key] = selectedRow.id || selectedRow.value
     // Trigger update auto-save header ke backend
-    await updateHeaderField()
+    await updateHeaderData()
   }
-  closeMasterDialog()
+  closeSelectDialog()
 }
 
 
 
-const closeMasterDialog = () => {
-  isMasterDialogOpen.value = false
+const closeSelectDialog = () => {
+  isSelectDialogOpen.value = false
   activeRelationContext.value = null
   nextTick(() => getGrid(gridRef).focus?.())
 }
@@ -258,9 +257,8 @@ const closeMasterDialog = () => {
 
 
 const columnTypes = {
-  numeric: new NumberColumnType(useNumberFormat().getNumberPattern()),
-  decimal: new NumberColumnType(useNumberFormat().getCurrencyPattern()),
-  select: new SelectTypePlugin(),
+  numeric: new NumberColumnType('0,0'),
+  decimal: new NumberColumnType('0,0'),
   date: new DateTypePlugin()
 }
 
@@ -374,7 +372,7 @@ const loadComponentData = async () => {
 }
 
 // UPDATE HEADER (AUTO-SAVE)
-const updateHeaderField = async () => {
+const updateHeaderData = async () => {
   if (!activeHeaderId.value || !headerForm.value) return
 
   setSyncStatus('loading', 'Menyimpan perubahan header..')
@@ -646,7 +644,7 @@ const handleGlobalKeyDown = (e) => {
     target.tagName === 'INPUT' ||
     target.tagName === 'TEXTAREA' ||
     target.isContentEditable ||
-    isMasterDialogOpen.value
+    isSelectDialogOpen.value
   ) {
     return
   }

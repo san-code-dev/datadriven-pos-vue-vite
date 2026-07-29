@@ -3,7 +3,7 @@
     class="flex h-full max-h-full overflow-hidden min-h-0 bg-slate-50 dark:bg-slate-950 w-full text-slate-800 dark:text-slate-100">
     <!-- ==================== MAIN TRANSACTION AREA ==================== -->
     <div class="flex-1 flex flex-col h-full overflow-hidden min-h-0 relative">
-      <!-- MODAL PENCARIAN PRODUK CEPAI (ADD DETAILS / F4) -->
+      <!-- MODAL PENCARIAN PRODUK (ADD DETAILS / F4) -->
       <div v-if="showSearchModal" @click.self="closeSearchModal"
         class="absolute backdrop-blur-sm bg-slate-900/40 flex inset-0 items-center justify-center transition-all z-50">
         <div
@@ -28,11 +28,10 @@
           </form>
         </div>
       </div>
-      <!-- HEADER STATUS & CONTROL ACTIONS -->
+
       <!-- ==================== TABS ANTREAN (DRAFTS) ==================== -->
       <div
         class="flex items-center gap-3 px-4 py-2 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shrink-0 overflow-hidden">
-        <DataCheck :variable="[headerForm]" />
         <span
           class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0 flex items-center gap-1">
           <Icon icon="heroicons:clock-20-solid" class="w-3.5 h-3.5" />Antrian:
@@ -54,16 +53,18 @@
           </button>
         </div>
       </div>
+
       <!-- ==================== FORM HEADER & TABLE DETAILS ==================== -->
       <div class="flex flex-1 flex-col min-h-0 overflow-hidden relative w-full">
         <!-- FORM HEADER -->
         <div v-if="headerForm"
           class="bg-white border-b border-slate-200 grid grid-cols-1 gap-4 p-4 transition-colors dark:bg-slate-900 dark:border-slate-800 sm:grid-cols-2 lg:grid-cols-4">
-          <div v-for="field in (schemaData.header?.schema || [])" :key="field.key" class="flex flex-col gap-1.5"
-            :class="{ 'invisible': field.isHidden }">
+          <div v-for="field in headerSchema" :key="field.key" class="flex flex-col gap-1.5"
+            :class="{ 'hidden': field.isHidden }">
             <label class="text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
               {{ field.label }}
             </label>
+
             <!-- Readonly Field -->
             <div v-if="field.readonly" :class="[
               'px-3 py-2 text-sm rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-medium',
@@ -77,8 +78,6 @@
               </template>
             </div>
 
-
-
             <!-- Type: Relation Input Trigger (Master Search) -->
             <div v-else-if="field.type === 'relation' && field.relation" class="relative">
               <input type="text"
@@ -91,14 +90,13 @@
                 @click="searchRelationHeaderData(field)" />
             </div>
 
-
-
             <!-- Standard Input (Date, Text, Number) -->
             <input v-else :type="field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'"
               v-model="headerForm[field.key]" @change="updateHeaderData(field.key)"
               class="dark:[color-scheme:dark] px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all" />
           </div>
         </div>
+
         <!-- REVO GRID DETAILS -->
         <div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
           <RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
@@ -108,10 +106,12 @@
           <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
         </div>
       </div>
+
+      <!-- FOOTER SUMMARY & ACTIONS -->
       <div
         class="bg-white border-b border-slate-200 flex flex-wrap gap-3 items-center justify-between px-4 py-2 transition-colors dark:bg-slate-900 dark:border-slate-800">
         <div class="flex items-center gap-3 select-none">
-          <template v-for="field in (schemaData.header?.schema || [])" :key="field.key">
+          <template v-for="field in headerSchema" :key="field.key">
             <span v-if="field.highlight" class="font-semibold text-xl text-emerald-400">
               {{ field.label }} : {{
                 (field.type === 'currency') ? numberFormat.formatCurrency(headerForm?.[field.key]) :
@@ -121,7 +121,7 @@
           <SyncStatus ref="syncStatusRef" />
         </div>
         <div class="flex items-center gap-2">
-          <button v-for="action in (schemaData.actions || [])" :key="action.key"
+          <button v-for="action in (moduleSchema.actions || [])" :key="action.key"
             @click="triggerCustomAction(action.key)"
             class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors">
             <span>{{ action.label }}</span>
@@ -143,6 +143,7 @@
   <SelectDialog :schema-data-entity="searchDataSchema" :is-open="isSelectDialogOpen" @close="closeSelectDialog"
     @select="selectDialogSelectData" />
 </template>
+
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -150,7 +151,7 @@ import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from '@/components/GridNavigator.vue'
 import SyncStatus from '../SyncStatus.vue'
-
+import { io } from 'socket.io-client'
 import api from '@/lib/axios'
 import { useNumberFormat } from '@/composables/number-format.ts'
 import { useSettingsStore } from '@/stores/setting.ts'
@@ -175,8 +176,14 @@ const isSelectDialogOpen = ref(false)
 const queueData = ref<any[]>([])
 
 const activeHeaderId = ref<number | null>(null)
-const headerForm = ref<any>(null)
+const headerForm = ref<any>([])
 const rows = ref<any[]>([])
+
+const moduleSchema = ref<any>(props.schemaData || {})
+const headerSchema = computed(() => moduleSchema.value.header?.schema || [])
+const detailsSchema = computed(() => moduleSchema.value.details?.schema || [])
+
+let socket: any = null // <-- Variabel instance socket lokal komponen
 
 // State Relation Modal
 const activeRelationContext = ref<{ type: 'header' | 'detail'; fieldKey: string; rowIndex?: number } | null>(null)
@@ -199,6 +206,30 @@ const setSyncStatus = (state: any, message: string) => {
 const relationOptions = ref<{ [entityName: string]: Array<{ value: any; label: string }> }>({})
 const formKey = computed(() => props.menu.key.toLowerCase())
 
+// Helper mapping respon atomik backend
+const applyResponseData = (resData: any) => {
+  if (!resData) return
+
+  // Mapping queue jika ada
+  if (resData.queue?.data) {
+    queueData.value = resData.queue.data
+  }
+
+  // Mapping header jika ada
+  if (resData.header) {
+    moduleSchema.value.header = resData.header
+    headerForm.value = resData.header.data ? { ...resData.header.data } : null
+    if (headerForm.value?.id) {
+      activeHeaderId.value = headerForm.value.id
+    }
+  }
+
+  // Mapping details jika ada
+  if (resData.details) {
+    moduleSchema.value.details = resData.details
+    rows.value = resData.details.data || []
+  }
+}
 
 // Format Tampilan Opsi Relasi pada Header Input
 const getRelationDisplayLabel = (field: any, val: any) => {
@@ -209,7 +240,6 @@ const getRelationDisplayLabel = (field: any, val: any) => {
   return found ? found.label : val
 }
 
-
 const searchRelationHeaderData = async (field: any) => {
   const keyword = headerSearchQuery.value[field.key] || ''
   activeRelationContext.value = { type: 'header', fieldKey: field.key }
@@ -219,12 +249,9 @@ const searchRelationHeaderData = async (field: any) => {
       params: { keyword }
     })
 
-    console.log(response)
-
     const resultData = response.data?.data || response.data || []
 
     if (resultData.length === 1) {
-      // Jika data hanya ketemu 1, langsung pilih otomatis
       selectDialogSelectData(resultData[0])
     } else {
       searchDataSchema.value = response.data
@@ -238,15 +265,11 @@ const searchRelationHeaderData = async (field: any) => {
 const selectDialogSelectData = async (selectedRow: any) => {
   if (activeRelationContext.value?.type === 'header') {
     const key = activeRelationContext.value.fieldKey
-    // Set nilai ID/Value ke header form
     headerForm.value[key] = selectedRow.id || selectedRow.value
-    // Trigger update auto-save header ke backend
     await updateHeaderData()
   }
   closeSelectDialog()
 }
-
-
 
 const closeSelectDialog = () => {
   isSelectDialogOpen.value = false
@@ -254,20 +277,15 @@ const closeSelectDialog = () => {
   nextTick(() => getGrid(gridRef).focus?.())
 }
 
-
-
 const columnTypes = {
   numeric: new NumberColumnType('0,0'),
   decimal: new NumberColumnType('0,0'),
   date: new DateTypePlugin()
 }
 
-
 // AMBIL DAFTAR RELASI
 const fetchRelationOptions = async () => {
-  const headerSchema = props.schemaData?.header?.schema || []
-  const detailsSchema = props.schemaData?.details?.schema || []
-  const allFields = [...headerSchema, ...detailsSchema]
+  const allFields = [...headerSchema.value, ...detailsSchema.value]
   const relationFields = allFields.filter(f => f.type === 'relation' && f.relation)
 
   for (const field of relationFields) {
@@ -288,26 +306,12 @@ const fetchRelationOptions = async () => {
   }
 }
 
-// AMBIL ANTREAN DRAFTS
-const fetchQueue = async () => {
-  try {
-    const response = await api.get(`/${formKey.value}/get-queue`)
-    queueData.value = response.data || []
-  } catch (err) {
-    console.error("Gagal mengambil antrean:", err)
-  }
-}
-
 // MUAT DETAIL TRANSAKSI
 const loadTransaction = async (id: number) => {
   setSyncStatus('loading', 'Memuat dokumen transaksi..')
   try {
     const response = await api.get(`/${formKey.value}/get-transaction`, { params: { id } })
-    const { header, details } = response.data || { header: null, details: [] }
-
-    activeHeaderId.value = id
-    headerForm.value = header
-    rows.value = details
+    applyResponseData(response.data)
 
     await nextTick()
     getGrid(gridRef).requestGridRowsRedraw?.()
@@ -322,9 +326,11 @@ const loadComponentData = async () => {
   const res = props.schemaData
   if (!res) return
 
+  moduleSchema.value = res
+  applyResponseData(res) // Menerapkan inisial data dari props schemaData (jika menyertakan queue/header/details awal)
   await fetchRelationOptions()
 
-  columns.value = (res.details?.schema || []).map((field: any) => {
+  columns.value = (detailsSchema.value || []).map((field: any) => {
     const columnConfig: Record<string, any> = {
       prop: field.key,
       name: field.label,
@@ -359,14 +365,12 @@ const loadComponentData = async () => {
     return columnConfig
   })
 
-  primaryKeyFieldName.value = (res.details?.schema || []).find((f: any) => f.primary)?.key || 'id'
+  primaryKeyFieldName.value = (detailsSchema.value || []).find((f: any) => f.primary)?.key || 'id'
   permission.value = res.permissions || {}
 
-  await fetchQueue()
-
-  if (queueData.value.length > 0) {
+  if (queueData.value.length > 0 && !activeHeaderId.value) {
     await loadTransaction(queueData.value[0].id)
-  } else {
+  } else if (!activeHeaderId.value) {
     await handleNewTransaction()
   }
 }
@@ -380,9 +384,7 @@ const updateHeaderData = async () => {
     const response = await api.put(`/${formKey.value}/update-header`, headerForm.value, {
       params: { id: activeHeaderId.value }
     })
-    headerForm.value = response.data
-
-    await fetchQueue()
+    applyResponseData(response.data)
     setSyncStatus('success', 'Header disimpan')
   } catch (err: any) {
     setSyncStatus('error', `Gagal update header: ${err.message}`)
@@ -399,7 +401,7 @@ const beforeEditStart = (event: any) => {
 
 const beforeEdit = (event: any) => {
   const { val, prop } = event.detail
-  const originalField = props.schemaData?.details?.schema?.find((f: any) => f.key === prop)
+  const originalField = detailsSchema.value.find((f: any) => f.key === prop)
   if (!originalField) return
 
   const columnLabel = originalField.label || prop
@@ -442,7 +444,7 @@ const afterEdit = async (event: any) => {
     })
 
     if (response.status === 200) {
-      await loadTransaction(activeHeaderId.value)
+      applyResponseData(response.data)
       setSyncStatus('success', 'Perubahan barang disimpan')
     }
   } catch (err: any) {
@@ -454,35 +456,30 @@ const afterEdit = async (event: any) => {
 const handleKeyDown = async (e: KeyboardEvent) => {
   if (e.repeat) return
 
-  // F2: Transaksi Baru
   if (e.key === 'F2') {
     handleNewTransaction()
     e.preventDefault()
     return
   }
 
-  // F4: Cari & Tambah Detail Baru
   if (e.key === 'F4') {
     openSearchItemsDialog('')
     e.preventDefault()
     return
   }
 
-  // F9: Simpan Transaksi
   if (e.key === 'F9') {
     handleSaveTransaction()
     e.preventDefault()
     return
   }
 
-  // Delete: Hapus item aktif
   if (e.key === 'Delete') {
     handleDeleteDetailRow()
     e.preventDefault()
     return
   }
 
-  // Auto Search Modal pada Kolom Utama (Primary)
   const { column } = await getActiveCellState(gridRef)
   if (column?._primary && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
     openSearchItemsDialog(e.key)
@@ -490,13 +487,12 @@ const handleKeyDown = async (e: KeyboardEvent) => {
   }
 }
 
-const handleSearchKeydown = (event) => {
+const handleSearchKeydown = (event: any) => {
   if (event.key == 'Escape') {
     closeSearchModal()
   }
 }
 
-// ADD DETAILS / SEARCH MODAL
 const openSearchItemsDialog = async (char: string) => {
   detailSearchQuery.value = char
   showSearchModal.value = true
@@ -516,7 +512,7 @@ const handleSearchSubmit = async () => {
     })
 
     if (response.status === 201 || response.status === 200) {
-      await loadTransaction(activeHeaderId.value)
+      applyResponseData(response.data)
       setSyncStatus('success', 'Barang berhasil ditambahkan')
     }
   } catch (err: any) {
@@ -531,7 +527,6 @@ const closeSearchModal = async () => {
   getGrid(gridRef).focus?.()
 }
 
-// HAPUS DETAIL BARANG (Delete Key)
 const handleDeleteDetailRow = async () => {
   if (!activeHeaderId.value) return
 
@@ -540,7 +535,7 @@ const handleDeleteDetailRow = async () => {
   const detailId = selectedData?.[primaryKeyFieldName.value]
   if (!detailId) return
 
-  if (confirm(`Hapus item belanja: ${selectedData?.name || 'barang ini'}?`)) {
+  if (confirm(`Hapus item belanja: ${selectedData?.name || selectedData?.nmProduct || 'barang ini'}?`)) {
     setSyncStatus('loading', 'Menghapus item..')
     try {
       const response = await api.delete(`/${formKey.value}/delete-details`, {
@@ -551,7 +546,7 @@ const handleDeleteDetailRow = async () => {
       })
 
       if (response.status === 200) {
-        await loadTransaction(activeHeaderId.value)
+        applyResponseData(response.data)
         setSyncStatus('success', 'Item belanja dihapus')
       }
     } catch (err: any) {
@@ -560,65 +555,45 @@ const handleDeleteDetailRow = async () => {
   }
 }
 
-// NEW TRANSACTION (Draft Baru)
 const handleNewTransaction = async () => {
   setSyncStatus('loading', 'Membuat transaksi baru..')
   try {
     const response = await api.post(`/${formKey.value}/new-transaction`, {})
-    const newTx = response.data
-    await fetchQueue()
-    await loadTransaction(newTx.id)
+    applyResponseData(response.data)
     setSyncStatus('success', 'Transaksi baru siap')
   } catch (err: any) {
     setSyncStatus('error', `Gagal membuat transaksi: ${err.message}`)
   }
 }
 
-// SAVE TRANSACTION
 const handleSaveTransaction = async () => {
   if (!activeHeaderId.value) return
   if (!confirm('Apakah Anda yakin ingin menyelesaikan dan menyimpan transaksi ini?')) return
 
   setSyncStatus('loading', 'Menyimpan final transaksi..')
   try {
-    await api.post(`/${formKey.value}/save-transaction`, {}, { params: { id: activeHeaderId.value } })
+    const response = await api.post(`/${formKey.value}/save-transaction`, {}, { params: { id: activeHeaderId.value } })
+    applyResponseData(response.data)
     setSyncStatus('success', 'Transaksi berhasil disimpan!')
-
-    await fetchQueue()
-
-    if (queueData.value.length > 0) {
-      await loadTransaction(queueData.value[0].id)
-    } else {
-      await handleNewTransaction()
-    }
   } catch (err: any) {
     setSyncStatus('error', `Gagal menyimpan transaksi: ${err.message}`)
   }
 }
 
-// CANCEL TRANSACTION
 const handleCancelTransaction = async () => {
   if (!activeHeaderId.value) return
   if (!confirm('Apakah Anda yakin ingin membatalkan transaksi draft ini? (Data akan dihapus)')) return
 
   setSyncStatus('loading', 'Membatalkan transaksi..')
   try {
-    await api.post(`/${formKey.value}/cancel-transaction`, { id: activeHeaderId.value })
+    const response = await api.post(`/${formKey.value}/cancel-transaction`, { id: activeHeaderId.value })
+    applyResponseData(response.data)
     setSyncStatus('success', 'Transaksi dibatalkan')
-
-    await fetchQueue()
-
-    if (queueData.value.length > 0) {
-      await loadTransaction(queueData.value[0].id)
-    } else {
-      await handleNewTransaction()
-    }
   } catch (err: any) {
     setSyncStatus('error', `Gagal membatalkan transaksi: ${err.message}`)
   }
 }
 
-// CUSTOM ACTIONS
 const triggerCustomAction = (actionKey: string) => {
   if (actionKey === 'print') {
     window.print()
@@ -627,17 +602,9 @@ const triggerCustomAction = (actionKey: string) => {
   }
 }
 
-onBeforeUnmount(() => {
-  rows.value = []
-  columns.value = []
-})
-
 watch(() => props.schemaData, loadComponentData)
 
-
-
-const handleGlobalKeyDown = (e) => {
-  // 1. CEK FOKUS: Jika user lagi mengetik di input/textarea/editable element, jangan jalankan fungsi
+const handleGlobalKeyDown = (e: any) => {
   const target = e.target
   if (
     target.tagName === 'DIV' ||
@@ -649,10 +616,8 @@ const handleGlobalKeyDown = (e) => {
     return
   }
 
-  // 2. Cek tombol kombinasi (Ctrl, Alt, Meta)
   if (e.ctrlKey || e.altKey || e.metaKey) return
 
-  // 3. Cek karakter alfanumerik
   const isAlphanumeric = /^[a-zA-Z0-9]$/.test(e.key)
 
   if (isAlphanumeric) {
@@ -664,15 +629,45 @@ const handleGlobalKeyDown = (e) => {
   }
 }
 
+const setupSocketListener = () => {
+  // Sesuaikan URL backend Anda
+  socket = io('http://localhost:3000', {
+    withCredentials: true,
+  })
+
+  socket.on('connect', () => {
+    console.log('⚡ TransactionComponent connected to socket:', socket.id)
+  })
+
+  // Tangkap event real-time dari backend dan langsung terapkan via applyResponseData!
+  socket.on('penjualan_getAll_updated', (newData) => {
+    console.log('🔄 Realtime sync received in TransactionComponent:', newData)
+    applyResponseData(newData)
+
+    // Opsional: Redraw grid revo-grid agar tabel langsung menyesuaikan
+    nextTick(() => {
+      getGrid(gridRef).requestGridRowsRedraw?.()
+    })
+  })
+}
+
 onMounted(() => {
   window.addEventListener('keydown', handleGlobalKeyDown, true)
   loadComponentData()
+  setupSocketListener() // <-- Nyalakan socket listener khusus POS
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalKeyDown, true)
+  rows.value = []
+  columns.value = []
+
+  if (socket) {
+    socket.disconnect() // <-- Bersihkan socket saat komponen ditutup
+  }
 })
 </script>
+
 <style scoped>
 :deep(revo-grid) {
   z-index: 10 !important;

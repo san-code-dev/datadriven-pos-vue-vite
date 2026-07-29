@@ -111,10 +111,12 @@ import api from '@/lib/axios'
 import { useTabStore } from '@/stores/tabs'
 import { useFilterStore } from '@/stores/filter'
 import { useRoute } from 'vue-router'
+import { io } from 'socket.io-client'
 
 import NumberColumnType from '@revolist/revogrid-column-numeral'
 import SelectTypePlugin from '@revolist/revogrid-column-select'
 import DateTypePlugin from '@revolist/revogrid-column-date'
+let socket: any = null
 
 const props = defineProps({
 	menu: { type: Object, required: true },
@@ -568,22 +570,9 @@ const handleWindowFocus = () => {
 const handlePrint = () => { window.print() }
 const handleExport = () => { console.log("Ekspor data ke CSV/Excel...", rows.value) }
 
-onBeforeUnmount(() => {
-	if (activeTimeoutId) clearTimeout(activeTimeoutId)
-	document.removeEventListener('visibilitychange', handleWindowFocus)
-	getGrid().removeEventListener?.('mousedown', handleMouseDown)
 
-	rows.value = []
-	columns.value = []
-})
 
 watch(() => props.schemaData, loadComponentData)
-
-onMounted(() => {
-	loadComponentData()
-	getGrid().addEventListener?.('mousedown', handleMouseDown)
-	document.addEventListener('visibilitychange', handleWindowFocus)
-})
 
 watch(() => tabStore.activeTabId, async (activeTabId) => {
 	if (activeTabId === props.menu?.route) {
@@ -611,6 +600,52 @@ watch(() => tabStore.activeTabId, async (activeTabId) => {
 		}, 0)
 	}
 }, { immediate: true })
+
+onMounted(() => {
+	loadComponentData()
+	getGrid().addEventListener?.('mousedown', handleMouseDown)
+	document.addEventListener('visibilitychange', handleWindowFocus)
+
+	// 🟢 Ambil key modul secara langsung dan aman dari props
+	const moduleKey = props.menu?.key ? props.menu.key.toLowerCase() : ''
+	if (!moduleKey) return
+
+	// 🟢 HUBUNGKAN KE WEBSOCKET SERVER
+	// Sesuaikan URL jika backend Anda terpisah port (contoh: io('http://localhost:5000'))
+	socket = io()
+
+	// Mendengarkan event real-time dari backend secara dinamis
+	const socketEventName = `${moduleKey}_getAll_updated`
+
+	socket.on(socketEventName, (incomingSchema: any) => {
+		const freshData = incomingSchema?.data || []
+		rows.value = [...freshData]
+
+		// Sinkronisasi data ke tab store agar state tetap konsisten
+		const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
+		if (currentTab?.apiResponse) {
+			currentTab.apiResponse.data = [...freshData]
+		}
+
+		getGrid().requestGridRowsRedraw?.()
+		setSyncStatus('success', 'Sinkronisasi real-time')
+	})
+})
+
+onBeforeUnmount(() => {
+	if (activeTimeoutId) clearTimeout(activeTimeoutId)
+	document.removeEventListener('visibilitychange', handleWindowFocus)
+	getGrid().removeEventListener?.('mousedown', handleMouseDown)
+
+	// 🔴 PUTUSKAN KONEKSI SOCKET SAAT KOMPONEN DITUTUP
+	if (socket) {
+		socket.disconnect()
+		socket = null
+	}
+
+	rows.value = []
+	columns.value = []
+})
 </script>
 
 <style scoped>

@@ -376,18 +376,12 @@ const afterEdit = async (event) => {
 
 	setSyncStatus('loading', 'Memperbarui..')
 	try {
-		const response = await api.put(`/${formKey.value}/update`, updatedModel, {
+		await api.put(`/${formKey.value}/update`, updatedModel, {
 			params: { id: recordId }
 		})
 
-		if (response.status === 200) {
-			const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
-			if (currentTab?.apiResponse) {
-				const targetIdx = currentTab.apiResponse.data.findIndex(item => item[primaryKey.value] === recordId)
-				if (targetIdx !== -1) currentTab.apiResponse.data[targetIdx] = { ...updatedModel }
-			}
-			setSyncStatus('success', 'Perubahan disimpan')
-		}
+		setSyncStatus('success', 'Perubahan disimpan')
+
 	} catch (err: any) {
 		console.error('Gagal auto-save:', err)
 		setSyncStatus('error', `Gagal memperbarui: ${err.response?.data?.message || err.message}`)
@@ -442,37 +436,24 @@ const handleAddNewRow = async () => {
 		return
 	}
 
-	setSyncStatus('loading', 'Memperbarui..')
+	setSyncStatus('loading', 'Menambah baris..')
 	try {
 		const response = await api.post(`/${formKey.value}/create`, {})
 
 		if (response.status === 201 || response.status === 200) {
-			const serverNewData = response.data.data || response.data
-			rows.value = [...rows.value, serverNewData]
-
-			const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
-			if (currentTab?.apiResponse) {
-				if (!currentTab.apiResponse.data) currentTab.apiResponse.data = []
-				currentTab.apiResponse.data = [...currentTab.apiResponse.data, serverNewData]
-			}
-
-			await nextTick()
-
-			const grid = getGrid()
-			grid.requestGridRowsRedraw?.()
-
-			const lastRowIndex = rows.value.length - 1
-			grid.setCellsFocus?.({ x: 1, y: lastRowIndex }, { x: 1, y: lastRowIndex })
-
-			setTimeout(() => { navigatorRef.value?.scrollToLastRow?.() }, 50)
 			setSyncStatus('success', 'Baris baru ditambahkan')
+
+			// Tunggu render selesai, lalu gunakan helper dari GridNavigator untuk scroll dan fokus ke baris terakhir
+			await nextTick()
+			setTimeout(() => {
+				navigatorRef.value?.scrollToLastRow?.()
+			}, 50)
 		}
 	} catch (err: any) {
 		console.error("Gagal menambahkan baris baru:", err)
 		setSyncStatus('error', `Gagal menambah baris: ${err.message}`)
 	}
 }
-
 const handleDeleteKey = async () => {
 	if (!permission.value.delete) return
 
@@ -485,23 +466,11 @@ const handleDeleteKey = async () => {
 	if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
 		setSyncStatus('loading', 'Menghapus..')
 		try {
-			const response = await api.delete(`/${formKey.value}/delete`, {
+			await api.delete(`/${formKey.value}/delete`, {
 				params: { id: recordId }
 			})
 
-			if ([200, 204].includes(response.status)) {
-				const updatedRows = rows.value.filter((_, index) => index !== targetIndex)
-				rows.value = [...updatedRows]
-
-				await nextTick()
-				const grid = getGrid()
-				grid.requestGridRowsRedraw?.()
-
-				const nextY = Math.max(0, targetIndex - 1)
-				grid.setCellsFocus?.({ x: 0, y: nextY }, { x: 0, y: nextY })
-
-				setSyncStatus('success', 'Data berhasil dihapus')
-			}
+			setSyncStatus('success', 'Data berhasil dihapus')
 		} catch (err: any) {
 			console.error("Gagal menghapus data:", err)
 			setSyncStatus('error', `Gagal menghapus: ${err.response?.data?.message || err.message}`)

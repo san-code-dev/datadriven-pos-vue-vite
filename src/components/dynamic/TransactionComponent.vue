@@ -78,7 +78,6 @@
               </template>
             </div>
 
-            <!-- Type: Relation Input Trigger (Master Search) -->
             <div v-else-if="field.type === 'relation' && field.relation" class="relative">
               <input type="text"
                 :value="getRelationDisplayLabel(field, headerForm[field.key]) || headerSearchQuery[field.key]"
@@ -139,7 +138,6 @@
       </div>
     </div>
   </div>
-  <!-- MASTER DIALOG FOR RELATIONS -->
   <SelectDialog :schema-data-entity="searchDataSchema" :is-open="isSelectDialogOpen" @close="closeSelectDialog"
     @select="selectDialogSelectData" />
 </template>
@@ -155,6 +153,7 @@ import { io } from 'socket.io-client'
 import api from '@/lib/axios'
 import { useNumberFormat } from '@/composables/number-format.ts'
 import { useSettingsStore } from '@/stores/setting.ts'
+import { useRealtimeSync } from '@/composables/useRealtimeSync'
 import { getGrid, getActiveCellState } from '@/composables/grid.ts'
 
 import NumberColumnType from '@revolist/revogrid-column-numeral'
@@ -283,36 +282,11 @@ const columnTypes = {
   date: new DateTypePlugin()
 }
 
-// AMBIL DAFTAR RELASI
-const fetchRelationOptions = async () => {
-  const allFields = [...headerSchema.value, ...detailsSchema.value]
-  const relationFields = allFields.filter(f => f.type === 'relation' && f.relation)
-
-  for (const field of relationFields) {
-    const entity = field.relation.entity
-    const displayField = field.relation.displayField || 'name'
-    if (relationOptions.value[entity]) continue
-
-    try {
-      const response = await api.get(`/${entity}/get-all`)
-      const rawData = response.data?.schema?.data || response.data?.data || response.data || []
-      relationOptions.value[entity] = rawData.map((item: any) => ({
-        value: item.id,
-        label: item[displayField] || item.name
-      }))
-    } catch (err) {
-      console.error(`Gagal memuat opsi relasi untuk entitas ${entity}:`, err)
-    }
-  }
-}
-
 // MUAT DETAIL TRANSAKSI
 const loadTransaction = async (id: number) => {
   setSyncStatus('loading', 'Memuat dokumen transaksi..')
   try {
-    const response = await api.get(`/${formKey.value}/get-transaction`, { params: { id } })
-    applyResponseData(response.data)
-
+    await api.get(`/${formKey.value}/get-transaction`, { params: { id } })
     await nextTick()
     getGrid(gridRef).requestGridRowsRedraw?.()
     setSyncStatus('success', 'Transaksi dimuat')
@@ -327,8 +301,6 @@ const loadComponentData = async () => {
   if (!res) return
 
   moduleSchema.value = res
-  applyResponseData(res) // Menerapkan inisial data dari props schemaData (jika menyertakan queue/header/details awal)
-  await fetchRelationOptions()
 
   columns.value = (detailsSchema.value || []).map((field: any) => {
     const columnConfig: Record<string, any> = {
@@ -350,28 +322,16 @@ const loadComponentData = async () => {
       columnConfig.valueKey = 'value'
       columnConfig.source = field.options || []
       columnConfig.editorProperties = { appendToBody: true }
-    } else if (field.type === 'relation' && field.relation) {
-      columnConfig._relation = field.relation
-      columnConfig.cellTemplate = (h: any, cellProps: any) => {
-        const row = cellProps.model
-        const val = row[field.key]
-        const displayVal = row[`_${field.key}_display`] || getRelationDisplayLabel(field, val) || ''
-        return h('div', { class: 'flex items-center justify-between w-full px-1 cursor-pointer' }, [
-          h('span', {}, displayVal),
-          h('span', { class: 'text-slate-400 text-[10px]' }, '🔍')
-        ])
-      }
     }
     return columnConfig
   })
 
   primaryKeyFieldName.value = (detailsSchema.value || []).find((f: any) => f.primary)?.key || 'id'
   permission.value = res.permissions || {}
+  queueData.value = res.queue.data
 
   if (queueData.value.length > 0 && !activeHeaderId.value) {
-    await loadTransaction(queueData.value[0].id)
-  } else if (!activeHeaderId.value) {
-    await handleNewTransaction()
+    applyResponseData(res)
   }
 }
 
@@ -381,10 +341,9 @@ const updateHeaderData = async () => {
 
   setSyncStatus('loading', 'Menyimpan perubahan header..')
   try {
-    const response = await api.put(`/${formKey.value}/update-header`, headerForm.value, {
+    await api.put(`/${formKey.value}/update-header`, headerForm.value, {
       params: { id: activeHeaderId.value }
     })
-    applyResponseData(response.data)
     setSyncStatus('success', 'Header disimpan')
   } catch (err: any) {
     setSyncStatus('error', `Gagal update header: ${err.message}`)
@@ -444,7 +403,6 @@ const afterEdit = async (event: any) => {
     })
 
     if (response.status === 200) {
-      applyResponseData(response.data)
       setSyncStatus('success', 'Perubahan barang disimpan')
     }
   } catch (err: any) {
@@ -512,7 +470,6 @@ const handleSearchSubmit = async () => {
     })
 
     if (response.status === 201 || response.status === 200) {
-      applyResponseData(response.data)
       setSyncStatus('success', 'Barang berhasil ditambahkan')
     }
   } catch (err: any) {
@@ -546,7 +503,6 @@ const handleDeleteDetailRow = async () => {
       })
 
       if (response.status === 200) {
-        applyResponseData(response.data)
         setSyncStatus('success', 'Item belanja dihapus')
       }
     } catch (err: any) {
@@ -558,8 +514,7 @@ const handleDeleteDetailRow = async () => {
 const handleNewTransaction = async () => {
   setSyncStatus('loading', 'Membuat transaksi baru..')
   try {
-    const response = await api.post(`/${formKey.value}/new-transaction`, {})
-    applyResponseData(response.data)
+    await api.post(`/${formKey.value}/new-transaction`, {})
     setSyncStatus('success', 'Transaksi baru siap')
   } catch (err: any) {
     setSyncStatus('error', `Gagal membuat transaksi: ${err.message}`)
@@ -572,8 +527,7 @@ const handleSaveTransaction = async () => {
 
   setSyncStatus('loading', 'Menyimpan final transaksi..')
   try {
-    const response = await api.post(`/${formKey.value}/save-transaction`, {}, { params: { id: activeHeaderId.value } })
-    applyResponseData(response.data)
+    await api.post(`/${formKey.value}/save-transaction`, {}, { params: { id: activeHeaderId.value } })
     setSyncStatus('success', 'Transaksi berhasil disimpan!')
   } catch (err: any) {
     setSyncStatus('error', `Gagal menyimpan transaksi: ${err.message}`)
@@ -586,8 +540,7 @@ const handleCancelTransaction = async () => {
 
   setSyncStatus('loading', 'Membatalkan transaksi..')
   try {
-    const response = await api.post(`/${formKey.value}/cancel-transaction`, { id: activeHeaderId.value })
-    applyResponseData(response.data)
+    await api.post(`/${formKey.value}/cancel-transaction`, { id: activeHeaderId.value })
     setSyncStatus('success', 'Transaksi dibatalkan')
   } catch (err: any) {
     setSyncStatus('error', `Gagal membatalkan transaksi: ${err.message}`)
@@ -629,42 +582,17 @@ const handleGlobalKeyDown = (e: any) => {
   }
 }
 
-const setupSocketListener = () => {
-  // Sesuaikan URL backend Anda
-  socket = io('http://localhost:3000', {
-    withCredentials: true,
-  })
 
-  socket.on('connect', () => {
-    console.log('⚡ TransactionComponent connected to socket:', socket.id)
-  })
-
-  // Tangkap event real-time dari backend dan langsung terapkan via applyResponseData!
-  socket.on('penjualan_getAll_updated', (newData) => {
-    console.log('🔄 Realtime sync received in TransactionComponent:', newData)
-    applyResponseData(newData)
-
-    // Opsional: Redraw grid revo-grid agar tabel langsung menyesuaikan
-    nextTick(() => {
-      getGrid(gridRef).requestGridRowsRedraw?.()
-    })
-  })
-}
-
+useRealtimeSync(formKey, applyResponseData, gridRef)
 onMounted(() => {
   window.addEventListener('keydown', handleGlobalKeyDown, true)
   loadComponentData()
-  setupSocketListener() // <-- Nyalakan socket listener khusus POS
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalKeyDown, true)
   rows.value = []
   columns.value = []
-
-  if (socket) {
-    socket.disconnect() // <-- Bersihkan socket saat komponen ditutup
-  }
 })
 </script>
 

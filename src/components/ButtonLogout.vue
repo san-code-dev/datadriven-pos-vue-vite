@@ -5,6 +5,8 @@ import { Icon } from '@iconify/vue'
 import { useSidebarStore } from '@/stores/sideBar'
 import { useAuthStore } from '@/stores/auth' // 1. Import Auth Store Pinia
 import api from "@/lib/axios"
+import { disconnectSocket } from '@/lib/socket'
+
 const router = useRouter()
 const sidebarStore = useSidebarStore()
 const authStore = useAuthStore() // 2. Inisialisasi Auth Store
@@ -53,24 +55,27 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 // Eksekusi Logout API
+
+// Di dalam fungsi submitLogout():
 async function submitLogout() {
     if (isLoggingOut.value) return
     isLoggingOut.value = true
 
     try {
-        // 3. Panggil API logout backend Anda
         await api.post('auth/logout/')
     } catch (err) {
         console.error('Logout API failed:', err)
     } finally {
-        // 4. DI SINI KUNCINYA: Hapus data di Pinia & Local Storage secara total!
-        // Taruh di luar blok try agar meskipun API backend down, aplikasi di browser Anda tetap bersih dan keluar.
+        // 1. Putus koneksi socket secara instan
+        disconnectSocket()
+        console.log('socket diputus karena user logout')
+        // 2. Bersihkan data di Pinia & Local Storage secara total
         authStore.clearAuth()
 
         closeModal()
         isLoggingOut.value = false
 
-        // 5. Tendang user kembali ke halaman Login awal
+        // 3. Tendang user kembali ke halaman Login awal
         await router.push('/')
     }
 }

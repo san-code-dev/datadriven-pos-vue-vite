@@ -84,9 +84,7 @@ const fetchSchemaFromApi = async () => {
 
         // Hilangkan trailing slash dari path jika ada
         const cleanPath = currentPath.replace(/\/+$/, '')
-
-        // 🟢 SEKARANG KEDUANYA MENGGUNAKAN GET-MODULE-SCHEMA
-        const requestUrl = `${cleanPath}/get-module-schema`
+        const requestUrl = `${cleanPath}/get-all`
 
         const response = await api.get(requestUrl, {
             params: {

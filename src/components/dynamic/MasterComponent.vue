@@ -111,18 +111,16 @@ import api from '@/lib/axios'
 import { useTabStore } from '@/stores/tabs'
 import { useFilterStore } from '@/stores/filter'
 import { useRoute } from 'vue-router'
-import { io } from 'socket.io-client'
 
 import NumberColumnType from '@revolist/revogrid-column-numeral'
 import SelectTypePlugin from '@revolist/revogrid-column-select'
 import DateTypePlugin from '@revolist/revogrid-column-date'
-let socket: any = null
+import { useRealtimeSync } from '@/composables/useRealtimeSync'
 
 const props = defineProps({
 	menu: { type: Object, required: true },
 	schemaData: { type: Object, required: true }
 })
-
 
 const route = useRoute()
 const tabStore = useTabStore()
@@ -139,7 +137,7 @@ const showSearchModal = ref(false)
 const searchQuery = ref('')
 const searchInputRef = ref(null)
 
-let activeTimeoutId = null
+let activeTimeoutId: any = null
 
 const syncStatusRef = ref<InstanceType<typeof SyncStatus> | null>(null)
 
@@ -147,10 +145,7 @@ const setSyncStatus = (state: any, message: string, autoResetDelay = 3000) => {
 	syncStatusRef.value?.setStatus(state, message, autoResetDelay)
 }
 
-
 const activeFilters = ref(filterStore.getFiltersByTab(props.menu?.route || route.path) || {})
-
-
 const relationOptions = ref<{ [entityName: string]: Array<{ value: any, label: string }> }>({})
 
 const formKey = computed(() => {
@@ -190,7 +185,6 @@ const relationCellRenderer = (createElement, cellProps, displayField, fieldKey, 
 	return createElement('span', {}, matchedOption ? matchedOption.label : rawValue)
 }
 
-
 const fetchRelationOptions = async () => {
 	const schema = props.schemaData?.schema || []
 	const relationFields = schema.filter(f => f.type === 'relation' && f.relation)
@@ -213,7 +207,26 @@ const fetchRelationOptions = async () => {
 	}
 }
 
-// 🟢 FETCH GRID DATA: Bertanggung jawab mandiri mengambil data tabel backend
+// 🟢 APPLY RESPONSE DATA: Handler utama sinkronisasi realtime socket
+const applyResponseData = (serverData: any) => {
+	if (!serverData) return
+	const incomingRows = Array.isArray(serverData)
+		? serverData
+		: (serverData.schema?.data || serverData.data || [serverData])
+
+	rows.value = [...incomingRows]
+
+	if (tabStore.activeTabId === props.menu?.route) {
+		const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
+		if (currentTab?.apiResponse) {
+			currentTab.apiResponse.data = [...rows.value]
+		}
+	}
+
+	getGrid().requestGridRowsRedraw?.()
+}
+
+// 🟢 FETCH GRID DATA: Mengambil data tabel dari backend
 const fetchGridData = async () => {
 	setSyncStatus('loading', 'Mengambil data..')
 	try {
@@ -223,17 +236,7 @@ const fetchGridData = async () => {
 			}
 		})
 
-		const freshData = response.data || response.data?.schema?.data || response.data?.data || []
-		rows.value = [...freshData]
-
-		if (tabStore.activeTabId === props.menu?.route) {
-			const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
-			if (currentTab?.apiResponse) {
-				currentTab.apiResponse.data = [...freshData]
-			}
-		}
-
-		getGrid().requestGridRowsRedraw?.()
+		applyResponseData(response.data)
 		setSyncStatus('success', 'Selesai sinkronisasi')
 	} catch (err: any) {
 		console.error("Gagal sinkronisasi data dengan server:", err)
@@ -298,7 +301,6 @@ const loadComponentData = async () => {
 	primaryKey.value = (res.schema || []).find(f => f.primary)?.key || 'id'
 	permission.value = res.permissions || {}
 
-	// 🌟 KARENA METADATA BERSIFAT KOSONG DARI DATA TABEL, LANGSUNG TARIK DATA DI SINI
 	await fetchGridData()
 
 	await nextTick()
@@ -366,12 +368,8 @@ const aftercolumnresize = (event) => {
 	console.log(event)
 }
 
-
-
-
 const afterEdit = async (event) => {
 	if (event.detail.oldValue === event.detail.value) return
-	console.log("cek old data", event.detail)
 	const updatedModel = event.detail.model
 	const recordId = updatedModel[primaryKey.value]
 	if (!recordId) return
@@ -383,7 +381,6 @@ const afterEdit = async (event) => {
 		})
 
 		if (response.status === 200) {
-			console.log('Auto-save berhasil.')
 			const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
 			if (currentTab?.apiResponse) {
 				const targetIdx = currentTab.apiResponse.data.findIndex(item => item[primaryKey.value] === recordId)
@@ -570,8 +567,6 @@ const handleWindowFocus = () => {
 const handlePrint = () => { window.print() }
 const handleExport = () => { console.log("Ekspor data ke CSV/Excel...", rows.value) }
 
-
-
 watch(() => props.schemaData, loadComponentData)
 
 watch(() => tabStore.activeTabId, async (activeTabId) => {
@@ -601,47 +596,19 @@ watch(() => tabStore.activeTabId, async (activeTabId) => {
 	}
 }, { immediate: true })
 
+// 🟢 Hook Realtime Sync menggunakan formKey & applyResponseData
+useRealtimeSync(formKey, applyResponseData, gridRef)
+
 onMounted(() => {
 	loadComponentData()
 	getGrid().addEventListener?.('mousedown', handleMouseDown)
 	document.addEventListener('visibilitychange', handleWindowFocus)
-
-	// 🟢 Ambil key modul secara langsung dan aman dari props
-	const moduleKey = props.menu?.key ? props.menu.key.toLowerCase() : ''
-	if (!moduleKey) return
-
-	// 🟢 HUBUNGKAN KE WEBSOCKET SERVER
-	// Sesuaikan URL jika backend Anda terpisah port (contoh: io('http://localhost:5000'))
-	socket = io()
-
-	// Mendengarkan event real-time dari backend secara dinamis
-	const socketEventName = `${moduleKey}_getAll_updated`
-
-	socket.on(socketEventName, (incomingSchema: any) => {
-		const freshData = incomingSchema?.data || []
-		rows.value = [...freshData]
-
-		// Sinkronisasi data ke tab store agar state tetap konsisten
-		const currentTab = tabStore.openedTabs.find(t => t.id === tabStore.activeTabId)
-		if (currentTab?.apiResponse) {
-			currentTab.apiResponse.data = [...freshData]
-		}
-
-		getGrid().requestGridRowsRedraw?.()
-		setSyncStatus('success', 'Sinkronisasi real-time')
-	})
 })
 
 onBeforeUnmount(() => {
 	if (activeTimeoutId) clearTimeout(activeTimeoutId)
 	document.removeEventListener('visibilitychange', handleWindowFocus)
 	getGrid().removeEventListener?.('mousedown', handleMouseDown)
-
-	// 🔴 PUTUSKAN KONEKSI SOCKET SAAT KOMPONEN DITUTUP
-	if (socket) {
-		socket.disconnect()
-		socket = null
-	}
 
 	rows.value = []
 	columns.value = []

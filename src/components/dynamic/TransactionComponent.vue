@@ -1,11 +1,10 @@
 <template>
-  <div
-    class="flex h-full max-h-full overflow-hidden min-h-0 bg-slate-50 dark:bg-slate-950 w-full text-slate-800 dark:text-slate-100">
+  <div class="flex h-full max-h-full overflow-hidden min-h-0 w-full text-slate-800 dark:text-slate-100">
     <!-- ==================== MAIN TRANSACTION AREA ==================== -->
     <div class="flex-1 flex flex-col h-full overflow-hidden min-h-0 relative">
       <!-- MODAL PENCARIAN PRODUK (ADD DETAILS / F4) -->
       <div v-if="showSearchModal" @click.self="closeSearchModal"
-        class="absolute backdrop-blur-sm bg-slate-900/40 flex inset-0 items-center justify-center transition-all z-50">
+        class="absolute backdrop-blur-sm flex inset-0 items-center justify-center transition-all z-50">
         <div
           class="bg-white dark:bg-slate-800 w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden p-3 mx-4"
           @keydown.stop>
@@ -29,72 +28,10 @@
         </div>
       </div>
 
-      <!-- ==================== TABS ANTREAN (DRAFTS) ==================== -->
-      <div
-        class="flex items-center gap-3 px-4 py-2 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shrink-0 overflow-hidden">
-        <span
-          class="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0 flex items-center gap-1">
-          <Icon icon="heroicons:clock-20-solid" class="w-3.5 h-3.5" />Antrian:
-        </span>
-        <div class="flex flex-1 flex-wrap gap-1.5 items-center no-scrollbar overflow-x-auto py-0.5">
-          <button v-for="item in queueData" :key="item.id" @click="loadTransaction(item.id)" :class="[
-            'px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 shadow-sm',
-            activeHeaderId === item.id
-              ? 'bg-emerald-600 border-emerald-600 text-white dark:bg-emerald-500 dark:border-emerald-500'
-              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800'
-          ]"> <span class="w-1.5 h-1.5 rounded-full"
-              :class="activeHeaderId === item.id ? 'bg-white animate-pulse' : 'bg-slate-400'"></span> <span>{{
-                item.label || `Draft #${item.id}` }}</span>
-          </button>
-          <button @click="handleNewTransaction"
-            class="p-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-center shrink-0"
-            title="Tambah Antrean Baru (F2)">
-            <Icon icon="heroicons:plus-20-solid" class="w-4 h-4" />
-          </button>
-        </div>
-      </div>
 
       <!-- ==================== FORM HEADER & TABLE DETAILS ==================== -->
       <div class="flex flex-1 flex-col min-h-0 overflow-hidden relative w-full">
-        <!-- FORM HEADER -->
-        <div v-if="headerForm"
-          class="bg-white border-b border-slate-200 grid grid-cols-1 gap-4 p-4 transition-colors dark:bg-slate-900 dark:border-slate-800 sm:grid-cols-2 lg:grid-cols-4">
-          <div v-for="field in headerSchema" :key="field.key" class="flex flex-col gap-1.5"
-            :class="{ 'hidden': field.isHidden }">
-            <label class="text-[11px] font-bold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
-              {{ field.label }}
-            </label>
 
-            <!-- Readonly Field -->
-            <div v-if="field.readonly" :class="[
-              'px-3 py-2 text-sm rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-medium',
-              field.highlight ? 'text-emerald-600 dark:text-emerald-400 font-bold text-lg border-emerald-100 dark:border-emerald-900/50' : 'text-slate-600 dark:text-slate-300'
-            ]">
-              <template v-if="field.type === 'currency'">
-                {{ numberFormat.formatCurrency(headerForm[field.key]) }}
-              </template>
-              <template v-else>
-                {{ headerForm[field.key] || '-' }}
-              </template>
-            </div>
-
-            <div v-else-if="field.type === 'relation' && field.relation" class="relative">
-              <input type="text"
-                :value="getRelationDisplayLabel(field, headerForm[field.key]) || headerSearchQuery[field.key]"
-                @input="e => headerSearchQuery[field.key] = (e.target as HTMLInputElement).value"
-                :placeholder="`Pilih ${field.label}...`" @keydown.enter.prevent="searchRelationHeaderData(field)"
-                class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all pr-8" />
-              <Icon icon="heroicons:magnifying-glass-20-solid"
-                class="w-4 h-4 absolute right-2.5 top-3 text-slate-400 cursor-pointer hover:text-emerald-500"
-                @click="searchRelationHeaderData(field)" />
-            </div>
-
-            <!-- Standard Input (Date, Text, Number) -->
-            <input v-else :type="field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'"
-              v-model="headerForm[field.key]" @change="updateHeaderData(field.key)"
-              class="dark:[color-scheme:dark] px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all" />
-          </div>
-        </div>
 
         <!-- REVO GRID DETAILS -->
         <div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
@@ -104,34 +41,112 @@
             @keydown="handleKeyDown" :column-types="columnTypes" />
           <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
         </div>
+        <!-- ==================== TABS ANTREAN (DRAFTS) ==================== -->
+        <div class="flex items-center gap-1 dark:border-slate-800 shrink-0 overflow-hidden px-2 flex-wrap">
+          <button class="flex text-xs font-extralight px-3 gap-1 py-1.5 items-center text-slate-500">
+            <Icon icon="griddy-icons:grid" class="w-3.5 h-3.5" /> history
+          </button>
+
+          <button v-for="item in queueData" :key="item.id" @click="loadTransaction(item.id)" :class="[
+            'px-4 py-2 text-xs font-medium flex items-center gap-2 whitespace-nowrap shrink-0 relative',
+            activeHeaderId === item.id
+              ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-t-xl shadow-sm z-10' +
+              // Efek lekukan sudut bawah (Inverted Rounded Corners) menggunakan pseudo-element / box-shadow trick
+              ' before:absolute before:bottom-0 before:-left-2.5 before:w-2.5 before:h-2.5 before:bg-transparent before:rounded-br-xl before:shadow-[4px_4px_0_4px_white] dark:before:shadow-[4px_4px_0_4px_rgb(30,41,59)]' +
+              ' after:absolute after:bottom-0 after:-right-2.5 after:w-2.5 after:h-2.5 after:bg-transparent after:rounded-bl-xl after:shadow-[-4px_4px_0_4px_white] dark:after:shadow-[-4px_4px_0_4px_rgb(30,41,59)]'
+              : 'bg-slate-100/60 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 rounded-lg'
+          ]">
+
+            <span class="w-1.5 h-1.5 rounded-full"
+              :class="activeHeaderId === item.id ? 'bg-emerald-500' : 'bg-slate-400'"></span>
+            <span>{{ item.label || `Draft #${item.id}` }}</span>
+
+          </button>
+
+          <button @click="handleNewTransaction"
+            class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-center shrink-0 ml-1"
+            title="Tambah Antrean Baru (F2)">
+            <Icon icon="heroicons:plus-20-solid" class="w-4 h-4" />
+          </button>
+        </div>
+        <!-- FORM HEADER -->
+        <div
+          class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-t-0 px-3 py-2 transition-colors outline-none focus:ring-1 focus:ring-emerald-500 select-none">
+          <div v-if="headerForm"
+            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 items-center">
+
+            <div v-for="field in headerSchema" :key="field.key" class="flex flex-col space-y-1"
+              :class="{ 'hidden': field.isHidden }">
+              <!-- Label Lebih Ringkas -->
+              <label
+                class="text-[10px] font-semibold tracking-wide text-slate-400 dark:text-slate-500 uppercase truncate">
+                {{ field.label }}
+              </label>
+
+              <!-- Readonly Field (Excel Style Cell) -->
+              <div v-if="field.readonly" :class="[
+                'px-2 py-1 text-xs rounded border border-transparent bg-slate-50 dark:bg-slate-800/50 font-medium truncate',
+                field.highlight ? 'text-emerald-600 dark:text-emerald-400 font-bold text-sm bg-emerald-50/50 dark:bg-emerald-950/30' : 'text-slate-700 dark:text-slate-200'
+              ]">
+                <template v-if="field.type === 'currency'">
+                  {{ numberFormat.formatCurrency(headerForm[field.key]) }}
+                </template>
+                <template v-else>
+                  {{ headerForm[field.key] || '-' }}
+                </template>
+              </div>
+
+              <!-- Relation Field Compact -->
+              <div v-else-if="field.type === 'relation' && field.relation" class="relative">
+                <input type="text"
+                  :value="getRelationDisplayLabel(field, headerForm[field.key]) || headerSearchQuery[field.key]"
+                  @input="e => headerSearchQuery[field.key] = (e.target as HTMLInputElement).value"
+                  :placeholder="`Pilih...`" @keydown.enter.prevent="searchRelationHeaderData(field)"
+                  class="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all pr-6" />
+                <Icon icon="heroicons:magnifying-glass-20-solid"
+                  class="w-3.5 h-3.5 absolute right-2 top-1.5 text-slate-400 cursor-pointer hover:text-emerald-500"
+                  @click="searchRelationHeaderData(field)" />
+              </div>
+
+              <!-- Standard Input / Date Compact -->
+              <input v-else
+                :type="field.type === 'date' ? 'datetime-local' : field.type === 'number' ? 'number' : 'text'" :value="field.type === 'date'
+                  ? toLocalDatetimeLocal(headerForm[field.key])
+                  : headerForm[field.key]" @input="e => {
+                    const target = e.target as HTMLInputElement;
+                    if (field.type === 'date') {
+                      // Simpan langsung ke 'createdAt' agar payload yang dikirim ke backend bersih
+                      headerForm[field.key] = target.value ? new Date(target.value).toISOString() : null;
+                    } else {
+                      headerForm[field.key] = target.value;
+                    }
+                  }" @change="updateHeaderData()"
+                class="dark:[color-scheme:dark] px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all" />
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- FOOTER SUMMARY & ACTIONS -->
       <div
         class="bg-white border-b border-slate-200 flex flex-wrap gap-3 items-center justify-between px-4 py-2 transition-colors dark:bg-slate-900 dark:border-slate-800">
-        <div class="flex items-center gap-3 select-none">
-          <template v-for="field in headerSchema" :key="field.key">
-            <span v-if="field.highlight" class="font-semibold text-xl text-emerald-400">
-              {{ field.label }} : {{
-                (field.type === 'currency') ? numberFormat.formatCurrency(headerForm?.[field.key]) :
-                  headerForm?.[field.key] }}
-            </span>
-          </template>
+        <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 select-none">
+          <div class="flex items-center gap-1">
+            <span class="font-medium text-slate-700 dark:text-slate-300">{{ rows.length }}</span>
+            <span>items</span>
+          </div>
           <SyncStatus ref="syncStatusRef" />
         </div>
         <div class="flex items-center gap-2">
           <button v-for="action in (moduleSchema.actions || [])" :key="action.key"
-            @click="triggerCustomAction(action.key)"
-            class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors">
+            @click="triggerCustomAction(action.key)" class="btn-action-slate">
             <span>{{ action.label }}</span>
           </button>
-          <button @click="handleSaveTransaction" type="button"
-            class="px-4 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-500 transition-colors shadow-sm">
-            <span>Simpan Transaksi</span> <kbd
-              class="ml-1.5 text-[9px] bg-emerald-700 px-1 py-0.5 rounded text-emerald-100 font-mono">[F9]</kbd>
+          <button @click="handleSaveTransaction" type="button" class="btn-action-emerald-600">
+            <span>Simpan Transaksi</span>
+            <kbd class="btn-kbd">[F9]</kbd>
           </button>
-          <button @click="handleCancelTransaction" type="button"
-            class="px-3 py-1.5 bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 rounded-lg text-xs font-medium hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors">
+          <button @click="handleCancelTransaction" type="button" class="btn-action text-rose-600 dark:text-rose-400">
             <span>Batal</span>
           </button>
         </div>
@@ -166,8 +181,9 @@ const props = defineProps({
 })
 
 const settings = useSettingsStore()
+// Ubah baris pemanggilan composable Anda menjadi:
 const numberFormat = useNumberFormat()
-
+const { toLocalDatetimeLocal } = useNumberFormat()
 const gridRef = ref<any>(null)
 const searchDataSchema = ref<any>(null)
 
@@ -181,8 +197,6 @@ const rows = ref<any[]>([])
 const moduleSchema = ref<any>(props.schemaData || {})
 const headerSchema = computed(() => moduleSchema.value.header?.schema || [])
 const detailsSchema = computed(() => moduleSchema.value.details?.schema || [])
-
-let socket: any = null // <-- Variabel instance socket lokal komponen
 
 // State Relation Modal
 const activeRelationContext = ref<{ type: 'header' | 'detail'; fieldKey: string; rowIndex?: number } | null>(null)

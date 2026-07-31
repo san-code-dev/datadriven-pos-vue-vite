@@ -16,7 +16,7 @@
 				<div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 select-none">
 					<div class="flex items-center gap-1">
 						<span class="font-medium text-slate-700 dark:text-slate-300">{{ rows.length }}</span>
-						<span>items,</span>
+						<span>items</span>
 					</div>
 					<SyncStatus ref="syncStatusRef" />
 				</div>
@@ -38,17 +38,6 @@
 					</button>
 					<button @click="handleExport" type="button" class="btn-action-slate">
 						<span>Ekspor</span>
-					</button>
-
-					<button @click="fetchGridData" type="button" class="btn-action-slate">
-						<template v-if="syncStatusRef?.syncStatus.state === 'loading'">
-							<Icon icon="heroicons:arrow-path-20-solid"
-								class="w-3.5 h-3.5 animate-spin text-emerald-500" />
-						</template>
-						<template v-else>
-							<Icon icon="heroicons:arrow-path-20-solid" class="w-3.5 h-3.5" />
-						</template>
-						<span>Refresh</span>
 					</button>
 				</div>
 			</div>
@@ -230,13 +219,12 @@ const applyResponseData = (serverData: any) => {
 const fetchGridData = async () => {
 	setSyncStatus('loading', 'Mengambil data..')
 	try {
-		const response = await api.get(`/${formKey.value}/get-all`, {
+		await api.get(`/${formKey.value}/get-all`, {
 			params: {
 				filter: JSON.stringify(activeFilters.value)
 			}
 		})
 
-		applyResponseData(response.data)
 		setSyncStatus('success', 'Selesai sinkronisasi')
 	} catch (err: any) {
 		console.error("Gagal sinkronisasi data dengan server:", err)
@@ -248,7 +236,7 @@ const fetchGridData = async () => {
 const loadComponentData = async () => {
 	const res = props.schemaData
 	if (!res) return
-
+	applyResponseData(res)
 	await fetchRelationOptions()
 
 	columns.value = (res.schema || []).map(field => {
@@ -301,7 +289,7 @@ const loadComponentData = async () => {
 	primaryKey.value = (res.schema || []).find(f => f.primary)?.key || 'id'
 	permission.value = res.permissions || {}
 
-	await fetchGridData()
+
 
 	await nextTick()
 
@@ -527,12 +515,6 @@ const closeSearchModal = () => {
 	nextTick(() => { getGrid().focus?.() })
 }
 
-const handleWindowFocus = () => {
-	if (document.visibilityState === 'visible' && tabStore.activeTabId === props.menu?.route) {
-		fetchGridData()
-	}
-}
-
 const handlePrint = () => { window.print() }
 const handleExport = () => { console.log("Ekspor data ke CSV/Excel...", rows.value) }
 
@@ -552,8 +534,6 @@ watch(() => tabStore.activeTabId, async (activeTabId) => {
 			const currentRoute = props.menu?.route || route.path
 			activeFilters.value = filterStore.getFiltersByTab(currentRoute) || {}
 
-			await fetchGridData()
-
 			const { x, y } = await getActiveCellState()
 			grid.setCellsFocus?.({ x, y }, { x, y })
 			grid.scrollToRow?.(y)
@@ -571,12 +551,10 @@ useRealtimeSync(formKey, applyResponseData, gridRef)
 onMounted(() => {
 	loadComponentData()
 	getGrid().addEventListener?.('mousedown', handleMouseDown)
-	document.addEventListener('visibilitychange', handleWindowFocus)
 })
 
 onBeforeUnmount(() => {
 	if (activeTimeoutId) clearTimeout(activeTimeoutId)
-	document.removeEventListener('visibilitychange', handleWindowFocus)
 	getGrid().removeEventListener?.('mousedown', handleMouseDown)
 
 	rows.value = []

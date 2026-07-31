@@ -126,6 +126,7 @@ const fetchSchemaFromApi = async () => {
 
 
 const handleKeyDown = (event) => {
+    if (event.repeat || isLoading.value) return
     if (event.ctrlKey && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
         const activeEl = document.activeElement
         if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {

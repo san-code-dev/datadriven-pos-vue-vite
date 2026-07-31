@@ -99,8 +99,8 @@ async function submitLogout() {
 
         <Teleport to="body">
             <dialog ref="dialogRef" v-if="showLogoutModal" @cancel.prevent="!isLoggingOut ? closeModal() : null"
-                @keydown.prevent="handleKeyDown"
-                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm w-full h-full max-w-none max-h-none border-none outline-none open:backdrop:bg-transparent">
+                @keydown.prevent="handleKeyDown" @click.self="closeModal()"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm w-full h-full max-w-none max-h-none border-none outline-none bg-transparent">
 
                 <div
                     class="bg-white dark:bg-gray-800 rounded-xl max-w-sm w-full p-6 shadow-xl border border-gray-100 dark:border-gray-700 transform transition-all animate-in fade-in zoom-in-95 duration-150 text-gray-900 dark:text-gray-200">

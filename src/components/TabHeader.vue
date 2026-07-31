@@ -224,20 +224,22 @@ const closeAllTabs = () => {
         <div v-for="(tab, index) in tabStore.openedTabs" :key="tab.id" @pointerdown="handlePointerDown($event, index)"
             @pointermove="handlePointerMove($event, index)" @pointerup="handlePointerUp($event, index)"
             @contextmenu.prevent="openContextMenu($event, tab.id, index)"
-            class="tab-item flex items-center gap-2 px-4 py-2.5 text-sm border-r border-b border-gray-200 dark:border-gray-700 cursor-grab active:cursor-grabbing relative min-w-[120px] h-[41px] touch-none select-none"
+            class="tab-item flex items-center gap-2 px-4 text-sm border-r cursor-grab active:cursor-grabbing relative min-w-[120px] h-[41px] touch-none select-none"
             :class="[
+                // Tambahkan border-r secara konsisten di sini agar garis kanan tidak hilang/muncul garis putih
+                'border-gray-200 dark:border-gray-700',
+
                 tabStore.activeTabId === tab.id
-                    ? 'bg-gray-50 dark:bg-gray-900 text-emerald-600 dark:text-emerald-400'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50',
+                    ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 border-b-transparent mb-[-1px] pb-[2px] z-10'
+                    : 'bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-b hover:bg-gray-50 dark:hover:bg-gray-700/50',
 
                 activeDragIndex !== null && isDragging
                     ? (activeDragIndex === index ? 'shadow-lg bg-white dark:bg-gray-800 border-l border-r border-gray-200 dark:border-gray-600 z-[100]' : 'transition-transform duration-200')
                     : 'transition-transform duration-200'
             ]">
 
-            <span
-                class="truncate pr-4 capitalize inline-flex flex-col items-center justify-center after:content-[attr(data-text)] after:h-0 after:invisible after:overflow-hidden select-none"
-                :data-text="tab.label">
+            <!-- Perbaikan pada span: Ubah ke flex items-center biasa agar teks tidak terdorong ke atas -->
+            <span class="truncate pr-4 capitalize flex items-center h-full select-none" :data-text="tab.label">
                 {{ tab.label }}
             </span>
 

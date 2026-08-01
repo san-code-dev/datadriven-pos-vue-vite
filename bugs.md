@@ -1,0 +1,13 @@
+- autofocus rows data master/ transaction tidak konsisten setelah view/add/update/delete
+- data selector untuk relation details, header, master belum bisa
+- action button print, export dll belum bisa
+- quick search dialog belum bisa menampilkan hasil pencarian di dialog selector
+- date parse UTC ke lokal di input belum
+- autorefresh sesi login belum
+- validasi input type
+- filter data masih lokal based perlu dimasukan di schema agar sinkron
+- info user
+- chat user
+- multi database connection untuk pemisahan system dan data tahunan
+- multi database untuk lokasi dataset yang berbeda untuk perusahaan yang berbeda
+- pagination / lazy load (tidak mungkin karena pakai socket io dan aatomic schema update)

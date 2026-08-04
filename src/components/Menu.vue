@@ -3,27 +3,23 @@ import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useSidebarStore } from '@/stores/sideBar'
-import { useAuthStore } from '@/stores/auth' // 1. Import Auth Store Pinia
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
 const openCategory = ref(null)
 
-// State untuk Pencarian (Ctrl + K)
 const isSearchMenuOpen = ref(false)
 const searchQuery = ref('')
 const selectedIndex = ref(0)
 const searchInputRef = ref(null)
 const resultItemsRef = ref([])
 
-// Inisialisasi Pinia Store
 const sidebarStore = useSidebarStore()
-const authStore = useAuthStore() // 2. Inisialisasi Auth Store
+const authStore = useAuthStore()
 
-// Grouping menu berdasarkan menuCategory dari Pinia Store
 const menuTree = computed(() => {
     const tree = {}
-    // Menggunakan authStore.menus menggantikan AccessMenu
     if (!authStore.menus || authStore.menus.length === 0) return tree
 
     authStore.menus.forEach(menu => {
@@ -36,18 +32,15 @@ const menuTree = computed(() => {
     return tree
 })
 
-// Flatten menu untuk kebutuhan search list global
 const flatMenus = computed(() => {
-    // Menggunakan authStore.menus menggantikan AccessMenu
     if (!authStore.menus) return []
     const extraMenus = [
-        { key: 'dashboard', label: 'Dashboard', route: '/dashboard', menuCategory: 'General', icon: 'si:dashboard-vert-line' },
-        { key: 'setting', label: 'Settings', route: '/setting', menuCategory: 'General', icon: 'heroicons:cog-6-tooth' }
+        { key: 'dashboard', label: 'Dashboard', route: '/dashboard', menuCategory: 'General', icon: 'mdi:view-dashboard-outline' },
+        { key: 'setting', label: 'Settings', route: '/setting', menuCategory: 'General', icon: 'mdi:cog-outline' }
     ]
     return [...extraMenus, ...authStore.menus]
 })
 
-// Filter hasil pencarian berdasarkan query
 const filteredMenus = computed(() => {
     if (!searchQuery.value) return flatMenus.value.slice(0, 8)
     const query = searchQuery.value.toLowerCase().trim()
@@ -58,8 +51,8 @@ const filteredMenus = computed(() => {
 })
 
 const formatIcon = (iconString) => {
-    if (!iconString) return 'heroicons:folder'
-    return iconString.replace('iconify:', '')
+    if (!iconString) return 'mdi:folder-outline'
+    return iconString
 }
 
 const handleMenuClick = (menu) => {
@@ -67,7 +60,6 @@ const handleMenuClick = (menu) => {
     isSearchMenuOpen.value = false
 }
 
-// Keyboard Control untuk Navigasi Modal Pencarian
 const handleKeyDown = (e) => {
     if (!isSearchMenuOpen.value) return
     e.stopPropagation()
@@ -152,7 +144,7 @@ onUnmounted(() => {
                     </span>
                     <button @click="sidebarStore.toggleCollapse"
                         class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 flex-shrink-0">
-                        <Icon icon="heroicons:chevron-left-20-solid" class="text-lg transition-transform duration-300"
+                        <Icon icon="mdi:chevron-left" class="text-lg transition-transform duration-300"
                             :class="{ 'rotate-180': sidebarStore.isCollapsed }" />
                     </button>
                 </div>
@@ -161,7 +153,7 @@ onUnmounted(() => {
                     <button @click="isSearchMenuOpen = true"
                         class="w-full flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 rounded-xl transition-all duration-200 text-slate-400 dark:text-slate-500 h-10 px-3 justify-between">
                         <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                            <Icon icon="heroicons:magnifying-glass-20-solid" class="text-lg flex-shrink-0" />
+                            <Icon icon="mdi:magnify" class="text-lg flex-shrink-0" />
                             <span class="text-xs tracking-wide text-sidebar-label"
                                 :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
                                 Cari menu...
@@ -184,7 +176,7 @@ onUnmounted(() => {
                         <div v-if="route.path === '/dashboard'"
                             class="absolute left-0 top-2.5 bottom-2.5 w-1 bg-emerald-500 dark:bg-emerald-400 rounded-r">
                         </div>
-                        <Icon icon="carbon:dashboard" class="text-xl flex-shrink-0" />
+                        <Icon icon="mdi:view-dashboard-outline" class="text-xl flex-shrink-0" />
                         <span class="text-sm capitalize text-sidebar-label"
                             :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
                             Dashboard
@@ -335,7 +327,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Style CSS bawaan Anda dipertahankan utuh */
 .flyout-container::before {
     content: '';
     position: absolute;

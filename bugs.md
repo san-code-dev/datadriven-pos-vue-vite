@@ -11,3 +11,4 @@
 - multi database connection untuk pemisahan system dan data tahunan
 - multi database untuk lokasi dataset yang berbeda untuk perusahaan yang berbeda
 - pagination / lazy load (tidak mungkin karena pakai socket io dan aatomic schema update)
+- transaction activeHeaderId masih hardcoded dari property id harusnya dari field yang primary=true

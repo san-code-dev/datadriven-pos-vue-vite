@@ -2,7 +2,7 @@
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { useAuthStore } from '@/stores/auth' // 1. Import Store Pinia Anda
+import { useAuthStore } from '@/stores/auth'
 import api from "@/lib/axios"
 
 definePage({
@@ -13,7 +13,7 @@ definePage({
 })
 
 const router = useRouter()
-const authStore = useAuthStore() // 2. Inisialisasi Store
+const authStore = useAuthStore()
 
 const loading = ref(false)
 const error = ref('')
@@ -31,9 +31,6 @@ const form = reactive({
     password: 't',
 })
 
-/* ======================
-    LOGIN
-====================== */
 async function login() {
     if (loading.value) return
     loading.value = true
@@ -45,7 +42,7 @@ async function login() {
         authStore.setMenus(response.data.menu)
 
         if (response.data.user) {
-            authStore.setUser(response.data.user) // 🔥 SIMPAN DATA USER KE PINIA
+            authStore.setUser(response.data.user)
         }
 
         await router.push('/dashboard')
@@ -57,6 +54,7 @@ async function login() {
     }
 }
 </script>
+
 <template>
     <div
         class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-950 px-4 transition-colors font-sans select-none">
@@ -107,7 +105,7 @@ async function login() {
                         error }}</span>
                 </div>
                 <button type="submit" :disabled="loading"
-                    class="w-full h-11 flex items-center justify-center space-x-2 rounded-lg font-semibold text-sm text-white transition-all shadow-md shadow-emerald-600/10 active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none
+                    class="grid place-items-center w-full h-11 rounded-lg font-semibold text-sm text-white transition-all shadow-md shadow-emerald-600/10 active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none
                            bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 dark:from-emerald-600 dark:to-emerald-700 dark:hover:from-emerald-500 dark:hover:to-emerald-600">
                     <Icon v-if="loading" icon="line-md:loading-twotone-loop" class="w-5 h-5" /><span>{{ loading ? '' :
                         'Masuk Aplikasi' }}</span>

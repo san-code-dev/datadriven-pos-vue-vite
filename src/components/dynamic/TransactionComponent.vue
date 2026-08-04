@@ -1,8 +1,7 @@
 <template>
   <div class="flex h-full max-h-full overflow-hidden min-h-0 w-full text-slate-800 dark:text-slate-100">
-    <!-- ==================== MAIN TRANSACTION AREA ==================== -->
     <div class="flex-1 flex flex-col h-full overflow-hidden min-h-0 relative">
-      <!-- MODAL PENCARIAN PRODUK (ADD DETAILS / F4) -->
+      <!-- MODAL PENCARIAN PRODUK -->
       <div v-if="showSearchModal" @click.self="closeSearchModal"
         class="absolute backdrop-blur-sm flex inset-0 items-center justify-center transition-all z-50">
         <div
@@ -10,7 +9,7 @@
           @keydown.stop>
           <form @submit.prevent="handleSearchSubmit" class="flex items-center relative">
             <div class="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
-              <Icon icon="heroicons:magnifying-glass-20-solid" class="w-5 h-5" />
+              <Icon icon="mdi:magnify" class="w-5 h-5" />
             </div>
             <input ref="searchInputRef" v-model="detailSearchQuery" type="text" @keydown="handleSearchKeydown"
               placeholder="Ketik Kode/Nama barang lalu tekan Enter untuk menambah..."
@@ -28,12 +27,8 @@
         </div>
       </div>
 
-
-      <!-- ==================== FORM HEADER & TABLE DETAILS ==================== -->
       <div class="flex flex-1 flex-col min-h-0 overflow-hidden relative w-full">
 
-
-        <!-- REVO GRID DETAILS -->
         <div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
           <RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
             :columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
@@ -41,17 +36,17 @@
             @keydown="handleKeyDown" :column-types="columnTypes" />
           <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
         </div>
-        <!-- ==================== TABS ANTREAN (DRAFTS) ==================== -->
+
+        <!-- TABS ANTREAN (DRAFTS) -->
         <div class="flex items-center gap-1 dark:border-slate-800 shrink-0 overflow-hidden px-2 flex-wrap">
           <button class="flex text-xs font-extralight px-3 gap-1 py-1.5 items-center text-slate-500">
-            <Icon icon="griddy-icons:grid" class="w-3.5 h-3.5" /> history
+            <Icon icon="mdi:view-grid-outline" class="w-3.5 h-3.5" /> history
           </button>
 
           <button v-for="item in queueData" :key="item.id" @click="loadTransaction(item.id)" :class="[
             'px-4 py-2 text-xs font-medium flex items-center gap-2 whitespace-nowrap shrink-0 relative',
             activeHeaderId === item.id
               ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-t-xl shadow-sm z-10' +
-              // Efek lekukan sudut bawah (Inverted Rounded Corners) menggunakan pseudo-element / box-shadow trick
               ' before:absolute before:bottom-0 before:-left-2.5 before:w-2.5 before:h-2.5 before:bg-transparent before:rounded-br-xl before:shadow-[4px_4px_0_4px_white] dark:before:shadow-[4px_4px_0_4px_rgb(30,41,59)]' +
               ' after:absolute after:bottom-0 after:-right-2.5 after:w-2.5 after:h-2.5 after:bg-transparent after:rounded-bl-xl after:shadow-[-4px_4px_0_4px_white] dark:after:shadow-[-4px_4px_0_4px_rgb(30,41,59)]'
               : 'bg-slate-100/60 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 rounded-lg'
@@ -66,24 +61,23 @@
           <button @click="handleNewTransaction"
             class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-center shrink-0 ml-1"
             title="Tambah Antrean Baru (F2)">
-            <Icon icon="heroicons:plus-20-solid" class="w-4 h-4" />
+            <Icon icon="mdi:plus" class="w-4 h-4" />
           </button>
         </div>
+
         <!-- FORM HEADER -->
         <div
-          class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 border-t-0 px-3 py-2 transition-colors outline-none focus:ring-1 focus:ring-emerald-500 select-none">
+          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 border-t-0 px-3 py-2 transition-colors outline-none focus:ring-1 focus:ring-emerald-500 select-none">
           <div v-if="headerForm"
             class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 items-center">
 
-            <div v-for="field in headerSchema" :key="field.key" class="flex flex-col space-y-1"
+            <div v-for="field in headerSchema" :key="field.key" :data-key="field.key" class="flex flex-col space-y-1"
               :class="{ 'hidden': field.isHidden }">
-              <!-- Label Lebih Ringkas -->
               <label
                 class="text-[10px] font-semibold tracking-wide text-slate-400 dark:text-slate-500 uppercase truncate">
                 {{ field.label }}
               </label>
 
-              <!-- Readonly Field (Excel Style Cell) -->
               <div v-if="field.readonly" :class="[
                 'px-2 py-1 text-xs rounded border border-transparent bg-slate-50 dark:bg-slate-800/50 font-medium truncate',
                 field.highlight ? 'text-emerald-600 dark:text-emerald-400 font-bold text-sm bg-emerald-50/50 dark:bg-emerald-950/30' : 'text-slate-700 dark:text-slate-200'
@@ -96,26 +90,23 @@
                 </template>
               </div>
 
-              <!-- Relation Field Compact -->
               <div v-else-if="field.type === 'relation' && field.relation" class="relative">
                 <input type="text"
                   :value="getRelationDisplayLabel(field, headerForm[field.key]) || headerSearchQuery[field.key]"
                   @input="e => headerSearchQuery[field.key] = (e.target as HTMLInputElement).value"
                   :placeholder="`Pilih...`" @keydown.enter.prevent="searchRelationHeaderData(field)"
                   class="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all pr-6" />
-                <Icon icon="heroicons:magnifying-glass-20-solid"
+                <Icon icon="mdi:magnify"
                   class="w-3.5 h-3.5 absolute right-2 top-1.5 text-slate-400 cursor-pointer hover:text-emerald-500"
                   @click="searchRelationHeaderData(field)" />
               </div>
 
-              <!-- Standard Input / Date Compact -->
               <input v-else
                 :type="field.type === 'date' ? 'datetime-local' : field.type === 'number' ? 'number' : 'text'" :value="field.type === 'date'
                   ? toLocalDatetimeLocal(headerForm[field.key])
                   : headerForm[field.key]" @input="e => {
                     const target = e.target as HTMLInputElement;
                     if (field.type === 'date') {
-                      // Simpan langsung ke 'createdAt' agar payload yang dikirim ke backend bersih
                       headerForm[field.key] = target.value ? new Date(target.value).toISOString() : null;
                     } else {
                       headerForm[field.key] = target.value;
@@ -169,7 +160,7 @@ import api from '@/lib/axios'
 import { useNumberFormat } from '@/composables/number-format.ts'
 import { useSettingsStore } from '@/stores/setting.ts'
 import { useRealtimeSync } from '@/composables/useRealtimeSync'
-import { getGrid, getActiveCellState } from '@/composables/grid.ts'
+import { getActiveCellState, gridFocus } from '@/composables/grid.ts'
 
 import NumberColumnType from '@revolist/revogrid-column-numeral'
 import DateTypePlugin from '@revolist/revogrid-column-date'
@@ -180,8 +171,6 @@ const props = defineProps({
   schemaData: { type: Object, required: true }
 })
 
-const settings = useSettingsStore()
-// Ubah baris pemanggilan composable Anda menjadi:
 const numberFormat = useNumberFormat()
 const { toLocalDatetimeLocal } = useNumberFormat()
 const gridRef = ref<any>(null)
@@ -198,14 +187,12 @@ const moduleSchema = ref<any>(props.schemaData || {})
 const headerSchema = computed(() => moduleSchema.value.header?.schema || [])
 const detailsSchema = computed(() => moduleSchema.value.details?.schema || [])
 
-// State Relation Modal
 const activeRelationContext = ref<{ type: 'header' | 'detail'; fieldKey: string; rowIndex?: number } | null>(null)
 
 const columns = ref<any[]>([])
 const primaryKeyFieldName = ref('id')
 const permission = ref<Record<string, boolean | undefined>>({})
 
-// State Search Details
 const showSearchModal = ref(false)
 const headerSearchQuery = ref<Record<string, string>>({})
 const detailSearchQuery = ref<Record<string, string>>({})
@@ -219,16 +206,12 @@ const setSyncStatus = (state: any, message: string) => {
 const relationOptions = ref<{ [entityName: string]: Array<{ value: any; label: string }> }>({})
 const formKey = computed(() => props.menu.key.toLowerCase())
 
-// Helper mapping respon atomik backend
 const applyResponseData = (resData: any) => {
   if (!resData) return
-
-  // Mapping queue jika ada
   if (resData.queue?.data) {
     queueData.value = resData.queue.data
   }
 
-  // Mapping header jika ada
   if (resData.header) {
     moduleSchema.value.header = resData.header
     headerForm.value = resData.header.data ? { ...resData.header.data } : null
@@ -237,14 +220,12 @@ const applyResponseData = (resData: any) => {
     }
   }
 
-  // Mapping details jika ada
   if (resData.details) {
     moduleSchema.value.details = resData.details
     rows.value = resData.details.data || []
   }
 }
 
-// Format Tampilan Opsi Relasi pada Header Input
 const getRelationDisplayLabel = (field: any, val: any) => {
   if (!val) return ''
   const entity = field.relation?.entity
@@ -287,7 +268,7 @@ const selectDialogSelectData = async (selectedRow: any) => {
 const closeSelectDialog = () => {
   isSelectDialogOpen.value = false
   activeRelationContext.value = null
-  nextTick(() => getGrid(gridRef).focus?.())
+  gridFocus(gridRef)
 }
 
 const columnTypes = {
@@ -296,20 +277,17 @@ const columnTypes = {
   date: new DateTypePlugin()
 }
 
-// MUAT DETAIL TRANSAKSI
 const loadTransaction = async (id: number) => {
   setSyncStatus('loading', 'Memuat dokumen transaksi..')
   try {
     await api.get(`/${formKey.value}/get-transaction`, { params: { id } })
     await nextTick()
-    getGrid(gridRef).requestGridRowsRedraw?.()
     setSyncStatus('success', 'Transaksi dimuat')
   } catch (err: any) {
     setSyncStatus('error', `Gagal memuat transaksi: ${err.message}`)
   }
 }
 
-// INITIAL LOAD & MAPPING SCHEMA
 const loadComponentData = async () => {
   const res = props.schemaData
   if (!res) return
@@ -349,7 +327,6 @@ const loadComponentData = async () => {
   }
 }
 
-// UPDATE HEADER (AUTO-SAVE)
 const updateHeaderData = async () => {
   if (!activeHeaderId.value || !headerForm.value) return
 
@@ -364,7 +341,6 @@ const updateHeaderData = async () => {
   }
 }
 
-// EDIT GRID CELLS
 const beforeEditStart = (event: any) => {
   if (!event.detail) return;
   if (event.detail.column._type === "relation") {
@@ -424,7 +400,6 @@ const afterEdit = async (event: any) => {
   }
 }
 
-// EVENT SHORTCUT KEYBOARD
 const handleKeyDown = async (e: KeyboardEvent) => {
   if (e.repeat) return
 
@@ -495,7 +470,7 @@ const handleSearchSubmit = async () => {
 const closeSearchModal = async () => {
   showSearchModal.value = false
   detailSearchQuery.value = ''
-  getGrid(gridRef).focus?.()
+  gridFocus(gridRef)
 }
 
 const handleDeleteDetailRow = async () => {
@@ -595,7 +570,6 @@ const handleGlobalKeyDown = (e: any) => {
     openSearchItemsDialog(detailSearchQuery.value)
   }
 }
-
 
 useRealtimeSync(formKey, applyResponseData, gridRef)
 onMounted(() => {

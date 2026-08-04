@@ -1,33 +1,30 @@
 import type { Ref } from 'vue'
 
-// 1. getGrid TETAP SYNCHRONOUS (Tanpa async/await, biar ga perlu ubah tempat lain)
-export const getGrid = (gridRef: Ref) => {
+const getGrid = (gridRef: Ref) => {
     if (!gridRef || !gridRef.value) return null
     return gridRef.value.$el || gridRef.value
 }
 
-// 2. Fungsi action yang SUDAH ASYNC tinggal kita tambahkan componentOnReady()
-export const gridSelectsetSelectedFocusedCell = async (
+export const gridSelectSingleCell = async (
     gridRef: Ref,
     { rowIndex, colIndex }: { rowIndex: number; colIndex: number }
 ) => {
-    const grid = getGrid(gridRef)
-    if (!grid) return
+    const grid = await getGrid(gridRef)
+    await grid?.setCellsFocus?.({ x: colIndex, y: rowIndex }, { x: colIndex, y: rowIndex })
+}
 
-    // Tunggu grid siap di sini (karena fungsi ini sudah async!)
-    if (typeof grid.componentOnReady === 'function') {
-        await grid.componentOnReady()
-    }
-
-    // Panggil method resmi RevoGrid
-    if (typeof grid.setCellFocus === 'function') {
-        await grid.setCellFocus(colIndex, rowIndex)
-    }
+export const gridFocus = async (gridRef: Ref) => {
+    const grid = await getGrid(gridRef)
+    await grid?.focus?.()
 }
 
 export const getActiveCellState = async (gridRef: Ref) => {
     const grid = getGrid(gridRef)
-    if (!grid) return null
+    if (!grid) {
+        console.error('Grid reference is not available.')
+        return null
+    }
+
 
     if (typeof grid.componentOnReady === 'function') {
         await grid.componentOnReady()
@@ -46,6 +43,7 @@ export const getActiveCellState = async (gridRef: Ref) => {
             model: focused.model || {}
         }
     } catch {
+        console.error('Failed to get active cell state from the grid.')
         return null
     }
 }

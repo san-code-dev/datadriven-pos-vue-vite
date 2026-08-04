@@ -105,6 +105,7 @@ import NumberColumnType from '@revolist/revogrid-column-numeral'
 import SelectTypePlugin from '@revolist/revogrid-column-select'
 import DateTypePlugin from '@revolist/revogrid-column-date'
 import { useRealtimeSync } from '@/composables/useRealtimeSync'
+import { gridSelectSingleCell, getActiveCellState } from '@/composables/grid'
 
 const props = defineProps({
 	menu: { type: Object, required: true },
@@ -115,7 +116,7 @@ const route = useRoute()
 const tabStore = useTabStore()
 const filterStore = useFilterStore()
 
-const gridRef = ref(null)
+const gridRef = ref<any>(null)
 const navigatorRef = ref(null)
 const columns = ref([])
 const rows = ref([])
@@ -141,19 +142,18 @@ const formKey = computed(() => {
 	return props.menu.key.toLowerCase()
 })
 
-const getGrid = () => (gridRef.value?.$el || gridRef.value || {})
 
-const getActiveCellState = async () => {
-	const grid = getGrid()
-	if (typeof grid.getFocused !== 'function') return { x: 0, y: 0, column: {}, model: {} }
-	const focused = await grid.getFocused()
-	return {
-		x: focused?.cell?.x ?? 0,
-		y: focused?.cell?.y ?? 0,
-		column: focused?.column || {},
-		model: focused?.model || {}
-	}
-}
+// const getActiveCellState = async () => {
+// 	const grid = getGrid(gridRef)
+// 	if (typeof grid.getFocused !== 'function') return { x: 0, y: 0, column: {}, model: {} }
+// 	const focused = await grid.getFocused()
+// 	return {
+// 		x: focused?.cell?.x ?? 0,
+// 		y: focused?.cell?.y ?? 0,
+// 		column: focused?.column || {},
+// 		model: focused?.model || {}
+// 	}
+// }
 
 const columnTypes = {
 	numeric: new NumberColumnType('0,0'),
@@ -174,27 +174,6 @@ const relationCellRenderer = (createElement, cellProps, displayField, fieldKey, 
 	return createElement('span', {}, matchedOption ? matchedOption.label : rawValue)
 }
 
-const fetchRelationOptions = async () => {
-	const schema = props.schemaData?.schema || []
-	const relationFields = schema.filter(f => f.type === 'relation' && f.relation)
-
-	for (const field of relationFields) {
-		const entity = field.relation.entity
-		const displayField = field.relation.displayField || 'name'
-		if (relationOptions.value[entity]) continue
-
-		try {
-			const response = await api.get(`/${entity}/get-all`)
-			const rawData = response.data?.schema?.data || response.data?.data || []
-			relationOptions.value[entity] = rawData.map((item: any) => ({
-				value: item.id,
-				label: item[displayField] || item.name
-			}))
-		} catch (err) {
-			console.error(`Gagal memuat opsi relasi untuk entitas ${entity}:`, err)
-		}
-	}
-}
 
 // 🟢 APPLY RESPONSE DATA: Handler utama sinkronisasi realtime socket
 const applyResponseData = (serverData: any) => {
@@ -211,8 +190,6 @@ const applyResponseData = (serverData: any) => {
 			currentTab.apiResponse.data = [...rows.value]
 		}
 	}
-
-	getGrid().requestGridRowsRedraw?.()
 }
 
 // 🟢 FETCH GRID DATA: Mengambil data tabel dari backend
@@ -237,7 +214,6 @@ const loadComponentData = async () => {
 	const res = props.schemaData
 	if (!res) return
 	applyResponseData(res)
-	await fetchRelationOptions()
 
 	columns.value = (res.schema || []).map(field => {
 		const columnConfig: Record<string, any> = {
@@ -288,22 +264,9 @@ const loadComponentData = async () => {
 
 	primaryKey.value = (res.schema || []).find(f => f.primary)?.key || 'id'
 	permission.value = res.permissions || {}
-
-
-
-	await nextTick()
-
-	if (activeTimeoutId) clearTimeout(activeTimeoutId)
-	activeTimeoutId = setTimeout(() => {
-		if (rows.value.length > 0) navigatorRef.value?.scrollToLastRow()
-
-		const grid = getGrid()
-		if (typeof grid.focus === 'function') grid.focus()
-		else if (grid.setAttribute) {
-			grid.setAttribute('tabindex', '0')
-			grid.focus()
-		}
-	}, 100)
+	await nextTick(() => {
+		focusBackToGrid()
+	})
 }
 
 const beforeEditStart = () => { console.log('mencari relasi data..') }
@@ -390,10 +353,7 @@ const handleKeyDown = async (e) => {
 	if (e.altKey && e.key === 'ArrowDown') { navigatorRef.value?.scrollToLastRow(); e.preventDefault(); return; }
 	if (e.altKey && e.key === 'ArrowUp') { navigatorRef.value?.scrollToFirstRow(); e.preventDefault(); return; }
 
-	const { y, column } = await getActiveCellState()
-
-	if (e.key === 'ArrowDown') { handleArrowDown(y); return; }
-	if (e.key === 'ArrowUp') { handleArrowUp(y); return; }
+	const { column } = await getActiveCellState(gridRef)
 
 	if (!column?._primary && column?._type !== 'relation') return
 
@@ -403,20 +363,6 @@ const handleKeyDown = async (e) => {
 	}
 }
 
-const handleMouseDown = (e) => {
-	if (e.ctrlKey && e.button === 0) {
-		console.log('CTRL + Click terdeteksi, membuka detail data...')
-		e.preventDefault()
-	}
-}
-
-const handleArrowDown = (currentY) => {
-	if (currentY === rows.value.length - 1) console.log('ARROW DOWN di baris terakhir')
-}
-
-const handleArrowUp = (currentY) => {
-	if (currentY === 0) console.log('ARROW UP di baris pertama')
-}
 
 const handleAddNewRow = async () => {
 	if (!permission.value.create) {
@@ -426,17 +372,9 @@ const handleAddNewRow = async () => {
 
 	setSyncStatus('loading', 'Menambah baris..')
 	try {
-		const response = await api.post(`/${formKey.value}/create`, {})
-
-		if (response.status === 201 || response.status === 200) {
-			setSyncStatus('success', 'Baris baru ditambahkan')
-
-			// Tunggu render selesai, lalu gunakan helper dari GridNavigator untuk scroll dan fokus ke baris terakhir
-			await nextTick()
-			setTimeout(() => {
-				navigatorRef.value?.scrollToLastRow?.()
-			}, 50)
-		}
+		await api.post(`/${formKey.value}/create`, {})
+		setSyncStatus('success', 'Baris baru ditambahkan')
+		//scroll to last data row
 	} catch (err: any) {
 		console.error("Gagal menambahkan baris baru:", err)
 		setSyncStatus('error', `Gagal menambah baris: ${err.message}`)
@@ -445,11 +383,13 @@ const handleAddNewRow = async () => {
 const handleDeleteKey = async () => {
 	if (!permission.value.delete) return
 
-	const { y: targetIndex } = await getActiveCellState()
-	const selectedData = rows.value[targetIndex]
-	const recordId = selectedData?.[primaryKey.value]
+	const { model } = await getActiveCellState(gridRef)
+	const recordId = model?.[primaryKey.value]
 
-	if (!recordId) return
+	if (!recordId) {
+		console.log('No record selected for deletion')
+		return
+	}
 
 	if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
 		setSyncStatus('loading', 'Menghapus..')
@@ -472,17 +412,7 @@ const handleFilterChanged = (filter) => {
 }
 
 const focusBackToGrid = () => {
-	nextTick(async () => {
-		const grid = getGrid()
-		if (!grid.setCellsFocus) return
-
-		const { x, y } = await getActiveCellState()
-		grid.setCellsFocus({ x, y }, { x, y })
-
-		const internalInput = grid.querySelector?.('.revo-clipboard, input, [tabindex="0"]')
-		if (internalInput) internalInput.focus()
-		else grid.focus?.()
-	})
+	gridSelectSingleCell(gridRef, { rowIndex: 0, colIndex: 0 })
 }
 
 const cariDataDenganKarakter = async (char) => {
@@ -512,7 +442,7 @@ const handleSearchSubmit = () => {
 const closeSearchModal = () => {
 	showSearchModal.value = false
 	searchQuery.value = ''
-	nextTick(() => { getGrid().focus?.() })
+	focusBackToGrid()
 }
 
 const handlePrint = () => { window.print() }
@@ -522,40 +452,22 @@ watch(() => props.schemaData, loadComponentData)
 
 watch(() => tabStore.activeTabId, async (activeTabId) => {
 	if (activeTabId === props.menu?.route) {
-		await nextTick()
 
-		if (activeTimeoutId) clearTimeout(activeTimeoutId)
-		activeTimeoutId = setTimeout(async () => {
-			const grid = getGrid()
-			if (!grid.requestColumnsRedraw) return
-
-			grid.requestColumnsRedraw()
-
-			const currentRoute = props.menu?.route || route.path
-			activeFilters.value = filterStore.getFiltersByTab(currentRoute) || {}
-
-			const { x, y } = await getActiveCellState()
-			grid.setCellsFocus?.({ x, y }, { x, y })
-			grid.scrollToRow?.(y)
-
-			const clipboardInput = grid.querySelector?.('.revo-clipboard, input, [tabindex="0"]')
-			if (clipboardInput) clipboardInput.focus()
-			else grid.focus?.()
-		}, 0)
+		const currentRoute = props.menu?.route || route.path
+		activeFilters.value = filterStore.getFiltersByTab(currentRoute) || {}
+		focusBackToGrid()
 	}
-}, { immediate: true })
+}, { immediate: false })
 
 // 🟢 Hook Realtime Sync menggunakan formKey & applyResponseData
 useRealtimeSync(formKey, applyResponseData, gridRef)
 
 onMounted(() => {
 	loadComponentData()
-	getGrid().addEventListener?.('mousedown', handleMouseDown)
 })
 
 onBeforeUnmount(() => {
 	if (activeTimeoutId) clearTimeout(activeTimeoutId)
-	getGrid().removeEventListener?.('mousedown', handleMouseDown)
 
 	rows.value = []
 	columns.value = []

@@ -30,49 +30,36 @@
     </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { Icon } from '@iconify/vue'
-
+import { toRef } from 'vue'
+import { getActiveCellState, gridSelectSingleCell } from '@/composables/grid'
 const props = defineProps({
     grid: [Object, null],
     rows: { type: Array, default: () => [] },
     columns: { type: Array, default: () => [] }
 })
 
-// 🟢 HELPER UTAMA: Mengambil instance element DOM asli RevoGrid secara aman
-const getGrid = () => props.grid?.$el || props.grid || {}
-
-// 🟢 HELPER REALTIME: Mendapatkan koordinat aktif secara asynchronous langsung dari engine grid
-const getActiveCoordinates = async () => {
-    const grid = getGrid()
-    if (typeof grid.getFocused !== 'function') return { x: 0, y: 0 }
-    const focused = await grid.getFocused()
-    return {
-        x: focused?.cell?.x ?? 0,
-        y: focused?.cell?.y ?? 0
-    }
-}
+const gridRef = toRef(props, 'grid')
 
 // ========================================================
 // FUNGSI JUMP & FOCUS UNTUK BARIS (VERTIKAL)
 // ========================================================
 const scrollToFirstRow = async () => {
     if (props.rows.length === 0) return
-    const grid = getGrid()
-    const { x } = await getActiveCoordinates()
+    const activeState = await getActiveCellState(gridRef)
+    const x = activeState?.x
 
-    grid.setCellsFocus?.({ x, y: 0 }, { x, y: 0 })
-    grid.scrollToRow?.(0)
+    gridSelectSingleCell(gridRef, { rowIndex: 0, colIndex: x })
 }
 
 const scrollToLastRow = async () => {
     if (props.rows.length === 0) return
-    const grid = getGrid()
-    const { x } = await getActiveCoordinates()
+    const activeState = await getActiveCellState(gridRef)
+    const x = activeState?.x
     const lastRowIndex = props.rows.length - 1
 
-    grid.setCellsFocus?.({ x, y: lastRowIndex }, { x, y: lastRowIndex })
-    grid.scrollToRow?.(lastRowIndex)
+    gridSelectSingleCell(gridRef, { rowIndex: lastRowIndex, colIndex: x })
 }
 
 // ========================================================
@@ -80,21 +67,19 @@ const scrollToLastRow = async () => {
 // ========================================================
 const scrollToFirstCol = async () => {
     if (props.columns.length === 0) return
-    const grid = getGrid()
-    const { y } = await getActiveCoordinates()
+    const activeState = await getActiveCellState(gridRef)
+    const y = activeState?.y
 
-    grid.scrollToColumnIndex?.(0)
-    grid.setCellsFocus?.({ x: 0, y }, { x: 0, y })
+    gridSelectSingleCell(gridRef, { rowIndex: y, colIndex: 0 })
 }
 
 const scrollToLastCol = async () => {
     if (props.columns.length === 0) return
-    const grid = getGrid()
-    const { y } = await getActiveCoordinates()
+    const activeState = await getActiveCellState(gridRef)
+    const y = activeState?.y
     const lastColIndex = props.columns.length - 1
 
-    grid.scrollToColumnIndex?.(lastColIndex)
-    grid.setCellsFocus?.({ x: lastColIndex, y }, { x: lastColIndex, y })
+    gridSelectSingleCell(gridRef, { rowIndex: y, colIndex: lastColIndex })
 }
 
 defineExpose({ scrollToLastRow, scrollToLastCol, scrollToFirstRow, scrollToFirstCol })

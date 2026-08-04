@@ -70,7 +70,7 @@ import { Icon } from '@iconify/vue'
 import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from './GridNavigator.vue'
-import { getActiveCellState, getGrid, gridSelectsetSelectedFocusedCell } from '@/composables/grid.ts'
+import { getActiveCellState, gridSelectSingleCell } from '@/composables/grid.ts'
 
 interface Props {
     schemaDataEntity: any
@@ -125,12 +125,9 @@ watch(() => props.isOpen, async (isOpen) => {
 
     await nextTick()
 
-    const grid = getGrid(gridRef)
-    if (grid) {
-        grid.focus?.()
-        await gridSelectsetSelectedFocusedCell(gridRef, { rowIndex: 0, colIndex: 0 })
-        gridNavigatorRef.value?.scrollToFirstRow?.()
-    }
+
+    await gridSelectSingleCell(gridRef, { rowIndex: 0, colIndex: 0 })
+
 })
 </script>
 

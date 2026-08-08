@@ -2,7 +2,7 @@
 - data selector untuk relation details, header, master belum bisa
 - action button print, export dll belum bisa
 - quick search dialog belum bisa menampilkan hasil pencarian di dialog selector
-- date parse UTC ke lokal di input belum
+- <mark>date parse UTC ke lokal di input belum</mark>
 - autorefresh sesi login belum
 - validasi input type
 - filter data masih lokal based perlu dimasukan di schema agar sinkron

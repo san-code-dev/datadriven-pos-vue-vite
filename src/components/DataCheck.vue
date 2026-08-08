@@ -2,9 +2,9 @@
     <div class="fixed bottom-4 right-4 z-[9999] font-mono text-xs">
         <!-- Toggle Button Panel -->
         <button @click="isOpen = !isOpen"
-            class="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-slate-100 dark:bg-slate-100 dark:text-slate-900 rounded-lg shadow-xl hover:opacity-90 transition-all font-semibold border border-slate-700 dark:border-slate-300 select-none">
+            class="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-slate-100 dark:bg-slate-100 dark:text-slate-900 rounded-lg shadow-xl hover:opacity-90 transition-all font-semibold border border-slate-700 dark:border-slate-300">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Data Inspector ({{ formattedData.length }})</span>
+            <span>JSON Inspector ({{ formattedData.length }})</span>
             <span class="text-[10px] opacity-70">{{ isOpen ? '▼' : '▲' }}</span>
         </button>
 
@@ -14,7 +14,7 @@
 
             <!-- Variable Items List -->
             <div class="p-3 overflow-y-auto space-y-3 flex-1 custom-scrollbar">
-                <div v-for="(item, index) in formattedData" :key="item.label"
+                <div v-for="(item, index) in formattedData" :key="index"
                     class="bg-slate-950/60 border border-slate-800 rounded-lg overflow-hidden">
                     <!-- Item Title Bar -->
                     <div @click="toggleItem(index)"
@@ -44,97 +44,74 @@
         </div>
     </div>
 </template>
+
 <script setup lang="ts">
-import { ref, computed, watch, toRaw, isRef } from 'vue'
+import { ref, computed } from 'vue'
 
 const props = defineProps<{
-    variable?: Record<string, any> | any
+    // Menerima array variabel atau object variabel
+    variable: any[] | Record<string, any> | any
 }>()
 
 const isOpen = ref(false)
-const activeIndexes = ref<number[]>([0])
+const activeIndexes = ref<number[]>([0]) // Default membuka item pertama
 const copiedIndex = ref<number | null>(null)
 
-const debugStore = ref<Record<string, any>>({})
-
-// Helper untuk membuka membongkar Ref / Proxy Vue sampai ke nilai paling asli
-const deepUnwrap = (val: any): any => {
-    if (val === null || val === undefined) return val
-    let raw = isRef(val) ? val.value : val
-    raw = toRaw(raw)
-
-    if (Array.isArray(raw)) {
-        return raw.map(item => deepUnwrap(item))
-    }
-
-    return raw
-}
-
-// Helper setDebug Internal yang Kebal Bug #1 0
-const setDebug = (input: any) => {
-    if (input === null || input === undefined) return
-
-    const rawInput = isRef(input) ? input.value : input
-
-    // Jika input berupa Objek Murni { resData: ... }
-    if (typeof rawInput === 'object' && !Array.isArray(rawInput)) {
-        for (const [key, val] of Object.entries(rawInput)) {
-            debugStore.value[key] = deepUnwrap(val)
-        }
-    } else {
-        // Fallback jika yang di-pass hanya nilai tunggal
-        debugStore.value['Data'] = deepUnwrap(rawInput)
-    }
-}
-
-watch(
-    () => props.variable,
-    (newVal) => {
-        if (newVal !== undefined) {
-            setDebug(newVal)
-        }
-    },
-    { immediate: true, deep: true }
-)
-
+// Format dan mapping input variabel agar rapi
 const formattedData = computed(() => {
-    return Object.entries(debugStore.value).map(([key, val]) => ({
-        label: key, // 👈 Nama variabel asli (resData, rows, dll)
-        data: val
-    }))
+    if (Array.isArray(props.variable)) {
+        return props.variable.map((val, idx) => ({
+            label: typeof val === 'object' && val !== null && !Array.isArray(val)
+                ? Object.keys(val)[0] || `Variable ${idx + 1}`
+                : `Variable ${idx + 1}`,
+            data: val
+        }))
+    } else if (typeof props.variable === 'object' && props.variable !== null) {
+        return Object.entries(props.variable).map(([key, val]) => ({
+            label: key,
+            data: val
+        }))
+    }
+    return [{ label: 'Value', data: props.variable }]
 })
 
-// Fungsi Format JSON yang Kebal Undefined
-const formatJSON = (val: any): string => {
-    if (val === undefined) return 'undefined'
-    if (val === null) return 'null'
+const toggleItem = (index: number) => {
+    const pos = activeIndexes.value.indexOf(index)
+    if (pos >= 0) {
+        activeIndexes.value.splice(pos, 1)
+    } else {
+        activeIndexes.value.push(index)
+    }
+}
+
+const formatJSON = (val: any) => {
     try {
-        const rawVal = deepUnwrap(val)
-        return JSON.stringify(rawVal, null, 2) || String(rawVal)
+        return JSON.stringify(val, null, 2)
     } catch (e) {
         return String(val)
     }
 }
 
-const copyJson = async (val: any, index: number) => {
-    const textToCopy = formatJSON(val)
-    try {
-        await navigator.clipboard.writeText(textToCopy)
-        copiedIndex.value = index
-        setTimeout(() => { copiedIndex.value = null }, 1500)
-    } catch (err) {
-        console.error('Gagal copy text:', err)
-    }
+const copyJson = (val: any, index: number) => {
+    navigator.clipboard.writeText(formatJSON(val))
+    copiedIndex.value = index
+    setTimeout(() => {
+        copiedIndex.value = null
+    }, 1500)
 }
-
-const toggleItem = (index: number) => {
-    const pos = activeIndexes.value.indexOf(index)
-    if (pos >= 0) activeIndexes.value.splice(pos, 1)
-    else activeIndexes.value.push(index)
-}
-
-defineExpose({
-    setDebug,
-    clear: () => { debugStore.value = {} }
-})
 </script>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+}
+</style>

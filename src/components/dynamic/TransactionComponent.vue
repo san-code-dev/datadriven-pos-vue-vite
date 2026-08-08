@@ -68,7 +68,7 @@
         <!-- FORM HEADER -->
         <div
           class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 border-t-0 px-3 py-2 transition-colors outline-none focus:ring-1 focus:ring-emerald-500 select-none">
-          <div v-if="headerForm"
+          <div v-if="localTransactionData"
             class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 items-center">
 
             <div v-for="field in headerSchema" :key="field.key" :data-key="field.key" class="flex flex-col space-y-1"
@@ -83,17 +83,15 @@
                 field.highlight ? 'text-emerald-600 dark:text-emerald-400 font-bold text-sm bg-emerald-50/50 dark:bg-emerald-950/30' : 'text-slate-700 dark:text-slate-200'
               ]">
                 <template v-if="field.type === 'currency'">
-                  {{ numberFormat.formatCurrency(headerForm[field.key]) }}
+                  {{ numberFormat.formatCurrency(localTransactionData[field.key]) }}
                 </template>
                 <template v-else>
-                  {{ headerForm[field.key] || '-' }}
+                  {{ localTransactionData[field.key] || '-' }}
                 </template>
               </div>
 
               <div v-else-if="field.type === 'relation' && field.relation" class="relative">
-                <input type="text"
-                  :value="getRelationDisplayLabel(field, headerForm[field.key]) || headerSearchQuery[field.key]"
-                  @input="e => headerSearchQuery[field.key] = (e.target as HTMLInputElement).value"
+                <input type="text" @input="e => headerSearchQuery[field.key] = (e.target as HTMLInputElement).value"
                   :placeholder="`Pilih...`" @keydown.enter.prevent="searchRelationHeaderData(field)"
                   class="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all pr-6" />
                 <Icon icon="mdi:magnify"
@@ -103,13 +101,13 @@
 
               <input v-else
                 :type="field.type === 'date' ? 'datetime-local' : field.type === 'number' ? 'number' : 'text'" :value="field.type === 'date'
-                  ? toLocalDatetimeLocal(headerForm[field.key])
-                  : headerForm[field.key]" @input="e => {
+                  ? toLocalDatetimeLocal(localTransactionData[field.key])
+                  : localTransactionData[field.key]" @input="e => {
                     const target = e.target as HTMLInputElement;
                     if (field.type === 'date') {
-                      headerForm[field.key] = target.value ? new Date(target.value).toISOString() : null;
+                      localTransactionData[field.key] = target.value ? new Date(target.value).toISOString() : null;
                     } else {
-                      headerForm[field.key] = target.value;
+                      localTransactionData[field.key] = target.value;
                     }
                   }" @change="updateHeaderData()"
                 class="dark:[color-scheme:dark] px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all" />
@@ -146,6 +144,7 @@
   </div>
   <SelectDialog :schema-data-entity="searchDataSchema" :is-open="isSelectDialogOpen" @close="closeSelectDialog"
     @select="selectDialogSelectData" />
+  <DataCheck :variable="localTransactionData" />
 </template>
 
 <script setup lang="ts">
@@ -180,7 +179,7 @@ const isSelectDialogOpen = ref(false)
 const queueData = ref<any[]>([])
 
 const activeHeaderId = ref<number | null>(null)
-const headerForm = ref<any>([])
+const localTransactionData = ref<any>([])
 const rows = ref<any[]>([])
 
 const moduleSchema = ref<any>(props.schemaData || {})
@@ -206,33 +205,26 @@ const setSyncStatus = (state: any, message: string) => {
 const relationOptions = ref<{ [entityName: string]: Array<{ value: any; label: string }> }>({})
 const formKey = computed(() => props.menu.key.toLowerCase())
 
-const applyResponseData = (resData: any) => {
-  if (!resData) return
-  if (resData.queue?.data) {
-    queueData.value = resData.queue.data
+const applyResponseData = (socketIoData: any) => {
+  if (!socketIoData) return
+  if (socketIoData.queue?.data) {
+    queueData.value = socketIoData.queue.data
   }
 
-  if (resData.header) {
-    moduleSchema.value.header = resData.header
-    headerForm.value = resData.header.data ? { ...resData.header.data } : null
-    if (headerForm.value?.id) {
-      activeHeaderId.value = headerForm.value.id
+  if (socketIoData.header) {
+    moduleSchema.value.header = socketIoData.header
+    localTransactionData.value = socketIoData.header.data ? { ...socketIoData.header.data } : null
+    if (localTransactionData.value?.id) {
+      activeHeaderId.value = localTransactionData.value.id
     }
   }
 
-  if (resData.details) {
-    moduleSchema.value.details = resData.details
-    rows.value = resData.details.data || []
+  if (socketIoData.details) {
+    moduleSchema.value.details = socketIoData.details
+    rows.value = socketIoData.details.data || []
   }
 }
 
-const getRelationDisplayLabel = (field: any, val: any) => {
-  if (!val) return ''
-  const entity = field.relation?.entity
-  const opts = relationOptions.value[entity] || []
-  const found = opts.find((o) => o.value === val)
-  return found ? found.label : val
-}
 
 const searchRelationHeaderData = async (field: any) => {
   const keyword = headerSearchQuery.value[field.key] || ''
@@ -259,7 +251,7 @@ const searchRelationHeaderData = async (field: any) => {
 const selectDialogSelectData = async (selectedRow: any) => {
   if (activeRelationContext.value?.type === 'header') {
     const key = activeRelationContext.value.fieldKey
-    headerForm.value[key] = selectedRow.id || selectedRow.value
+    localTransactionData.value[key] = selectedRow.id || selectedRow.value
     await updateHeaderData()
   }
   closeSelectDialog()
@@ -328,11 +320,11 @@ const loadComponentData = async () => {
 }
 
 const updateHeaderData = async () => {
-  if (!activeHeaderId.value || !headerForm.value) return
+  if (!activeHeaderId.value || !localTransactionData.value) return
 
   setSyncStatus('loading', 'Menyimpan perubahan header..')
   try {
-    await api.put(`/${formKey.value}/update-header`, headerForm.value, {
+    await api.put(`/${formKey.value}/update-header`, localTransactionData.value, {
       params: { id: activeHeaderId.value }
     })
     setSyncStatus('success', 'Header disimpan')

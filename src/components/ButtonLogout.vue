@@ -107,7 +107,7 @@ async function submitLogout() {
 
                     <div class="flex place-items-center space-x-3 text-amber-500 dark:text-amber-400 mb-3">
                         <Icon icon="mdi:alert-circle-outline" class="text-3xl" />
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+                        <h3 class="text-lg font-bold mb-0 text-gray-900 dark:text-white">
                             Konfirmasi Keluar
                         </h3>
                     </div>

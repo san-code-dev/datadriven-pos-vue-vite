@@ -1,152 +1,3 @@
-<template>
-  <div class="flex h-full max-h-full overflow-hidden min-h-0 w-full text-slate-800 dark:text-slate-100">
-    <div class="flex-1 flex flex-col h-full overflow-hidden min-h-0 relative">
-      <!-- MODAL PENCARIAN PRODUK -->
-      <div v-if="showSearchModal" @click.self="closeSearchModal"
-        class="absolute backdrop-blur-sm flex inset-0 items-center justify-center transition-all z-50">
-        <div
-          class="bg-white dark:bg-slate-800 w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden p-3 mx-4"
-          @keydown.stop>
-          <form @submit.prevent="handleSearchSubmit" class="flex items-center relative">
-            <div class="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
-              <Icon icon="mdi:magnify" class="w-5 h-5" />
-            </div>
-            <input ref="searchInputRef" v-model="detailSearchQuery" type="text" @keydown="handleSearchKeydown"
-              placeholder="Ketik Kode/Nama barang lalu tekan Enter untuk menambah..."
-              class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 transition-all" />
-            <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none"> <kbd
-                class="px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-600 rounded shadow-sm">
-                Enter ↩
-              </kbd>
-              <button type="button" @click="closeSearchModal"
-                class="pointer-events-auto text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                Esc
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <div class="flex flex-1 flex-col min-h-0 overflow-hidden relative w-full">
-
-        <div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
-          <RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
-            :columns="columns" :source="detailsData" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
-            :auto-size-column="true" @beforeeditstart="beforeEditStart" @afteredit="afterEdit" @beforeedit="beforeEdit"
-            @keydown="handleKeyDown" :column-types="columnTypes" />
-          <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="detailsData" :columns="columns" />
-        </div>
-
-        <!-- TABS ANTREAN (DRAFTS) -->
-        <div class="flex items-center gap-1 dark:border-slate-800 shrink-0 overflow-hidden px-2 flex-wrap">
-          <button class="flex text-xs font-extralight px-3 gap-1 py-1.5 items-center text-slate-500">
-            <Icon icon="mdi:view-grid-outline" class="w-3.5 h-3.5" /> history
-          </button>
-
-          <button v-for="item in queueData" :key="item.id" @click="loadTransaction(item.id)" :class="[
-            'px-4 py-2 text-xs font-medium flex items-center gap-2 whitespace-nowrap shrink-0 relative',
-            activeHeaderId === item.id
-              ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-t-xl shadow-sm z-10' +
-              ' before:absolute before:bottom-0 before:-left-2.5 before:w-2.5 before:h-2.5 before:bg-transparent before:rounded-br-xl before:shadow-[4px_4px_0_4px_white] dark:before:shadow-[4px_4px_0_4px_rgb(30,41,59)]' +
-              ' after:absolute after:bottom-0 after:-right-2.5 after:w-2.5 after:h-2.5 after:bg-transparent after:rounded-bl-xl after:shadow-[-4px_4px_0_4px_white] dark:after:shadow-[-4px_4px_0_4px_rgb(30,41,59)]'
-              : 'bg-slate-100/60 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 rounded-lg'
-          ]">
-
-            <span class="w-1.5 h-1.5 rounded-full"
-              :class="activeHeaderId === item.id ? 'bg-emerald-500' : 'bg-slate-400'"></span>
-            <span>{{ item.label || `Draft #${item.id}` }}</span>
-
-          </button>
-
-          <button @click="handleNewTransaction"
-            class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-center shrink-0 ml-1"
-            title="Tambah Antrean Baru (F2)">
-            <Icon icon="mdi:plus" class="w-4 h-4" />
-          </button>
-        </div>
-
-        <!-- FORM HEADER -->
-        <div
-          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 border-t-0 px-3 py-2 transition-colors outline-none focus:ring-1 focus:ring-emerald-500 select-none">
-          <div v-if="headerData"
-            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 items-center">
-
-            <div v-for="field in headerSchema" :key="field.key" :data-key="field.key" class="flex flex-col space-y-1"
-              :class="{ 'hidden': field.isHidden }">
-              <label
-                class="text-[10px] font-semibold tracking-wide text-slate-400 dark:text-slate-500 uppercase truncate">
-                {{ field.label }}
-              </label>
-
-              <div v-if="field.readonly" :class="[
-                'px-2 py-1 text-xs rounded border border-transparent bg-slate-50 dark:bg-slate-800/50 font-medium truncate',
-                field.highlight ? 'text-emerald-600 dark:text-emerald-400 font-bold text-sm bg-emerald-50/50 dark:bg-emerald-950/30' : 'text-slate-700 dark:text-slate-200'
-              ]">
-                <template v-if="field.type === 'currency'">
-                  {{ numberFormat.formatCurrency(headerData[field.key]) }}
-                </template>
-                <template v-else>
-                  {{ headerData[field.key] || '-' }}
-                </template>
-              </div>
-
-              <div v-else-if="field.type === 'relation' && field.relation" class="relative">
-                <input type="text" @input="e => headerSearchQuery[field.key] = (e.target as HTMLInputElement).value"
-                  :placeholder="`Pilih...`" @keydown.enter.prevent="searchRelationHeaderData(field)"
-                  class="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all pr-6" />
-                <Icon icon="mdi:magnify"
-                  class="w-3.5 h-3.5 absolute right-2 top-1.5 text-slate-400 cursor-pointer hover:text-emerald-500"
-                  @click="searchRelationHeaderData(field)" />
-              </div>
-
-              <input v-else
-                :type="field.type === 'date' ? 'datetime-local' : field.type === 'number' ? 'number' : 'text'" :value="field.type === 'date'
-                  ? toLocalDatetimeLocal(headerData[field.key])
-                  : headerData[field.key]" @input="e => {
-                    const target = e.target as HTMLInputElement;
-                    if (field.type === 'date') {
-                      headerData[field.key] = target.value ? new Date(target.value).toISOString() : null;
-                    } else {
-                      headerData[field.key] = target.value;
-                    }
-                  }" @change="updateHeaderData()"
-                class="dark:[color-scheme:dark] px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- FOOTER SUMMARY & ACTIONS -->
-      <div
-        class="bg-white border-b border-slate-200 flex flex-wrap gap-3 items-center justify-between px-4 py-2 transition-colors dark:bg-slate-900 dark:border-slate-800">
-        <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 select-none">
-          <div class="flex items-center gap-1">
-            <span class="font-medium text-slate-700 dark:text-slate-300">{{ detailsData.length }}</span>
-            <span>items</span>
-          </div>
-          <SyncStatus ref="syncStatusRef" />
-        </div>
-        <div class="flex items-center gap-2">
-          <button v-for="action in (schema.actions || [])" :key="action.key" @click="triggerCustomAction(action.key)"
-            class="btn-action-slate">
-            <span>{{ action.label }}</span>
-          </button>
-          <button @click="handleSaveTransaction" type="button" class="btn-action-emerald-600">
-            <span>Simpan Transaksi</span>
-            <kbd class="btn-kbd">[F9]</kbd>
-          </button>
-          <button @click="handleCancelTransaction" type="button" class="btn-action text-rose-600 dark:text-rose-400">
-            <span>Batal</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <SelectDialog :schema-data-entity="searchDataSchema" :is-open="isSelectDialogOpen" @close="closeSelectDialog"
-    @select="selectDialogSelectData" />
-  <DataCheck :variable="schema" />
-</template>
-
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -163,64 +14,54 @@ import NumberColumnType from '@revolist/revogrid-column-numeral'
 import DateTypePlugin from '@revolist/revogrid-column-date'
 import SelectDialog from '../SelectDialog.vue'
 
-// ==== TYPE, disamakan persis dengan SCHEMA dari backend ====
-interface SchemaField {
-  key: string
-  label: string
-  type: string
-  primary?: boolean
-  readonly?: boolean
-  nullable?: boolean
-  size?: number
-  highlight?: boolean
-  isHidden?: boolean
-  options?: any[]
-  formula?: string
-  relation?: { entity: string; valueField: string; displayField: string }
-  validation?: { required?: boolean; min?: number }
-}
+import type { TransactionSchemaState } from '@/types/transaction'
 
-interface SchemaSection<T = any> {
-  label?: string
-  schema: SchemaField[]
-  data: T
-}
-
-interface TransactionSchemaState {
-  key: string
-  prefix?: string
-  label?: string
-  type?: string
-  icon?: string
-  permissions?: Record<string, boolean | undefined>
-  isMenuHidden?: boolean
-  actions?: { key: string; label: string; type?: string }[]
-  queue: SchemaSection<any[]>
-  header: SchemaSection<Record<string, any> | null>
-  details: SchemaSection<any[]>
-}
-
+// ==========================================
+// 1. PROPS
+// ==========================================
 const props = defineProps({
   menu: { type: Object, required: true },
   schemaData: { type: Object as () => TransactionSchemaState, required: true }
 })
 
+// ==========================================
+// 2. REFS & COMPOSABLES
+// ==========================================
 const numberFormat = useNumberFormat()
 const { toLocalDatetimeLocal } = useNumberFormat()
+
 const gridRef = ref<any>(null)
+const navigatorRef = ref<any>(null)
+const syncStatusRef = ref<InstanceType<typeof SyncStatus> | null>(null)
+const searchInputRef = ref<HTMLInputElement | null>(null)
+
+const schema = ref<TransactionSchemaState>(props.schemaData
+
+)
 const searchDataSchema = ref<any>(null)
+const searchDataFieldKey = ref<string | null>(null)
+const searchDataRelationKey = ref<string | null>(null)
+const searchDataContext = ref<'header' | 'details' | 'history' | null>(null)
 
 const isSelectDialogOpen = ref(false)
+const showSearchModal = ref(false)
 
-// ==== SATU-SATUNYA SUMBER STATE ====
-const schema = ref<TransactionSchemaState>(props.schemaData)
+const detailSearchQuery = ref<string>('')
+const activeFieldControllers = ref<Record<string, AbortController>>({})
 
-// ==== TURUNAN (read-only, otomatis sinkron, tidak pernah "lupa update") ====
+const columnTypes = {
+  numeric: new NumberColumnType('0,0'),
+  decimal: new NumberColumnType('0,0'),
+  date: new DateTypePlugin()
+}
+
+// ==========================================
+// 3. COMPUTED PROPERTIES
+// ==========================================
 const formKey = computed(() => (schema.value?.key || '').toLowerCase())
 
 const headerSchema = computed(() => schema.value?.header?.schema || [])
 const detailsSchema = computed(() => schema.value?.details?.schema || [])
-
 const permission = computed(() => schema.value?.permissions || {})
 
 const headerData = computed(() => schema.value?.header?.data ?? null)
@@ -229,7 +70,7 @@ const queueData = computed(() => schema.value?.queue?.data ?? [])
 const activeHeaderId = computed(() => headerData.value?.id ?? null)
 
 const primaryKeyFieldName = computed(
-  () => detailsSchema.value.find((f) => f.primary)?.key || 'id'
+  () => detailsSchema.value.find((f) => f.primary)?.key || undefined
 )
 
 const columns = computed(() =>
@@ -258,73 +99,24 @@ const columns = computed(() =>
   })
 )
 
-const activeRelationContext = ref<{ type: 'header' | 'detail'; fieldKey: string; rowIndex?: number } | null>(null)
-
-const headerSearchQuery = ref<Record<string, string>>({})
-const detailSearchQuery = ref<Record<string, string>>('' as any)
-const showSearchModal = ref(false)
-const searchInputRef = ref<HTMLInputElement | null>(null)
-const syncStatusRef = ref<InstanceType<typeof SyncStatus> | null>(null)
-
+// ==========================================
+// 4. METHODS (API, EVENT HANDLERS, UTILITIES)
+// ==========================================
 const setSyncStatus = (state: any, message: string) => {
   syncStatusRef.value?.setStatus(state, message)
 }
 
-const relationOptions = ref<{ [entityName: string]: Array<{ value: any; label: string }> }>({})
-
-// ==== SYNC DARI SOCKET.IO — cukup tulis ke `schema`, semua turunan ikut update ====
 const applyResponseData = (socketIoData: Partial<TransactionSchemaState> | any) => {
   if (!socketIoData || !schema.value) return
 
-  if (socketIoData.queue?.data) {
-    schema.value.queue.data = socketIoData.queue.data
-  }
-  if (socketIoData.header) {
-    schema.value.header = socketIoData.header
-  }
-  if (socketIoData.details) {
-    schema.value.details = socketIoData.details
-  }
+  if (socketIoData.queue?.data) schema.value.queue.data = socketIoData.queue.data
+  if (socketIoData.header) schema.value.header = socketIoData.header
+  if (socketIoData.details) schema.value.details = socketIoData.details
 }
 
-const searchRelationHeaderData = async (field: any) => {
-  const keyword = headerSearchQuery.value[field.key] || ''
-  activeRelationContext.value = { type: 'header', fieldKey: field.key }
-
-  try {
-    const response = await api.get(`${field.relation.entity}/search-data`, { params: { keyword } })
-    const resultData = response.data?.data || response.data || []
-
-    if (resultData.length === 1) {
-      selectDialogSelectData(resultData[0])
-    } else {
-      searchDataSchema.value = response.data
-      isSelectDialogOpen.value = true
-    }
-  } catch (err: any) {
-    setSyncStatus('error', `Gagal mencari data: ${err.message}`)
-  }
-}
-
-const selectDialogSelectData = async (selectedRow: any) => {
-  if (activeRelationContext.value?.type === 'header' && schema.value.header.data) {
-    const key = activeRelationContext.value.fieldKey
-    schema.value.header.data[key] = selectedRow.id || selectedRow.value
-    await updateHeaderData()
-  }
-  closeSelectDialog()
-}
-
-const closeSelectDialog = () => {
-  isSelectDialogOpen.value = false
-  activeRelationContext.value = null
-  gridFocus(gridRef)
-}
-
-const columnTypes = {
-  numeric: new NumberColumnType('0,0'),
-  decimal: new NumberColumnType('0,0'),
-  date: new DateTypePlugin()
+const loadComponentData = () => {
+  if (!props.schemaData) return
+  schema.value = props.schemaData
 }
 
 const loadTransaction = async (id: number) => {
@@ -338,30 +130,43 @@ const loadTransaction = async (id: number) => {
   }
 }
 
-// ==== INISIALISASI, tinggal 1 baris assignment ====
-const loadComponentData = () => {
-  if (!props.schemaData) return
-  schema.value = props.schemaData
-}
 
-const updateHeaderData = async () => {
-  if (!activeHeaderId.value || !headerData.value) return
+const updateHeaderData = async (fieldKey?: string, value?: any) => {
+  if (!activeHeaderId.value || !fieldKey) {
+    console.error('[updateHeaderData] No transaksi kosong atau field transaksi tidak ditentukan, pembaruan header dibatalkan.')
+    setSyncStatus('error', 'gagal memperbarui transaksi')
+    return
+  }
+
+  if (activeFieldControllers.value[fieldKey]) {
+    activeFieldControllers.value[fieldKey].abort()
+  }
+
+  const controller = new AbortController()
+  activeFieldControllers.value[fieldKey] = controller
+
+  const payload = {
+    id: activeHeaderId.value,
+    [fieldKey]: value
+  }
 
   setSyncStatus('loading', 'Menyimpan perubahan header..')
   try {
-    await api.put(`/${formKey.value}/update-header`, headerData.value, {
-      params: { id: activeHeaderId.value }
+    await api.put(`/${formKey.value}/update-header`, payload, {
+      signal: controller.signal
     })
+
     setSyncStatus('success', 'Header disimpan')
   } catch (err: any) {
-    setSyncStatus('error', `Gagal update header: ${err.message}`)
-  }
-}
+    if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+      return
+    }
 
-const beforeEditStart = (event: any) => {
-  if (!event.detail) return
-  if (event.detail.column._type === 'relation') {
-    console.log('ini adalah relation..')
+    setSyncStatus('error', `Gagal update header: ${err.response?.data?.message || err.message}`)
+  } finally {
+    if (activeFieldControllers.value[fieldKey] === controller) {
+      delete activeFieldControllers.value[fieldKey]
+    }
   }
 }
 
@@ -432,12 +237,8 @@ const handleKeyDown = async (e: KeyboardEvent) => {
   }
 }
 
-const handleSearchKeydown = (event: any) => {
-  if (event.key === 'Escape') closeSearchModal()
-}
-
 const openSearchItemsDialog = async (char: string) => {
-  detailSearchQuery.value = char as any
+  detailSearchQuery.value = char
   showSearchModal.value = true
   await nextTick()
   searchInputRef.value?.focus()
@@ -464,7 +265,7 @@ const handleSearchSubmit = async () => {
 
 const closeSearchModal = async () => {
   showSearchModal.value = false
-  detailSearchQuery.value = '' as any
+  detailSearchQuery.value = ''
   gridFocus(gridRef)
 }
 
@@ -529,11 +330,9 @@ const triggerCustomAction = (actionKey: string) => {
   if (actionKey === 'print') {
     window.print()
   } else {
-    console.log(`Trigger action: ${actionKey} untuk transaksi ID: ${activeHeaderId.value}`)
+    console.log(`[Action] Trigger action: ${actionKey} untuk transaksi ID: ${activeHeaderId.value}`)
   }
 }
-
-watch(() => props.schemaData, loadComponentData)
 
 const handleGlobalKeyDown = (e: any) => {
   const target = e.target
@@ -553,10 +352,60 @@ const handleGlobalKeyDown = (e: any) => {
     e.preventDefault()
     e.stopPropagation()
     e.stopImmediatePropagation()
-    detailSearchQuery.value = ((detailSearchQuery.value as any) + e.key) as any
-    openSearchItemsDialog(detailSearchQuery.value as any)
+    detailSearchQuery.value = detailSearchQuery.value + e.key
+    openSearchItemsDialog(detailSearchQuery.value)
   }
 }
+
+
+
+async function cariDataRef(keyword, context, entity, fieldKey, relationKey) {
+  try {
+    const response = await api.get(`/${entity}/search-data`, { params: { keyword } })
+    searchDataFieldKey.value = fieldKey
+    searchDataRelationKey.value = relationKey
+    searchDataContext.value = context
+    searchDataSchema.value = response.data
+    isSelectDialogOpen.value = true
+    console.log('[Api] Response for:', response.config.url, response.data)
+  } catch (err) {
+    console.error('[Api][cariDataRef] Gagal mencari data:', err)
+  }
+}
+
+const selectDialogSelectData = async (selectedRow: any, context: string, fieldKey: string, relationKey) => {
+  if (!selectedRow || !relationKey || !context) {
+    console.error('[selectDialogSelectData] Tidak ada data yang dipilih atau relation tidak ditentukan.', selectedRow, relationKey, fieldKey)
+    return
+  }
+  if (context === 'header') {
+    await updateHeaderData(fieldKey, selectedRow[relationKey])
+  }
+
+  if (context === 'history') {
+    await loadTransaction(selectedRow[relationKey])
+  }
+  closeSelectDialog()
+}
+
+const closeSelectDialog = () => {
+  isSelectDialogOpen.value = false
+  gridFocus(gridRef)
+}
+
+
+
+
+
+
+
+
+
+
+// ==========================================
+// 5. WATCHERS & LIFECYCLE HOOKS
+// ==========================================
+watch(() => props.schemaData, loadComponentData)
 
 useRealtimeSync(formKey, applyResponseData, gridRef)
 
@@ -568,7 +417,179 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalKeyDown, true)
 })
+
+
 </script>
+
+<template>
+  <div class="flex h-full max-h-full overflow-hidden min-h-0 w-full text-slate-800 dark:text-slate-100">
+    <div class="flex-1 flex flex-col h-full overflow-hidden min-h-0 relative">
+
+
+      <div class="flex flex-1 flex-col min-h-0 overflow-hidden relative w-full">
+
+        <div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
+          <RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
+            :columns="columns" :source="detailsData" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
+            :auto-size-column="true" @afteredit="afterEdit" @beforeedit="beforeEdit" @keydown="handleKeyDown"
+            :column-types="columnTypes" />
+          <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="detailsData" :columns="columns" />
+
+
+          <!-- MODAL PENCARIAN PRODUK -->
+          <div v-if="showSearchModal" @click.self="closeSearchModal"
+            class="absolute backdrop-blur-sm flex inset-0 items-center justify-center transition-all z-50">
+            <div
+              class="bg-white dark:bg-slate-800 w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden p-3 mx-4"
+              @keydown.stop>
+              <form @submit.prevent="handleSearchSubmit" class="flex items-center relative">
+                <div class="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
+                  <Icon icon="mdi:magnify" class="w-5 h-5" />
+                </div>
+                <input ref="searchInputRef" v-model="detailSearchQuery" type="text" @keydown.escape="closeSearchModal()"
+                  placeholder="Ketik Kode/Nama barang lalu tekan Enter untuk menambah..."
+                  class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 transition-all" />
+                <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none"> <kbd
+                    class="px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-600 rounded shadow-sm">
+                    Enter ↩
+                  </kbd>
+                  <button type="button" @click="closeSearchModal"
+                    class="pointer-events-auto text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    Esc
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+
+
+
+        </div>
+
+        <!-- TABS ANTREAN (DRAFTS) -->
+        <div class="flex items-center gap-1 dark:border-slate-800 shrink-0 overflow-hidden px-2 flex-wrap">
+          <button
+            class="flex text-xs font-extralight px-2 gap-1 py-1 rounded-md items-center text-slate-500 dark:hover:bg-slate-800 hover:bg-slate-200"
+            @click="cariDataRef(schema.prefix, 'history', schema.key, '', 'id')">
+            <Icon icon="mdi:view-grid-outline" class="w-3.5 h-3.5" /> history
+          </button>
+
+          <button v-for="item in queueData" :key="item.id" @click="loadTransaction(item.id)" :class="[
+            'px-4 py-2 text-xs font-medium flex items-center gap-2 whitespace-nowrap shrink-0 relative',
+            activeHeaderId === item.id
+              ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-t-xl shadow-sm z-10' +
+              ' before:absolute before:bottom-0 before:-left-2.5 before:w-2.5 before:h-2.5 before:bg-transparent before:rounded-br-xl before:shadow-[4px_4px_0_4px_white] dark:before:shadow-[4px_4px_0_4px_rgb(30,41,59)]' +
+              ' after:absolute after:bottom-0 after:-right-2.5 after:w-2.5 after:h-2.5 after:bg-transparent after:rounded-bl-xl after:shadow-[-4px_4px_0_4px_white] dark:after:shadow-[-4px_4px_0_4px_rgb(30,41,59)]'
+              : 'bg-slate-100/60 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 rounded-lg'
+          ]">
+
+            <span class="w-1.5 h-1.5 rounded-full"
+              :class="activeHeaderId === item.id ? 'bg-emerald-500' : 'bg-slate-400'"></span>
+            <span>{{ item.label || `Draft #${item.id}` }}</span>
+
+          </button>
+
+          <button @click="handleNewTransaction"
+            class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-center shrink-0 ml-1"
+            title="Tambah Antrean Baru (F2)">
+            <Icon icon="mdi:plus" class="w-4 h-4" />
+          </button>
+        </div>
+
+        <!-- FORM HEADER -->
+        <div
+          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 border-t-0 px-3 py-2 transition-colors outline-none focus:ring-1 focus:ring-emerald-500 select-none">
+          <div v-if="headerData"
+            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 items-center">
+
+            <div v-for="field in headerSchema" :key="field.key" :data-key="field.key" class="flex flex-col space-y-1"
+              :class="{ 'hidden': field.isHidden }">
+              <label
+                class="text-[10px] font-semibold tracking-wide text-slate-400 dark:text-slate-500 uppercase truncate">
+                {{ field.label }}
+              </label>
+
+              <div v-if="field.readonly" :class="[
+                'px-2 py-1 text-xs rounded border border-transparent bg-slate-50 dark:bg-slate-800/50 font-medium truncate',
+                field.highlight ? 'text-emerald-600 dark:text-emerald-400 font-bold text-[16px]  bg-emerald-50/50 dark:bg-emerald-950/30' : 'text-slate-700 dark:text-slate-200'
+              ]">
+                <template v-if="field.type === 'currency'">
+                  {{ numberFormat.formatCurrency(headerData[field.key]) }}
+                </template>
+                <template v-else>
+                  {{ headerData[field.key] || '-' }}
+                </template>
+              </div>
+
+              <div v-else-if="field.type === 'relation'" class="relative">
+                <input type="text" :value="headerData[field.key]" :placeholder="`Pilih...`" @change="e => {
+                  const target = e.target as HTMLInputElement;
+                  cariDataRef(target.value, 'header', field.entity, field.key, field.relationKey)
+                }"
+                  class="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all pr-6" />
+                <Icon icon="mdi:magnify"
+                  class="w-5 h-5 absolute right-1 rounded-md top-[3px] p-1 bg-emerald-200 dark:bg-slate-800 text-emerald-500 cursor-pointer hover:text-emerald-500"
+                  @click="cariDataRef('', 'header', field.entity, field.key, field.relationKey)" />
+              </div>
+
+              <!-- Input teks, angka, atau tanggal -->
+              <input v-else
+                :type="field.type === 'date' ? 'datetime-local' : field.type === 'number' ? 'number' : 'text'"
+                :value="field.type === 'date' ? toLocalDatetimeLocal(headerData[field.key]) : headerData[field.key]"
+                @input="e => {
+                  const target = e.target as HTMLInputElement;
+                  const val = field.type === 'date'
+                    ? (target.value ? new Date(target.value).toISOString() : null)
+                    : target.value;
+
+                  headerData[field.key] = val;
+                }" @change="e => {
+                  const target = e.target as HTMLInputElement;
+                  const val = field.type === 'date'
+                    ? (target.value ? new Date(target.value).toISOString() : null)
+                    : target.value;
+
+                  updateHeaderData(field.key, val);
+                }"
+                class="dark:[color-scheme:dark] px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOOTER SUMMARY & ACTIONS -->
+      <div
+        class="bg-white border-b border-slate-200 flex flex-wrap gap-3 items-center justify-between px-4 py-2 transition-colors dark:bg-slate-900 dark:border-slate-800">
+        <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 select-none">
+          <div class="flex items-center gap-1">
+            <span class="font-medium text-slate-700 dark:text-slate-300">{{ detailsData.length }}</span>
+            <span>items</span>
+          </div>
+          <SyncStatus ref="syncStatusRef" />
+        </div>
+        <div class="flex items-center gap-2">
+          <button v-for="action in (schema.actions || [])" :key="action.key" @click="triggerCustomAction(action.key)"
+            class="btn-action-slate">
+            <span>{{ action.label }}</span>
+          </button>
+          <button @click="handleSaveTransaction" type="button" class="btn-action-emerald-600">
+            <span>Simpan Transaksi</span>
+            <kbd class="btn-kbd">[F9]</kbd>
+          </button>
+          <button @click="handleCancelTransaction" type="button" class="btn-action text-rose-600 dark:text-rose-400">
+            <span>Batal</span>
+          </button>
+        </div>
+      </div>
+
+      <SelectDialog :schema-data="searchDataSchema" :field-key="searchDataFieldKey"
+        :relation-key="searchDataRelationKey" :context="searchDataContext" :is-open="isSelectDialogOpen"
+        @close="closeSelectDialog" @select="selectDialogSelectData" />
+    </div>
+  </div>
+  <DataCheck :variable="schema" />
+</template>
 
 <style scoped>
 :deep(revo-grid) {

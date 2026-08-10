@@ -40,7 +40,8 @@ export default defineConfig({
       include: [/\.vue$/, /\.md$/],
       template: {
         compilerOptions: {
-          isCustomElement: (tag) => tag === 'lite-youtube',
+          isCustomElement: (tag) =>
+            tag === 'lite-youtube'
         },
       },
     }),

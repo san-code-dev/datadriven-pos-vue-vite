@@ -50,8 +50,7 @@
 					<RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
 						:columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
 						:auto-size-column="true" @beforeeditstart="beforeEditStart" @afteredit="afterEdit"
-						@beforeedit="beforeEdit" @keydown="handleKeyDown" :column-types="columnTypes"
-						@aftercolumnresize="aftercolumnresize" />
+						@beforeedit="beforeEdit" @keydown="handleKeyDown" :column-types="columnTypes" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
 
@@ -97,6 +96,7 @@ import GridNavigator from '@/components/GridNavigator.vue'
 import DynamicFilter from '@/components/DynamicFilter.vue'
 import SyncStatus from '@/components/SyncStatus.vue'
 import api from '@/lib/axios'
+
 import { useTabStore } from '@/stores/tabs'
 import { useFilterStore } from '@/stores/filter'
 import { useRoute } from 'vue-router'
@@ -204,7 +204,7 @@ const fetchGridData = async () => {
 
 		setSyncStatus('success', 'Selesai sinkronisasi')
 	} catch (err: any) {
-		console.error("Gagal sinkronisasi data dengan server:", err)
+		console.error("[Api] Gagal sinkronisasi data dengan server:", err)
 		setSyncStatus('error', `Gagal memuat: ${err.message || 'Server Error'}`)
 	}
 }
@@ -315,9 +315,6 @@ const beforeEdit = (event) => {
 	}
 }
 
-const aftercolumnresize = (event) => {
-	console.log(event)
-}
 
 const afterEdit = async (event) => {
 	if (event.detail.oldValue === event.detail.value) return
@@ -334,7 +331,7 @@ const afterEdit = async (event) => {
 		setSyncStatus('success', 'Perubahan disimpan')
 
 	} catch (err: any) {
-		console.error('Gagal auto-save:', err)
+		console.error('[Api] Gagal auto-save:', err)
 		setSyncStatus('error', `Gagal memperbarui: ${err.response?.data?.message || err.message}`)
 	}
 }
@@ -376,7 +373,7 @@ const handleAddNewRow = async () => {
 		setSyncStatus('success', 'Baris baru ditambahkan')
 		//scroll to last data row
 	} catch (err: any) {
-		console.error("Gagal menambahkan baris baru:", err)
+		console.error("[Api] Gagal menambahkan baris baru:", err)
 		setSyncStatus('error', `Gagal menambah baris: ${err.message}`)
 	}
 }
@@ -387,7 +384,7 @@ const handleDeleteKey = async () => {
 	const recordId = model?.[primaryKey.value]
 
 	if (!recordId) {
-		console.log('No record selected for deletion')
+		console.log('[handleDeleteKey] No record selected for deletion')
 		return
 	}
 
@@ -400,7 +397,7 @@ const handleDeleteKey = async () => {
 
 			setSyncStatus('success', 'Data berhasil dihapus')
 		} catch (err: any) {
-			console.error("Gagal menghapus data:", err)
+			console.error("[Api] Gagal menghapus data:", err)
 			setSyncStatus('error', `Gagal menghapus: ${err.response?.data?.message || err.message}`)
 		}
 	}
@@ -446,7 +443,7 @@ const closeSearchModal = () => {
 }
 
 const handlePrint = () => { window.print() }
-const handleExport = () => { console.log("Ekspor data ke CSV/Excel...", rows.value) }
+const handleExport = () => { console.log("[Action] Ekspor data ke CSV/Excel...", rows.value) }
 
 watch(() => props.schemaData, loadComponentData)
 

@@ -1,3 +1,4 @@
+// src/composables/useRealtimeSync.ts
 import { onMounted, onBeforeUnmount, watch, type Ref, nextTick } from 'vue'
 import { getSocket } from '@/lib/socket'
 
@@ -14,26 +15,40 @@ export function useRealtimeSync(
     if (!key) return
 
     const eventName = `realtime_update:${key}`
-    console.log(`🔌 [Socket Setup] Mendaftarkan listener untuk room: ${eventName}`)
 
-    // Bersihkan listener lama untuk menghindari duplikasi event
-    socket.off(eventName)
+    // Fungsi internal untuk mendaftarkan listener
+    const register = () => {
+      console.log(`[Socket]⚡ Mendaftarkan listener untuk event: ${eventName}`)
 
-    // Pasang listener baru
-    socket.on(eventName, (response) => {
-      // Ambil data payload dari response
-      onUpdate(response.data || response)
+      // Bersihkan listener lama untuk menghindari duplikasi event
+      socket.off(eventName)
 
-      if (gridRef) {
-        nextTick(async () => {
-          const grid = typeof gridRef.value === 'function' ? gridRef.value() : gridRef.value
-          if (grid?.refresh) {
-            await grid.refresh()
-          }
-          grid?.requestGridRowsRedraw?.()
-        })
-      }
-    })
+      // Pasang listener baru
+      socket.on(eventName, (response) => {
+        // Ambil data payload dari response
+        onUpdate(response.data || response)
+
+        if (gridRef) {
+          nextTick(async () => {
+            const grid = typeof gridRef.value === 'function' ? gridRef.value() : gridRef.value
+            if (grid?.refresh) {
+              await grid.refresh()
+            }
+            grid?.requestGridRowsRedraw?.()
+          })
+        }
+      })
+    }
+
+    // Pastikan socket sudah terhubung sebelum mendaftarkan listener
+    if (socket.connected) {
+      register()
+    } else {
+      // Jika belum terhubung (masih proses handshake), tunggu hingga event 'connect' selesai
+      socket.once('connect', () => {
+        register()
+      })
+    }
   }
 
   onMounted(() => {

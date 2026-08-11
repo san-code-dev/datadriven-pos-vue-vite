@@ -1,3 +1,105 @@
+<script setup lang="ts">
+import { ref, watch, nextTick, computed } from 'vue'
+import { Icon } from '@iconify/vue'
+import { isDark } from '@/composables/dark'
+import RevoGrid from '@revolist/vue3-datagrid'
+import GridNavigator from './GridNavigator.vue'
+import { getActiveCellState, gridSelectSingleCell, focusBackToGrid } from '@/composables/grid.ts'
+
+interface Props {
+    schemaData: any
+    fieldKey?: string
+    relationKey?: string
+    context?: string
+    isOpen: boolean
+}
+
+const gridRef = ref()
+const navRef = ref<InstanceType<typeof GridNavigator> | null>(null);
+const props = defineProps<Props>()
+const emit = defineEmits(['close', 'select'])
+
+const columns = ref<any[]>([])
+const rows = ref<any[]>([])
+
+const computedModalWidth = computed(() => {
+    const totalColumnWidth = columns.value.reduce((acc, col) => acc + (col.size || 150), 0)
+    const dynamicWidth = totalColumnWidth + 60
+    return `${Math.max(450, Math.min(dynamicWidth, 1400))}px`
+})
+
+const computedModalHeight = computed(() => {
+    const rowCount = rows.value.length || 1
+    const estimatedHeight = (rowCount * 40) + 140
+    return `${Math.min(Math.max(estimatedHeight, 250), 650)}px`
+})
+
+const closeDialog = () => {
+    emit('close')
+}
+
+const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter') {
+        selectData()
+    }
+    if (e.key === 'Escape') {
+        closeDialog()
+    }
+    if (!e.altKey) return;
+
+    if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (e.repeat) return; // Abaikan jika tombol ditahan
+
+        if (e.key === 'ArrowLeft') {
+            navRef.value.scrollToFirstCol();
+            return;
+        }
+        if (e.key === 'ArrowRight') {
+            navRef.value.scrollToLastCol();
+            return;
+        }
+        if (e.key === 'ArrowDown') {
+            navRef.value.scrollToLastRow();
+            return;
+        }
+        if (e.key === 'ArrowUp') {
+            navRef.value.scrollToFirstRow();
+            return;
+        }
+    }
+}
+
+const selectData = async () => {
+    const focusedColumn = await getActiveCellState(gridRef)
+
+    if (!focusedColumn?.model) {
+        alert("gagal memilih data");
+        return
+    }
+
+    const selectedData = focusedColumn.model
+    await emit('select', selectedData, props.context, props.fieldKey, props.relationKey)
+    emit('close')
+}
+
+// Watch ketika modal dibuka (isOpen bernilai true)
+watch(() => props.isOpen, async (isOpen) => {
+    if (!isOpen || !props.schemaData) return;
+
+    columns.value = (props.schemaData.schema || []).map((field: any) => ({
+        prop: field.key,
+        name: field.label,
+        size: field.size || 150,
+        readonly: true,
+    }))
+    rows.value = props.schemaData.data || []
+    focusBackToGrid(gridRef, navRef)
+}, { immediate: true })
+</script>
+
 <template>
     <Transition name="modal-fade">
         <div v-if="props.isOpen"
@@ -38,7 +140,7 @@
                             :theme="isDark ? 'darkCompact' : 'compact'" @keydown="handleKeyDown"
                             @dblclick="selectData" />
 
-                        <GridNavigator ref="gridNavigatorRef" :columns="columns" :rows="rows" :grid="gridRef" />
+                        <GridNavigator ref="navRef" :columns="columns" :rows="rows" :grid="gridRef" />
 
                     </div>
 
@@ -69,85 +171,6 @@
         </div>
     </Transition>
 </template>
-
-<script setup lang="ts">
-import { ref, watch, nextTick, computed } from 'vue'
-import { Icon } from '@iconify/vue'
-import { isDark } from '@/composables/dark'
-import RevoGrid from '@revolist/vue3-datagrid'
-import GridNavigator from './GridNavigator.vue'
-import { getActiveCellState, gridSelectSingleCell } from '@/composables/grid.ts'
-
-interface Props {
-    schemaData: any
-    fieldKey?: string
-    relationKey?: string
-    context?: string
-    isOpen: boolean
-}
-
-const gridRef = ref()
-const gridNavigatorRef = ref()
-const props = defineProps<Props>()
-const emit = defineEmits(['close', 'select'])
-
-const columns = ref<any[]>([])
-const rows = ref<any[]>([])
-
-const computedModalWidth = computed(() => {
-    const totalColumnWidth = columns.value.reduce((acc, col) => acc + (col.size || 150), 0)
-    const dynamicWidth = totalColumnWidth + 60
-    return `${Math.max(450, Math.min(dynamicWidth, 1400))}px`
-})
-
-const computedModalHeight = computed(() => {
-    const rowCount = rows.value.length || 1
-    const estimatedHeight = (rowCount * 40) + 140
-    return `${Math.min(Math.max(estimatedHeight, 250), 650)}px`
-})
-
-const closeDialog = () => {
-    emit('close')
-}
-
-const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') {
-        selectData()
-    }
-    if (e.key === 'Escape') {
-        closeDialog()
-    }
-}
-
-const selectData = async () => {
-    const focusedColumn = await getActiveCellState(gridRef)
-
-    if (!focusedColumn?.model) {
-        alert("gagal memilih data");
-        return
-    }
-
-    const selectedData = focusedColumn.model
-    await emit('select', selectedData, props.context, props.fieldKey, props.relationKey)
-    emit('close')
-}
-
-watch(() => props.isOpen, async (isOpen) => {
-    if (!isOpen || !props.schemaData) return;
-
-    columns.value = (props.schemaData.schema || []).map((field: any) => ({
-        prop: field.key,
-        name: field.label,
-        size: field.size || 150,
-        readonly: true,
-    }))
-    rows.value = props.schemaData.data || []
-
-    await nextTick()
-    await gridSelectSingleCell(gridRef, { rowIndex: 0, colIndex: 0 })
-})
-</script>
-
 <style scoped>
 :deep(revo-grid) {
     display: block;

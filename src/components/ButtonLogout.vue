@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useSidebarStore } from '@/stores/sideBar'
 import { useAuthStore } from '@/stores/auth' // 1. Import Auth Store Pinia
-import api from "@/lib/axios"
+import api from '@/lib/axios'
 import { disconnectSocket } from '@/lib/socket'
 
 const router = useRouter()
@@ -42,7 +42,8 @@ function handleKeyDown(event: KeyboardEvent) {
     if (isLoggingOut.value) return
 
     if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-        activeButton.value = activeButton.value === 'cancel' ? 'confirm' : 'cancel'
+        activeButton.value =
+            activeButton.value === 'cancel' ? 'confirm' : 'cancel'
     } else if (event.key === 'Enter') {
         if (activeButton.value === 'confirm') {
             submitLogout()
@@ -84,10 +85,12 @@ async function submitLogout() {
 <template>
     <div>
         <div class="pt-4 border-t border-gray-200 dark:border-gray-800">
-            <button @click="openModal" type="button"
+            <button type="button"
                 class="flex items-center w-full h-12 transition-all rounded cursor-pointer text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                :class="sidebarStore.isCollapsed ? 'justify-center px-0' : 'justify-between px-5'">
-
+                :class="sidebarStore.isCollapsed
+                    ? 'justify-center px-0'
+                    : 'justify-between px-5'
+                    " @click="openModal">
                 <div class="flex items-center" :class="sidebarStore.isCollapsed ? 'space-x-0' : 'space-x-3'">
                     <Icon icon="mdi:logout" class="text-xl opacity-90" />
                     <span v-show="!sidebarStore.isCollapsed" class="font-semibold text-sm">
@@ -98,13 +101,12 @@ async function submitLogout() {
         </div>
 
         <Teleport to="body">
-            <dialog ref="dialogRef" v-if="showLogoutModal" @cancel.prevent="!isLoggingOut ? closeModal() : null"
-                @keydown.prevent="handleKeyDown" @click.self="closeModal()"
-                class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm w-full h-full max-w-none max-h-none border-none outline-none bg-transparent">
-
+            <dialog v-if="showLogoutModal" ref="dialogRef"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm w-full h-full max-w-none max-h-none border-none outline-none bg-transparent"
+                @cancel.prevent="!isLoggingOut ? closeModal() : null" @keydown.prevent="handleKeyDown"
+                @click.self="closeModal()">
                 <div
                     class="bg-white dark:bg-gray-800 rounded-xl max-w-sm w-full p-6 shadow-xl border border-gray-100 dark:border-gray-700 transform transition-all animate-in fade-in zoom-in-95 duration-150 text-gray-900 dark:text-gray-200">
-
                     <div class="flex place-items-center space-x-3 text-amber-500 dark:text-amber-400 mb-3">
                         <Icon icon="mdi:alert-circle-outline" class="text-3xl" />
                         <h3 class="text-lg font-bold mb-0 text-gray-900 dark:text-white">
@@ -125,20 +127,25 @@ async function submitLogout() {
                     </p>
 
                     <div class="flex justify-end space-x-3">
-                        <button type="button" :disabled="isLoggingOut" @click="closeModal"
+                        <button type="button" :disabled="isLoggingOut"
                             class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-all disabled:opacity-50 outline-none"
-                            :class="activeButton === 'cancel' ? 'ring-2 ring-amber-500 bg-gray-200 dark:bg-gray-600' : ''">
+                            :class="activeButton === 'cancel'
+                                ? 'ring-2 ring-amber-500 bg-gray-200 dark:bg-gray-600'
+                                : ''
+                                " @click="closeModal">
                             Batal
                         </button>
 
-                        <button type="button" :disabled="isLoggingOut" @click="submitLogout"
+                        <button type="button" :disabled="isLoggingOut"
                             class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 transition-all disabled:opacity-50 outline-none"
-                            :class="activeButton === 'confirm' ? 'ring-2 ring-red-400 dark:ring-red-300 bg-red-700 dark:bg-red-600' : ''">
+                            :class="activeButton === 'confirm'
+                                ? 'ring-2 ring-red-400 dark:ring-red-300 bg-red-700 dark:bg-red-600'
+                                : ''
+                                " @click="submitLogout">
                             <Icon v-if="isLoggingOut" icon="line-md:loading-twotone-loop" class="w-4 h-4" />
                             <span>{{ isLoggingOut ? '' : 'Ya, Keluar' }}</span>
                         </button>
                     </div>
-
                 </div>
             </dialog>
         </Teleport>

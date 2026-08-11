@@ -125,7 +125,7 @@ const fetchSchemaFromApi = async () => {
 }
 
 
-const handleKeyDown = (event) => {
+const handleGlobalKeyDown = (event) => {
     if (event.repeat || isLoading.value) return
     if (event.ctrlKey && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
         const activeEl = document.activeElement
@@ -155,11 +155,11 @@ const handleKeyDown = (event) => {
 
 onMounted(() => {
     ensureDashboardTabExists()
-    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keydown', handleGlobalKeyDown, true)
 })
 
 onBeforeUnmount(() => {
-    window.removeEventListener('keydown', handleKeyDown)
+    window.removeEventListener('keydown', handleGlobalKeyDown, true)
 })
 
 watch(() => route.path, fetchSchemaFromApi, { immediate: true })

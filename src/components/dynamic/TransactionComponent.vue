@@ -454,6 +454,11 @@ const closeSelectDialog = () => {
 
 
 async function focusBackToGrid() {
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur()
+    console.log('diblur')
+
+  }
   await nextTick()
   const grid = gridRef?.value?.$el
   await grid?.focus()

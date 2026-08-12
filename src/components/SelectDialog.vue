@@ -149,11 +149,17 @@ const selectData = async () => {
 }
 
 async function focusBackToGrid() {
+    if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
+        console.log('diblur')
+
+    }
     await nextTick()
     const grid = gridRef?.value?.$el
     await grid?.focus()
 
     const startCoord = currentGridConfig.value?.coordinate || { x: 0, y: 0 }
+    await grid?.scrollToCoordinate(startCoord)
     grid?.setCellsFocus(startCoord, startCoord)
 }
 

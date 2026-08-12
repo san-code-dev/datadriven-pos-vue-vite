@@ -414,9 +414,19 @@ const handleFilterChanged = (filter) => {
 }
 
 const focusBackToGrid = async () => {
+	if (document.activeElement instanceof HTMLElement) {
+		console.log('diblur')
+		document.activeElement.blur()
+		console.log('diblur')
+
+	}
 	await nextTick()
+	const grid = gridRef?.value?.$el
+	await grid?.focus()
+
 	const startCoord = currentGridConfig.value?.coordinate || { x: 0, y: 0 }
-	gridSelectSingleCell(gridRef, { rowIndex: startCoord.y, colIndex: startCoord.x })
+	await grid?.scrollToCoordinate(startCoord)
+	grid?.setCellsFocus(startCoord, startCoord)
 }
 
 const cariDataDenganKarakter = async (char) => {
@@ -507,13 +517,18 @@ const saveCurrentStateToStore = async (event: any) => {
 	})
 }
 
-watch(() => props.schemaData, loadComponentData)
+watch(() => props.schemaData, async () => {
+	loadComponentData()
+	await nextTick()
+	focusBackToGrid()
+})
 
 watch(() => tabStore.activeTabId, async (activeTabId) => {
 	if (activeTabId === props.menu?.route) {
 
 		const currentRoute = props.menu?.route || route.path
 		activeFilters.value = filterStore.getFiltersByTab(currentRoute) || {}
+		await nextTick()
 		focusBackToGrid()
 	}
 }, { immediate: false })
@@ -521,8 +536,10 @@ watch(() => tabStore.activeTabId, async (activeTabId) => {
 // 🟢 Hook Realtime Sync menggunakan formKey & applyResponseData
 useRealtimeSync(formKey, applyResponseData, gridRef)
 
-onMounted(() => {
+onMounted(async () => {
 	loadComponentData()
+	await nextTick()
+	focusBackToGrid()
 })
 
 onBeforeUnmount(() => {

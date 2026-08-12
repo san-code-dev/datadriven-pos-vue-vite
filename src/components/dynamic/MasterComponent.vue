@@ -50,7 +50,8 @@
 					<RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
 						:columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
 						:auto-size-column="true" @beforeeditstart="beforeEditStart" @afteredit="afterEdit"
-						@beforeedit="beforeEdit" @keydown="handleKeyDown" :column-types="columnTypes" />
+						@beforeedit="beforeEdit" @keydown="handleKeyDown" @afterfocus="saveCurrentStateToStore"
+						@aftercolumnresize="saveCurrentStateToStore" :column-types="columnTypes" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
 
@@ -215,11 +216,15 @@ const loadComponentData = async () => {
 	if (!res) return
 	applyResponseData(res)
 
+	const savedColumnsConfig = currentGridConfig.value?.column || []
+
 	columns.value = (res.schema || []).map(field => {
+		const savedCol = savedColumnsConfig.find((c: any) => c.key === field.key)
+
 		const columnConfig: Record<string, any> = {
 			prop: field.key,
 			name: field.label,
-			size: field.size,
+			size: savedCol ? savedCol.size : field.size, // Mengambil ukuran dari Pinia jika ada
 			readonly: field.readonly || false,
 			required: field.required || false,
 			_type: field.type || 'text',
@@ -408,8 +413,10 @@ const handleFilterChanged = (filter) => {
 	fetchGridData()
 }
 
-const focusBackToGrid = () => {
-	gridSelectSingleCell(gridRef, { rowIndex: 0, colIndex: 0 })
+const focusBackToGrid = async () => {
+	await nextTick()
+	const startCoord = currentGridConfig.value?.coordinate || { x: 0, y: 0 }
+	gridSelectSingleCell(gridRef, { rowIndex: startCoord.y, colIndex: startCoord.x })
 }
 
 const cariDataDenganKarakter = async (char) => {
@@ -444,6 +451,61 @@ const closeSearchModal = () => {
 
 const handlePrint = () => { window.print() }
 const handleExport = () => { console.log("[Action] Ekspor data ke CSV/Excel...", rows.value) }
+
+
+
+// --- STATE & CONFIG STORAGE PINIA ---
+const currentGridKey = computed(() => `${formKey.value}-master_grid`)
+
+const currentGridConfig = computed(() => {
+	const activeTab = tabStore.openedTabs.find(tab => tab.id === tabStore.activeTabId)
+	if (!activeTab || !activeTab.gridsConfig) return null
+
+	return activeTab.gridsConfig.find((g: any) => g.gridKey === currentGridKey.value)
+})
+
+const saveCurrentStateToStore = async (event: any) => {
+	const detail = event?.detail
+	if (!detail) return
+
+	const existingConfig = currentGridConfig.value || {
+		coordinate: { x: 0, y: 0 },
+		column: columns.value.map((col: any) => ({ key: col.prop, size: col.size }))
+	}
+
+	let updatedCoordinate = { ...existingConfig.coordinate }
+	let updatedColumns = [...columns.value]
+
+	// 1. Tangani event 'afterfocus'
+	if ('rowIndex' in detail && 'colIndex' in detail) {
+		updatedCoordinate = {
+			x: detail.colIndex,
+			y: detail.rowIndex
+		}
+	}
+
+	// 2. Tangani event 'aftercolumnresize'
+	const resizedKeys = Object.keys(detail)
+	const isResizeEvent = resizedKeys.some(key => !isNaN(Number(key)) && detail[key]?.prop)
+
+	if (isResizeEvent) {
+		updatedColumns = columns.value.map((col: any) => {
+			for (const key of resizedKeys) {
+				const resizedCol = detail[key]
+				if (resizedCol && resizedCol.prop === col.prop) {
+					return { ...col, size: resizedCol.size }
+				}
+			}
+			return col
+		})
+	}
+
+	// Simpan otomatis ke Pinia Store
+	tabStore.updateGridConfig(tabStore.activeTabId, currentGridKey.value, {
+		coordinate: updatedCoordinate,
+		column: updatedColumns.map((col: any) => ({ key: col.prop, size: col.size }))
+	})
+}
 
 watch(() => props.schemaData, loadComponentData)
 

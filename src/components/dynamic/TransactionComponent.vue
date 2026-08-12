@@ -6,6 +6,7 @@ import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from '@/components/GridNavigator.vue'
 import SyncStatus from '../SyncStatus.vue'
 import api from '@/lib/axios'
+import { useTabStore } from '@/stores/tabs' // Pastikan sudah diimport
 import { useNumberFormat } from '@/composables/number-format.ts'
 import { useRealtimeSync } from '@/composables/useRealtimeSync'
 import { getActiveCellState, gridFocus } from '@/composables/grid.ts'
@@ -29,15 +30,16 @@ const props = defineProps({
 // ==========================================
 const numberFormat = useNumberFormat()
 const { toLocalDatetimeLocal } = useNumberFormat()
+const tabStore = useTabStore()
 
 const gridRef = ref<any>(null)
 const navigatorRef = ref<any>(null)
 const syncStatusRef = ref<InstanceType<typeof SyncStatus> | null>(null)
 const searchInputRef = ref<HTMLInputElement | null>(null)
 
-const schema = ref<TransactionSchemaState>(props.schemaData
+const schema = ref<TransactionSchemaState>(props.schemaData)
+const currentGridKey = computed(() => `${formKey.value}-details_transaction_grid`)
 
-)
 const searchDataSchema = ref<any>(null)
 const searchDataFieldKey = ref<string | null>(null)
 const searchDataRelationKey = ref<string | null>(null)
@@ -73,12 +75,68 @@ const primaryKeyFieldName = computed(
   () => detailsSchema.value.find((f) => f.primary)?.key || undefined
 )
 
-const columns = computed(() =>
-  detailsSchema.value.map((field) => {
+
+const currentGridConfig = computed(() => {
+  const activeTab = tabStore.openedTabs.find(tab => tab.id === tabStore.activeTabId)
+  if (!activeTab || !activeTab.gridsConfig) return null
+
+  return activeTab.gridsConfig.find((g: any) => g.gridKey === currentGridKey.value)
+})
+
+
+const saveCurrentStateToStore = async (event: any) => {
+  const detail = event?.detail
+  if (!detail) return
+
+  const existingConfig = currentGridConfig.value || {
+    coordinate: { x: 0, y: 0 },
+    column: columns.value.map(col => ({ key: col.prop, size: col.size }))
+  }
+
+  let updatedCoordinate = { ...existingConfig.coordinate }
+  let updatedColumns = [...columns.value]
+
+  // 1. Tangani event 'afterfocus'
+  if ('rowIndex' in detail && 'colIndex' in detail) {
+    updatedCoordinate = {
+      x: detail.colIndex,
+      y: detail.rowIndex
+    }
+  }
+
+  // 2. Tangani event 'aftercolumnresize'
+  const resizedKeys = Object.keys(detail)
+  const isResizeEvent = resizedKeys.some(key => !isNaN(Number(key)) && detail[key]?.prop)
+
+  if (isResizeEvent) {
+    updatedColumns = columns.value.map(col => {
+      for (const key of resizedKeys) {
+        const resizedCol = detail[key]
+        if (resizedCol && resizedCol.prop === col.prop) {
+          return { ...col, size: resizedCol.size }
+        }
+      }
+      return col
+    })
+  }
+
+  // Simpan otomatis ke Pinia Store
+  tabStore.updateGridConfig(tabStore.activeTabId, currentGridKey.value, {
+    coordinate: updatedCoordinate,
+    column: updatedColumns.map(col => ({ key: col.prop, size: col.size }))
+  })
+}
+
+const columns = computed(() => {
+  const savedColumnsConfig = currentGridConfig.value?.column || []
+
+  return detailsSchema.value.map((field) => {
+    const savedCol = savedColumnsConfig.find((c: any) => c.key === field.key)
+
     const columnConfig: Record<string, any> = {
       prop: field.key,
       name: field.label,
-      size: field.size || 150,
+      size: savedCol ? savedCol.size : (field.size || 150), // Memuat ukuran dari Pinia jika ada
       readonly: field.readonly || false,
       required: field.validation?.required || false,
       _type: field.type || 'text',
@@ -97,7 +155,7 @@ const columns = computed(() =>
     }
     return columnConfig
   })
-)
+})
 
 // ==========================================
 // 4. METHODS (API, EVENT HANDLERS, UTILITIES)
@@ -266,7 +324,7 @@ const handleSearchSubmit = async () => {
 const closeSearchModal = async () => {
   showSearchModal.value = false
   detailSearchQuery.value = ''
-  gridFocus(gridRef)
+  focusBackToGrid()
 }
 
 const handleDeleteDetailRow = async () => {
@@ -390,12 +448,20 @@ const selectDialogSelectData = async (selectedRow: any, context: string, fieldKe
 
 const closeSelectDialog = () => {
   isSelectDialogOpen.value = false
-  gridFocus(gridRef)
+  focusBackToGrid()
 }
 
 
 
+async function focusBackToGrid() {
+  await nextTick()
+  const grid = gridRef?.value?.$el
+  await grid?.focus()
 
+  const startCoord = currentGridConfig.value?.coordinate || { x: 0, y: 0 }
+  await grid?.scrollToCoordinate(startCoord)
+  grid?.setCellsFocus(startCoord, startCoord)
+}
 
 
 
@@ -405,13 +471,19 @@ const closeSelectDialog = () => {
 // ==========================================
 // 5. WATCHERS & LIFECYCLE HOOKS
 // ==========================================
-watch(() => props.schemaData, loadComponentData)
+watch(() => props.schemaData, async () => {
+  loadComponentData()
+  await nextTick()
+  focusBackToGrid()
+})
 
 useRealtimeSync(formKey, applyResponseData, gridRef)
 
-onMounted(() => {
+onMounted(async () => {
   window.addEventListener('keydown', handleGlobalKeyDown, true)
   loadComponentData()
+  await nextTick()
+  focusBackToGrid()
 })
 
 onBeforeUnmount(() => {
@@ -432,6 +504,7 @@ onBeforeUnmount(() => {
           <RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
             :columns="columns" :source="detailsData" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
             :auto-size-column="true" @afteredit="afterEdit" @beforeedit="beforeEdit" @keydown="handleKeyDown"
+            @afterfocus="saveCurrentStateToStore" @aftercolumnresize="saveCurrentStateToStore"
             :column-types="columnTypes" />
           <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="detailsData" :columns="columns" />
 

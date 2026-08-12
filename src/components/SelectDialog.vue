@@ -4,7 +4,8 @@ import { Icon } from '@iconify/vue'
 import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from './GridNavigator.vue'
-import { getActiveCellState, gridSelectSingleCell, focusBackToGrid } from '@/composables/grid.ts'
+import { getActiveCellState } from '@/composables/grid.ts'
+import { useTabStore } from '@/stores/tabs'
 
 interface Props {
     schemaData: any
@@ -19,8 +20,21 @@ const navRef = ref<InstanceType<typeof GridNavigator> | null>(null);
 const props = defineProps<Props>()
 const emit = defineEmits(['close', 'select'])
 
+const tabStore = useTabStore()
+
 const columns = ref<any[]>([])
 const rows = ref<any[]>([])
+
+// Kunci unik untuk identifier grid di Pinia
+const currentGridKey = computed(() => `${props.context}-${props.fieldKey}-select_data_grid`)
+
+// Mengambil konfigurasi grid aktif dari tab yang sedang aktif di Pinia
+const currentGridConfig = computed(() => {
+    const activeTab = tabStore.openedTabs.find(tab => tab.id === tabStore.activeTabId)
+    if (!activeTab || !activeTab.gridsConfig) return null
+
+    return activeTab.gridsConfig.find((g: any) => g.gridKey === currentGridKey.value)
+})
 
 const computedModalWidth = computed(() => {
     const totalColumnWidth = columns.value.reduce((acc, col) => acc + (col.size || 150), 0)
@@ -38,6 +52,55 @@ const closeDialog = () => {
     emit('close')
 }
 
+// Menyimpan state posisi fokus (koordinat) dan ukuran kolom ke Pinia berdasarkan event.detail
+const saveCurrentStateToStore = async (event: CustomEvent) => {
+    const detail = event.detail
+    if (!detail) return
+
+    // Ambil state existing dari Pinia atau buat default
+    const existingConfig = currentGridConfig.value || {
+        coordinate: { x: 0, y: 0 },
+        column: columns.value.map(col => ({ key: col.prop, size: col.size }))
+    }
+
+    let updatedCoordinate = { ...existingConfig.coordinate }
+    let updatedColumns = [...columns.value]
+
+    // 1. Tangani jika event dari 'afterfocus'
+    if ('rowIndex' in detail && 'colIndex' in detail) {
+        updatedCoordinate = {
+            x: detail.colIndex,
+            y: detail.rowIndex
+        }
+    }
+
+    // 2. Tangani jika event dari 'aftercolumnresize' (detail berupa object index kolom)
+    // Contoh: { "0": { prop: "id", size: 169, ... } }
+    const resizedKeys = Object.keys(detail)
+    const isResizeEvent = resizedKeys.some(key => !isNaN(Number(key)) && detail[key]?.prop)
+
+    if (isResizeEvent) {
+        updatedColumns = columns.value.map(col => {
+            // Cek apakah kolom ini ikut di-resize di dalam detail
+            for (const key of resizedKeys) {
+                const resizedCol = detail[key]
+                if (resizedCol && resizedCol.prop === col.prop) {
+                    return { ...col, size: resizedCol.size }
+                }
+            }
+            return col
+        })
+        // Update local columns agar lebar modal langsung menyesuaikan secara reaktif
+        columns.value = updatedColumns
+    }
+
+    // Simpan ke Pinia Store
+    tabStore.updateGridConfig(tabStore.activeTabId, currentGridKey.value, {
+        coordinate: updatedCoordinate,
+        column: updatedColumns.map(col => ({ key: col.prop, size: col.size }))
+    })
+}
+
 const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter') {
         selectData()
@@ -51,22 +114,22 @@ const handleKeyDown = (e: KeyboardEvent) => {
         e.preventDefault();
         e.stopPropagation();
 
-        if (e.repeat) return; // Abaikan jika tombol ditahan
+        if (e.repeat) return;
 
         if (e.key === 'ArrowLeft') {
-            navRef.value.scrollToFirstCol();
+            navRef.value?.scrollToFirstCol();
             return;
         }
         if (e.key === 'ArrowRight') {
-            navRef.value.scrollToLastCol();
+            navRef.value?.scrollToLastCol();
             return;
         }
         if (e.key === 'ArrowDown') {
-            navRef.value.scrollToLastRow();
+            navRef.value?.scrollToLastRow();
             return;
         }
         if (e.key === 'ArrowUp') {
-            navRef.value.scrollToFirstRow();
+            navRef.value?.scrollToFirstRow();
             return;
         }
     }
@@ -85,18 +148,33 @@ const selectData = async () => {
     emit('close')
 }
 
+async function focusBackToGrid() {
+    await nextTick()
+    const grid = gridRef?.value?.$el
+    await grid?.focus()
+
+    const startCoord = currentGridConfig.value?.coordinate || { x: 0, y: 0 }
+    grid?.setCellsFocus(startCoord, startCoord)
+}
+
 // Watch ketika modal dibuka (isOpen bernilai true)
 watch(() => props.isOpen, async (isOpen) => {
     if (!isOpen || !props.schemaData) return;
 
-    columns.value = (props.schemaData.schema || []).map((field: any) => ({
-        prop: field.key,
-        name: field.label,
-        size: field.size || 150,
-        readonly: true,
-    }))
+    const savedColumnsConfig = currentGridConfig.value?.column || []
+    columns.value = (props.schemaData.schema || []).map((field: any) => {
+        const savedCol = savedColumnsConfig.find((c: any) => c.key === field.key)
+
+        return {
+            prop: field.key,
+            name: field.label,
+            size: savedCol ? savedCol.size : (field.size || 150),
+            readonly: true,
+        }
+    })
+
     rows.value = props.schemaData.data || []
-    focusBackToGrid(gridRef, navRef)
+    focusBackToGrid()
 }, { immediate: true })
 </script>
 
@@ -137,8 +215,9 @@ watch(() => props.isOpen, async (isOpen) => {
 
                         <RevoGrid ref="gridRef" hide-attribution
                             class="absolute inset-0 w-full h-full focus:outline-none" :columns="columns" :source="rows"
-                            :theme="isDark ? 'darkCompact' : 'compact'" @keydown="handleKeyDown"
-                            @dblclick="selectData" />
+                            :theme="isDark ? 'darkCompact' : 'compact'" @keydown="handleKeyDown" @dblclick="selectData"
+                            @afterfocus="saveCurrentStateToStore" @aftercolumnresize="saveCurrentStateToStore"
+                            :resize="true" />
 
                         <GridNavigator ref="navRef" :columns="columns" :rows="rows" :grid="gridRef" />
 
@@ -171,6 +250,7 @@ watch(() => props.isOpen, async (isOpen) => {
         </div>
     </Transition>
 </template>
+
 <style scoped>
 :deep(revo-grid) {
     display: block;

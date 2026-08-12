@@ -145,11 +145,16 @@ const columns = computed(() => {
 
     if (['number', 'integer'].includes(field.type)) columnConfig.columnType = 'numeric'
     else if (['decimal', 'currency'].includes(field.type)) columnConfig.columnType = 'decimal'
-    else if (field.type === 'date') columnConfig.columnType = 'date'
+    else if (field.type === 'date') {
+      columnConfig.columnType = 'date'
+      columnConfig.appendTo = 'body'
+
+    }
     else if (field.type === 'select') {
       columnConfig.columnType = 'select'
       columnConfig.labelKey = 'label'
       columnConfig.valueKey = 'value'
+      columnConfig.appendTo = 'body'
       columnConfig.source = field.options || []
       columnConfig.editorProperties = { appendToBody: true }
     }
@@ -454,11 +459,6 @@ const closeSelectDialog = () => {
 
 
 async function focusBackToGrid() {
-  if (document.activeElement instanceof HTMLElement) {
-    document.activeElement.blur()
-    console.log('diblur')
-
-  }
   await nextTick()
   const grid = gridRef?.value?.$el
   await grid?.focus()

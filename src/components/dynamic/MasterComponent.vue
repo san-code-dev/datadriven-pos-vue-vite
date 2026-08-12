@@ -240,11 +240,15 @@ const loadComponentData = async () => {
 			columnConfig.editor = 'number'
 			columnConfig.columnType = 'decimal'
 		}
-		else if (field.type === 'date') columnConfig.columnType = 'date'
+		else if (field.type === 'date') {
+			columnConfig.columnType = 'date'
+
+		}
 		else if (field.type === 'select') {
 			columnConfig.columnType = 'select'
 			columnConfig.labelKey = 'label'
 			columnConfig.valueKey = 'value'
+			columnConfig.appendTo = 'body'
 			columnConfig.source = field.options || []
 			columnConfig.editorProperties = { appendToBody: true }
 		}
@@ -254,6 +258,7 @@ const loadComponentData = async () => {
 			columnConfig.labelKey = 'label'
 			columnConfig.valueKey = 'value'
 			columnConfig.source = relationOptions.value[entity] || []
+			columnConfig.appendTo = 'body'
 			columnConfig.editorProperties = { appendToBody: true }
 			columnConfig.cellTemplate = (createElement, linkProps) =>
 				relationCellRenderer(
@@ -414,12 +419,6 @@ const handleFilterChanged = (filter) => {
 }
 
 const focusBackToGrid = async () => {
-	if (document.activeElement instanceof HTMLElement) {
-		console.log('diblur')
-		document.activeElement.blur()
-		console.log('diblur')
-
-	}
 	await nextTick()
 	const grid = gridRef?.value?.$el
 	await grid?.focus()

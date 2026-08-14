@@ -167,8 +167,9 @@ const closeDeviceDialog = () => {
 }
 
 const scanBluetoothDevice = async () => {
+    // Cek ketersediaan API
     if (!navigator.bluetooth) {
-        statusMessage.value = 'Web Bluetooth API tidak didukung di environment ini.'
+        statusMessage.value = 'Web Bluetooth API belum aktif atau tidak didukung di window ini.'
         isSuccess.value = false
         return
     }
@@ -180,9 +181,11 @@ const scanBluetoothDevice = async () => {
         const device = await navigator.bluetooth.requestDevice({
             acceptAllDevices: true,
             optionalServices: [
-                '000018f0-0000-1000-8000-00805f9b34fb',
+                '000018f0-0000-1000-8000-00805f9b34fb', // Standard ESC/POS Service
                 'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
-                '49535343-fe7d-4ae5-8fa9-9fafd205e455'
+                '49535343-fe7d-4ae5-8fa9-9fafd205e455', // ISSC Transparent Service
+                '0000ff00-0000-1000-8000-00805f9b34fb',
+                '0000ae00-0000-1000-8000-00805f9b34fb'
             ]
         })
 

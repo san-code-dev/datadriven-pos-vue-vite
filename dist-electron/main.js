@@ -1,8 +1,13 @@
-import { ipcMain, app, BrowserWindow } from "electron";
+import { app, ipcMain, BrowserWindow } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import net from "node:net";
 import { spawn } from "node:child_process";
+app.commandLine.appendSwitch("enable-web-bluetooth", "true");
+app.commandLine.appendSwitch(
+  "enable-experimental-web-platform-features",
+  "true"
+);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
@@ -14,13 +19,14 @@ function createWindow() {
     width: 1200,
     height: 800,
     show: false,
-    // 1. Buat window tersembunyi terlebih dahulu
+    // Window dibuat tersembunyi terlebih dahulu
     backgroundColor: "#1e293b",
-    // Warna latar belakang agar tidak layar putih sesaat
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      experimentalFeatures: true
+      // Pastikan fitur eksperimental aktif di context web
     }
   });
   win.once("ready-to-show", () => {
@@ -33,9 +39,20 @@ function createWindow() {
       event.preventDefault();
       if (deviceList && deviceList.length > 0) {
         callback(deviceList[0].deviceId);
+      } else {
+        callback("");
       }
     }
   );
+  win.webContents.session.setBluetoothPairingHandler((details, callback) => {
+    if (details.pairingKind === "confirmPin") {
+      callback({ response: "confirm" });
+    } else if (details.pairingKind === "providePin") {
+      callback({ response: "success", pin: "0000" });
+    } else {
+      callback({ response: "cancel" });
+    }
+  });
   if (VITE_DEV_SERVER_URL) {
     console.log("[Electron] Memuat Dev Server:", VITE_DEV_SERVER_URL);
     win.loadURL(VITE_DEV_SERVER_URL);

@@ -5,6 +5,16 @@ import { fileURLToPath } from 'node:url'
 import net from 'node:net'
 import { spawn } from 'node:child_process'
 
+// ==========================================
+// 1. AKTIFKAN EXPERIMENTAL & BLUETOOTH FLAGS
+// ==========================================
+// Wajib diletakkan sebelum app.whenReady()
+app.commandLine.appendSwitch('enable-web-bluetooth', 'true')
+app.commandLine.appendSwitch(
+  'enable-experimental-web-platform-features',
+  'true',
+)
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 process.env.APP_ROOT = path.join(__dirname, '..')
@@ -18,32 +28,52 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1200,
     height: 800,
-    show: false, // 1. Buat window tersembunyi terlebih dahulu
-    backgroundColor: '#1e293b', // Warna latar belakang agar tidak layar putih sesaat
+    show: false, // Window dibuat tersembunyi terlebih dahulu
+    backgroundColor: '#1e293b',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      experimentalFeatures: true, // Pastikan fitur eksperimental aktif di context web
     },
   })
 
-  // 2. Munculkan window HANYA ketika konten web sudah siap di-render
+  // Munculkan window ketika siap di-render
   win.once('ready-to-show', () => {
     win?.show()
     win?.focus()
   })
 
+  // ==========================================
+  // 2. ELECTRON BLUETOOTH DEVICE HANDLER
+  // ==========================================
+  // Menangani dialog pemindaian Bluetooth dari Web Bluetooth API
   win.webContents.on(
     'select-bluetooth-device',
     (event, deviceList, callback) => {
       event.preventDefault()
       if (deviceList && deviceList.length > 0) {
+        // Pilih perangkat yang ditemukan pertama kali
         callback(deviceList[0].deviceId)
+      } else {
+        callback('')
       }
     },
   )
 
-  // 3. Muat halaman renderer
+  // Menangani permintaan PIN/Pairing Bluetooth jika printer membutuhkannya
+  win.webContents.session.setBluetoothPairingHandler((details, callback) => {
+    if (details.pairingKind === 'confirmPin') {
+      callback({ response: 'confirm' })
+    } else if (details.pairingKind === 'providePin') {
+      // PIN default umum printer thermal (0000 atau 1234)
+      callback({ response: 'success', pin: '0000' })
+    } else {
+      callback({ response: 'cancel' })
+    }
+  })
+
+  // Muat halaman renderer
   if (VITE_DEV_SERVER_URL) {
     console.log('[Electron] Memuat Dev Server:', VITE_DEV_SERVER_URL)
     win.loadURL(VITE_DEV_SERVER_URL)
@@ -54,11 +84,15 @@ function createWindow() {
     win.loadFile(indexPath)
   }
 
-  // 4. Tangkap error jika Vite gagal load
+  // Tangkap error jika Vite gagal load
   win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('[Electron] Gagal load URL:', errorCode, errorDescription)
   })
 }
+
+// ==========================================
+// 3. IPC HANDLERS UNTUK HARDWARE POS
+// ==========================================
 
 // 1. Ambil daftar printer OS bawaan Electron
 ipcMain.handle('get-printers', async () => {
@@ -66,6 +100,7 @@ ipcMain.handle('get-printers', async () => {
   return await win.webContents.getPrintersAsync()
 })
 
+// 2. Kirim raw ESC/POS ke OS Printer Spooler via Win32 Spooler API
 ipcMain.handle('print-raw-driver', async (_, { printerName, rawBuffer }) => {
   return new Promise((resolve) => {
     try {
@@ -80,7 +115,7 @@ ipcMain.handle('print-raw-driver', async (_, { printerName, rawBuffer }) => {
       // Konversi buffer ke Base64
       const base64Data = Buffer.from(rawBuffer).toString('base64')
 
-      // PowerShell Script menggunakan $env:TARGET_PRINTER
+      // C# P/Invoke Script di dalam PowerShell
       const psScript = `
 Add-Type -TypeDefinition @"
 using System;
@@ -163,7 +198,7 @@ if (-not $success) {
 }
 `
 
-      // Spawn powershell dengan mengoper TARGET_PRINTER melalui env
+      // Spawn powershell
       const ps = spawn(
         'powershell',
         [
@@ -209,7 +244,7 @@ if (-not $success) {
   })
 })
 
-// 3. Cetak Raw ESC/POS ke Network / LAN Printer (IP:Port)
+// 3. Cetak Raw ESC/POS ke Network / LAN Printer (IP:Port Socket)
 ipcMain.handle(
   'print-raw-network',
   async (_, { host, port = 9100, rawBuffer }) => {
@@ -240,7 +275,9 @@ ipcMain.handle(
   },
 )
 
-// Lifecycle App Events
+// ==========================================
+// 4. APP LIFECYCLE
+// ==========================================
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()

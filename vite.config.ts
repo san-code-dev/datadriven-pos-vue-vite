@@ -1,6 +1,7 @@
 /// <reference types="vite-ssg" />
 
 import { fileURLToPath, URL } from 'node:url'
+import path from 'node:path'
 
 import { defineConfig } from 'vite'
 import Vue from '@vitejs/plugin-vue'
@@ -19,7 +20,9 @@ import LinkAttributes from 'markdown-it-link-attributes'
 import Shiki from 'markdown-it-shiki'
 import VueDevTools from 'vite-plugin-vue-devtools'
 
-// import { visualizer } from 'rollup-plugin-visualizer'
+// === Tambahkan Import Electron Plugins ===
+import electron from 'vite-plugin-electron'
+import renderer from 'vite-plugin-electron-renderer'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -40,8 +43,7 @@ export default defineConfig({
       include: [/\.vue$/, /\.md$/],
       template: {
         compilerOptions: {
-          isCustomElement: (tag) =>
-            tag === 'lite-youtube'
+          isCustomElement: (tag) => tag === 'lite-youtube',
         },
       },
     }),
@@ -96,7 +98,6 @@ export default defineConfig({
     // For details, refer to https://github.com/antfu/unplugin-vue-components#configuration
     AutoImportComponents({
       /* Please ensure that you update the filenames and paths to accurately match those used in your project. */
-
       dirs: ['src/components'],
 
       // allow auto load markdown components under ./src/components/
@@ -130,31 +131,37 @@ export default defineConfig({
         // restartOnConfigUpdate: true,
         restartOnThemeUpdate: true,
       },
-      // plugins: [
-      //   {
-      //     name: 'My Awesome Lib 3.0',
-      //     key: 'my-awesome-lib',
-      //     pluginPath: fileURLToPath(
-      //       new URL('./web-types/my-awesome-lib.json', import.meta.url),
-      //     ),
-      //   },
-      // ],
     }),
-  ],
 
-  // build: {
-  //   // Vite uses Rollup under the hold, so rollup options & plugins can be used for advanced usage
-  //   rollupOptions: {
-  //     plugins: [visualizer()],
-  //   },
-  // },
+    // === Integrasi Plugin Electron ===
+    electron([
+      {
+        // Main process
+        entry: 'electron/main.ts',
+      },
+      {
+        // Preload script
+        entry: 'electron/preload.ts',
+        onstart(options) {
+          options.reload()
+        },
+        vite: {
+          build: {
+            rollupOptions: {
+              output: {
+                format: 'cjs',
+                inlineDynamicImports: true,
+                entryFileNames: 'preload.js', // tetap preload.js tapi isinya format CJS
+              },
+            },
+          },
+        },
+      },
+    ]),
+  ],
 
   resolve: {
     alias: {
-      /* Must be either an object, or an array of { find, replacement, customResolver } pairs. */
-      /* Refer to: https://vitejs.dev/config/shared-options.html#resolve-alias */
-      /* Please ensure that you update the filenames and paths to accurately match those used in your project. */
-
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '~': fileURLToPath(new URL('./src', import.meta.url)),
       '~~': fileURLToPath(new URL('./', import.meta.url)),

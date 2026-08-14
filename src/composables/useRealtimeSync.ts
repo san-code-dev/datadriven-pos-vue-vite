@@ -5,7 +5,7 @@ import { getSocket } from '@/lib/socket'
 export function useRealtimeSync(
   formKey: Ref<string> | string,
   onUpdate: (data: any) => void,
-  gridRef?: Ref<any>
+  gridRef?: Ref<any>,
 ) {
   const setupListener = () => {
     const socket = getSocket()
@@ -18,7 +18,7 @@ export function useRealtimeSync(
 
     // Fungsi internal untuk mendaftarkan listener
     const register = () => {
-      console.log(`[Socket]⚡ Mendaftarkan listener untuk event: ${eventName}`)
+      // console.log(`[Socket]⚡ Mendaftarkan listener untuk event: ${eventName}`)
 
       // Bersihkan listener lama untuk menghindari duplikasi event
       socket.off(eventName)
@@ -30,7 +30,10 @@ export function useRealtimeSync(
 
         if (gridRef) {
           nextTick(async () => {
-            const grid = typeof gridRef.value === 'function' ? gridRef.value() : gridRef.value
+            const grid =
+              typeof gridRef.value === 'function'
+                ? gridRef.value()
+                : gridRef.value
             if (grid?.refresh) {
               await grid.refresh()
             }
@@ -70,7 +73,7 @@ export function useRealtimeSync(
 
   onBeforeUnmount(() => {
     const socket = getSocket()
-    const key = typeof formKey === 'string' ? formKey : (formKey?.value || '')
+    const key = typeof formKey === 'string' ? formKey : formKey?.value || ''
     if (socket && key) {
       socket.off(`realtime_update:${key}`)
     }

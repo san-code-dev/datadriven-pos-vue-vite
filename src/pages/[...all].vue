@@ -93,7 +93,7 @@ const fetchSchemaFromApi = async () => {
         })
 
         const responseData = response.data
-        console.log('[Api] Response for: ', requestUrl, ':', responseData)
+        // console.log('[Api] Response for: ', requestUrl, ':', responseData)
 
         if (responseData) {
             const existingTab = tabStore.openedTabs.find(t => t.id === currentPath)

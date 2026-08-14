@@ -9,6 +9,7 @@ import api from '@/lib/axios'
 import { useTabStore } from '@/stores/tabs' // Pastikan sudah diimport
 import { useNumberFormat } from '@/composables/number-format.ts'
 import { useRealtimeSync } from '@/composables/useRealtimeSync'
+import { useRouter } from 'vue-router'
 import { getActiveCellState, gridFocus } from '@/composables/grid.ts'
 
 import NumberColumnType from '@revolist/revogrid-column-numeral'
@@ -31,6 +32,7 @@ const props = defineProps({
 const numberFormat = useNumberFormat()
 const { toLocalDatetimeLocal } = useNumberFormat()
 const tabStore = useTabStore()
+const router = useRouter()
 
 const gridRef = ref<any>(null)
 const navigatorRef = ref<any>(null)
@@ -430,7 +432,7 @@ async function cariDataRef(keyword, context, entity, fieldKey, relationKey) {
     searchDataContext.value = context
     searchDataSchema.value = response.data
     isSelectDialogOpen.value = true
-    console.log('[Api] Response for:', response.config.url, response.data)
+    // console.log('[Api] Response for:', response.config.url, response.data)
   } catch (err) {
     console.error('[Api][cariDataRef] Gagal mencari data:', err)
   }
@@ -446,7 +448,7 @@ const selectDialogSelectData = async (selectedRow: any, context: string, fieldKe
   }
 
   if (context === 'history') {
-    await loadTransaction(selectedRow[relationKey])
+    router.push('/tes')
   }
   closeSelectDialog()
 }

@@ -3,9 +3,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import net from 'node:net'
-import fs from 'node:fs'
-import os from 'node:os'
-import { exec } from 'node:child_process'
+import { spawn } from 'node:child_process'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -14,12 +12,14 @@ export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
-let win: BrowserWindow | null
+let win: BrowserWindow | null = null
 
 function createWindow() {
   win = new BrowserWindow({
     width: 1200,
     height: 800,
+    show: false, // 1. Buat window tersembunyi terlebih dahulu
+    backgroundColor: '#1e293b', // Warna latar belakang agar tidak layar putih sesaat
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -27,12 +27,37 @@ function createWindow() {
     },
   })
 
+  // 2. Munculkan window HANYA ketika konten web sudah siap di-render
+  win.once('ready-to-show', () => {
+    win?.show()
+    win?.focus()
+  })
+
+  win.webContents.on(
+    'select-bluetooth-device',
+    (event, deviceList, callback) => {
+      event.preventDefault()
+      if (deviceList && deviceList.length > 0) {
+        callback(deviceList[0].deviceId)
+      }
+    },
+  )
+
+  // 3. Muat halaman renderer
   if (VITE_DEV_SERVER_URL) {
+    console.log('[Electron] Memuat Dev Server:', VITE_DEV_SERVER_URL)
     win.loadURL(VITE_DEV_SERVER_URL)
     win.webContents.openDevTools()
   } else {
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    const indexPath = path.join(RENDERER_DIST, 'index.html')
+    console.log('[Electron] Memuat File Lokal:', indexPath)
+    win.loadFile(indexPath)
   }
+
+  // 4. Tangkap error jika Vite gagal load
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('[Electron] Gagal load URL:', errorCode, errorDescription)
+  })
 }
 
 // 1. Ambil daftar printer OS bawaan Electron
@@ -41,28 +66,143 @@ ipcMain.handle('get-printers', async () => {
   return await win.webContents.getPrintersAsync()
 })
 
-// 2. Cetak Raw ESC/POS ke Printer OS Driver (Windows Raw Spooler)
 ipcMain.handle('print-raw-driver', async (_, { printerName, rawBuffer }) => {
   return new Promise((resolve) => {
     try {
-      const tempFilePath = path.join(os.tmpdir(), `receipt_${Date.now()}.bin`)
-      fs.writeFileSync(tempFilePath, Buffer.from(rawBuffer))
+      const cleanPrinterName = String(printerName || '').trim()
+      if (!cleanPrinterName) {
+        return resolve({
+          success: false,
+          error: 'Nama printer belum dipilih atau kosong di aplikasi.',
+        })
+      }
 
-      // Perintah PowerShell untuk mengirim raw bytes langsung ke printer spooler
-      const psCommand = `Get-Content -Path "${tempFilePath}" -Encoding Byte -Raw | Out-Printer -Name "${printerName}"`
+      // Konversi buffer ke Base64
+      const base64Data = Buffer.from(rawBuffer).toString('base64')
 
-      exec(`powershell -Command "${psCommand}"`, (err) => {
-        // Hapus file temporary
-        try {
-          fs.unlinkSync(tempFilePath)
-        } catch {}
+      // PowerShell Script menggunakan $env:TARGET_PRINTER
+      const psScript = `
+Add-Type -TypeDefinition @"
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
 
-        if (err) {
-          resolve({ success: false, error: err.message })
+public class RawPrinterHelper {
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    public class DOCINFOA {
+        [MarshalAs(UnmanagedType.LPStr)] public string pDocName;
+        [MarshalAs(UnmanagedType.LPStr)] public string pOutputFile;
+        [MarshalAs(UnmanagedType.LPStr)] public string pDataType;
+    }
+
+    [DllImport("winspool.Drv", EntryPoint = "OpenPrinterA", SetLastError = true, CharSet = CharSet.Ansi, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+    public static extern bool OpenPrinter([MarshalAs(UnmanagedType.LPStr)] string szPrinter, out IntPtr hPrinter, IntPtr pd);
+
+    [DllImport("winspool.Drv", EntryPoint = "ClosePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+    public static extern bool ClosePrinter(IntPtr hPrinter);
+
+    [DllImport("winspool.Drv", EntryPoint = "StartDocPrinterA", SetLastError = true, CharSet = CharSet.Ansi, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+    public static extern bool StartDocPrinter(IntPtr hPrinter, Int32 level, [In, MarshalAs(UnmanagedType.LPStruct)] DOCINFOA di);
+
+    [DllImport("winspool.Drv", EntryPoint = "EndDocPrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+    public static extern bool EndDocPrinter(IntPtr hPrinter);
+
+    [DllImport("winspool.Drv", EntryPoint = "StartPagePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+    public static extern bool StartPagePrinter(IntPtr hPrinter);
+
+    [DllImport("winspool.Drv", EntryPoint = "EndPagePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+    public static extern bool EndPagePrinter(IntPtr hPrinter);
+
+    [DllImport("winspool.Drv", EntryPoint = "WritePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+    public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBytes, Int32 dwCount, out Int32 dwWritten);
+
+    public static bool SendBytesToPrinter(string szPrinterName, byte[] bytes) {
+        if (bytes == null || bytes.Length == 0) return false;
+        
+        IntPtr pUnmanagedBytes = Marshal.AllocCoTaskMem(bytes.Length);
+        Marshal.Copy(bytes, 0, pUnmanagedBytes, bytes.Length);
+        
+        IntPtr hPrinter = new IntPtr(0);
+        DOCINFOA di = new DOCINFOA();
+        di.pDocName = "RAW Receipt Job";
+        di.pDataType = "RAW";
+        
+        bool bSuccess = false;
+        if (OpenPrinter(szPrinterName.Normalize(), out hPrinter, IntPtr.Zero)) {
+            if (StartDocPrinter(hPrinter, 1, di)) {
+                if (StartPagePrinter(hPrinter)) {
+                    int dwWritten = 0;
+                    bSuccess = WritePrinter(hPrinter, pUnmanagedBytes, bytes.Length, out dwWritten);
+                    EndPagePrinter(hPrinter);
+                }
+                EndDocPrinter(hPrinter);
+            }
+            ClosePrinter(hPrinter);
+        }
+        Marshal.FreeCoTaskMem(pUnmanagedBytes);
+        return bSuccess;
+    }
+}
+"@
+
+$targetPrinter = $env:TARGET_PRINTER
+if ([string]::IsNullOrWhiteSpace($targetPrinter)) {
+    throw "Target printer environment variable kosong."
+}
+
+$base64Input = [Console]::In.ReadToEnd()
+if ([string]::IsNullOrWhiteSpace($base64Input)) {
+    throw "Data buffer biner struk kosong."
+}
+
+$rawBytes = [System.Convert]::FromBase64String($base64Input.Trim())
+$success = [RawPrinterHelper]::SendBytesToPrinter($targetPrinter, $rawBytes)
+
+if (-not $success) {
+    throw "Gagal mengirim data RAW ke spooler Windows untuk printer: '$targetPrinter'. Pastikan printer terhubung dan online."
+}
+`
+
+      // Spawn powershell dengan mengoper TARGET_PRINTER melalui env
+      const ps = spawn(
+        'powershell',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-Command',
+          psScript,
+        ],
+        {
+          env: {
+            ...process.env,
+            TARGET_PRINTER: cleanPrinterName,
+          },
+        },
+      )
+
+      let stderr = ''
+
+      ps.stderr.on('data', (data) => {
+        stderr += data.toString()
+      })
+
+      ps.on('close', (code) => {
+        if (code !== 0 || stderr) {
+          console.error('[PrintRawDriver Error]:', stderr)
+          resolve({
+            success: false,
+            error: stderr || `Process exited with code ${code}`,
+          })
         } else {
           resolve({ success: true })
         }
       })
+
+      // Tulis data base64 ke stdin stream
+      ps.stdin.write(base64Data)
+      ps.stdin.end()
     } catch (error: any) {
       resolve({ success: false, error: error.message })
     }
@@ -100,6 +240,7 @@ ipcMain.handle(
   },
 )
 
+// Lifecycle App Events
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()

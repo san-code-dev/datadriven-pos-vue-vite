@@ -36,6 +36,7 @@ const flatMenus = computed(() => {
     if (!authStore.menus) return []
     const extraMenus = [
         { key: 'dashboard', label: 'Dashboard', route: '/dashboard', menuCategory: 'General', icon: 'mdi:view-dashboard-outline' },
+        { key: 'posprint', label: 'Tes print', route: '/posprint', menuCategory: 'General', icon: 'mdi:printer-outline' },
         { key: 'setting', label: 'Settings', route: '/setting', menuCategory: 'General', icon: 'mdi:cog-outline' }
     ]
     return [...extraMenus, ...authStore.menus]
@@ -166,6 +167,7 @@ onUnmounted(() => {
                     </button>
                 </div>
 
+                <!-- Dashboard -->
                 <div class="relative group" @click="router.push('/dashboard')">
                     <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative transition-all duration-200 gap-3"
                         :class="[
@@ -184,6 +186,7 @@ onUnmounted(() => {
                     </div>
                 </div>
 
+                <!-- Dynamic Categories from Store -->
                 <div v-for="(menus, category) in menuTree" :key="category" class="relative group"
                     @mouseenter="openCategory = category" @mouseleave="openCategory = null">
 
@@ -230,6 +233,26 @@ onUnmounted(() => {
                     </div>
                 </div>
 
+                <!-- POS Print -->
+                <div class="relative group" @click="router.push('/posprint')">
+                    <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative transition-all duration-200 gap-3"
+                        :class="[
+                            route.path === '/posprint'
+                                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
+                        ]">
+                        <div v-if="route.path === '/posprint'"
+                            class="absolute left-0 top-2.5 bottom-2.5 w-1 bg-emerald-500 dark:bg-emerald-400 rounded-r">
+                        </div>
+                        <Icon icon="mdi:printer-outline" class="text-xl flex-shrink-0" />
+                        <span class="text-sm capitalize text-sidebar-label"
+                            :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
+                            Tes Print
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Settings -->
                 <div class="relative group" @click="router.push('/setting')">
                     <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative transition-all duration-200 gap-3"
                         :class="[

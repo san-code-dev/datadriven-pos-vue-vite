@@ -23,6 +23,10 @@ const bluetoothDevice = ref<any>(null)
 const bluetoothDeviceName = ref<string>('')
 const isScanningBluetooth = ref(false)
 
+// Tambahkan di dekat computed lainnya
+const VIRTUAL_PRINTER_PATTERN = /pdf|xps|onenote|fax|onedrive|document writer/i
+const isVirtualPrinter = (name: string) => VIRTUAL_PRINTER_PATTERN.test(name || '')
+
 // Data Dinamis Struk
 const storeInfo = ref({
     name: 'KASIR POINT OF SALE',
@@ -357,15 +361,23 @@ const loadPrinters = async () => {
     isLoadingPrinters.value = true
     try {
         const printers = await window.electronAPI.getPrinters()
-        printerList.value = printers || []
 
-        if (printers && printers.length > 0) {
-            const defaultPrinter = printers.find((p: any) => p.isDefault)
+        // Buang printer virtual yang tidak bisa terima RAW ESC/POS
+        printerList.value = (printers || []).filter(
+            (p: any) => !isVirtualPrinter(p.name)
+        )
+
+        if (printerList.value.length > 0) {
+            const defaultPrinter = printerList.value.find((p: any) => p.isDefault)
             if (defaultPrinter) {
                 selectedPrinter.value = defaultPrinter.name
             } else if (!selectedPrinter.value) {
-                selectedPrinter.value = printers[0].name
+                selectedPrinter.value = printerList.value[0].name
             }
+        } else {
+            selectedPrinter.value = ''
+            statusMessage.value = 'Tidak ada printer thermal/fisik yang terdeteksi. Printer virtual (PDF/XPS) tidak didukung untuk cetak struk.'
+            isSuccess.value = false
         }
     } catch (err: any) {
         console.error('[PosPrinting] Gagal memuat printer:', err)

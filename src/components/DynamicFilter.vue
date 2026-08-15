@@ -67,8 +67,8 @@
                     </div>
 
                     <div class="relative flex items-center h-full">
-                        <select v-model="item.operator"
-                            class="filter-input data-operator text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[110px]">
+                        <select v-model="item.operator" @change="onOperatorChange(index)"
+                            class="filter-input data-operator text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[150px]">
                             <option v-for="op in getAvailableOperators(item.field)" :key="op.value" :value="op.value">
                                 {{ op.label }}
                             </option>
@@ -79,22 +79,40 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2">
-                        <input v-if="item.operator !== 'between'" v-model="item.value" :type="getInputType(item.field)"
-                            placeholder="Ketik nilai..." @focus="handleFocus"
+                    <!-- Operator tanpa kebutuhan nilai (Kosong / Tidak Kosong) -->
+                    <div v-if="isValuelessOperator(item.operator)"
+                        class="text-[11px] italic text-slate-400 dark:text-slate-500 px-1">
+                        Tidak perlu nilai
+                    </div>
+
+                    <!-- Operator BETWEEN (angka / tanggal) -->
+                    <div v-else-if="item.operator === 'between'" class="flex items-center gap-2">
+                        <input v-model="item.value" :type="getInputType(item.field)" placeholder="Min"
+                            @focus="handleFocus"
+                            class="filter-input data-val-min w-28 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+
+                        <span class="text-xs text-slate-400">s/d</span>
+
+                        <input v-model="item.valueTo" :type="getInputType(item.field)" placeholder="Max"
+                            @focus="handleFocus"
+                            class="filter-input data-val-max w-28 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                    </div>
+
+                    <!-- Nilai boolean -->
+                    <div v-else-if="getFieldConfig(item.field)?.type === 'boolean'" class="flex items-center">
+                        <select v-model="item.value"
+                            class="filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                            <option value="" disabled>-- Pilih --</option>
+                            <option value="true">Ya</option>
+                            <option value="false">Tidak</option>
+                        </select>
+                    </div>
+
+                    <!-- Nilai default (string / number / date) -->
+                    <div v-else class="flex items-center">
+                        <input v-model="item.value" :type="getInputType(item.field)" placeholder="Ketik nilai..."
+                            @focus="handleFocus"
                             class="filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
-
-                        <template v-if="item.operator === 'between'">
-                            <input v-model="item.value" :type="getInputType(item.field)" placeholder="Min"
-                                @focus="handleFocus"
-                                class="filter-input data-val-min w-24 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
-
-                            <span class="text-xs text-slate-400">s/d</span>
-
-                            <input v-model="item.valueTo" :type="getInputType(item.field)" placeholder="Max"
-                                @focus="handleFocus"
-                                class="filter-input data-val-max w-24 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
-                        </template>
                     </div>
 
                     <button @click="removeFilterRow(index)"
@@ -151,27 +169,58 @@ const isNumericField = (fieldKey) => {
     return ['number', 'currency'].includes(config.type) || fieldKey === 'id'
 }
 
+const isValuelessOperator = (operator) => ['is_empty', 'is_not_empty'].includes(operator)
+
+// Operator lengkap per tipe data. Tanggal disimpan sebagai DateTime di backend.
 const getAvailableOperators = (fieldKey) => {
     if (!fieldKey) return [{ value: 'contains', label: 'Mengandung kata' }]
     const config = getFieldConfig(fieldKey)
+    const type = config?.type
 
     if (isNumericField(fieldKey)) {
         return [
-            { value: 'equals', label: '=' },
-            { value: 'greater_than', label: '>' },
-            { value: 'less_than', label: '<' },
-            { value: 'between', label: 'Rentang Angka' }
+            { value: 'equals', label: 'Sama Dengan (=)' },
+            { value: 'not_equals', label: 'Tidak Sama Dengan (≠)' },
+            { value: 'greater_than', label: 'Lebih Besar (>)' },
+            { value: 'greater_or_equal', label: 'Lebih Besar / Sama (≥)' },
+            { value: 'less_than', label: 'Lebih Kecil (<)' },
+            { value: 'less_or_equal', label: 'Lebih Kecil / Sama (≤)' },
+            { value: 'between', label: 'Rentang Angka' },
+            { value: 'is_empty', label: 'Kosong' },
+            { value: 'is_not_empty', label: 'Tidak Kosong' },
         ]
     }
-    if (config?.type === 'date') {
+
+    if (type === 'date') {
+        return [
+            { value: 'equals', label: 'Tepat Pada Tanggal' },
+            { value: 'not_equals', label: 'Bukan Pada Tanggal' },
+            { value: 'after', label: 'Setelah (>)' },
+            { value: 'before', label: 'Sebelum (<)' },
+            { value: 'between', label: 'Rentang Tanggal' },
+            { value: 'is_empty', label: 'Kosong' },
+            { value: 'is_not_empty', label: 'Tidak Kosong' },
+        ]
+    }
+
+    if (type === 'boolean') {
         return [
             { value: 'equals', label: 'Sama Dengan' },
-            { value: 'between', label: 'Rentang Tanggal' }
+            { value: 'is_empty', label: 'Kosong' },
+            { value: 'is_not_empty', label: 'Tidak Kosong' },
         ]
     }
+
+    // default: string / text
     return [
         { value: 'contains', label: 'Mengandung kata' },
-        { value: 'equals', label: 'Tepat sama' }
+        { value: 'not_contains', label: 'Tidak Mengandung' },
+        { value: 'equals', label: 'Tepat Sama' },
+        { value: 'not_equals', label: 'Tidak Sama' },
+        { value: 'starts_with', label: 'Diawali Dengan' },
+        { value: 'ends_with', label: 'Diakhiri Dengan' },
+        { value: 'is_empty', label: 'Kosong' },
+        { value: 'is_not_empty', label: 'Tidak Kosong' },
     ]
 }
 
@@ -179,7 +228,7 @@ const getInputType = (fieldKey) => {
     const config = getFieldConfig(fieldKey)
     if (!config) return 'text'
     if (isNumericField(fieldKey)) return 'number'
-    if (config.type === 'date') return 'date'
+    if (config.type === 'date') return 'datetime-local'
     return 'text'
 }
 
@@ -195,10 +244,11 @@ const addFilterRow = async () => {
 
     if (allowedSchema.value.length > 0) {
         const firstField = allowedSchema.value[0]
-        const isNumeric = isNumericField(firstField.key)
+        const defaultOp = getAvailableOperators(firstField.key)[0].value
         localFilters.value.push({
             field: firstField.key,
-            operator: isNumeric ? 'equals' : 'contains',
+            type: firstField.type,
+            operator: defaultOp,
             value: '',
             valueTo: ''
         })
@@ -210,8 +260,18 @@ const addFilterRow = async () => {
 
 const onFieldChange = (index) => {
     const item = localFilters.value[index]
+    const config = getFieldConfig(item.field)
     const ops = getAvailableOperators(item.field)
+    item.type = config?.type
     item.operator = ops[0].value
+    item.value = ''
+    item.valueTo = ''
+    triggerFilterUpdate()
+}
+
+const onOperatorChange = (index) => {
+    const item = localFilters.value[index]
+    // Bersihkan nilai lama saat pindah ke/ dari operator tanpa nilai atau between
     item.value = ''
     item.valueTo = ''
     triggerFilterUpdate()
@@ -390,10 +450,12 @@ watch(
             localFilters.value = newFilters.map(item => {
                 const availableOps = getAvailableOperators(item.field)
                 const isOpValid = availableOps.some(o => o.value === item.operator)
-                const defaultOp = isNumericField(item.field) ? 'equals' : 'contains'
+                const defaultOp = availableOps[0]?.value || 'contains'
+                const config = getFieldConfig(item.field)
 
                 return {
                     field: item.field || '',
+                    type: item.type || config?.type,
                     operator: item.operator && isOpValid ? item.operator : defaultOp,
                     value: item.value !== undefined ? item.value : '',
                     valueTo: item.valueTo !== undefined ? item.valueTo : ''

@@ -12,3 +12,4 @@
 - multi database untuk lokasi dataset yang berbeda untuk perusahaan yang berbeda
 - pagination / lazy load (tidak mungkin karena pakai socket io dan aatomic schema update)
 - transaction activeHeaderId masih hardcoded dari property id harusnya dari field yang primary=true
+- standarisasi dynamic filter,form,input,data, dll untuk tipe data datetime diserver di ubah ke date tapi memastikan jam tetap ada

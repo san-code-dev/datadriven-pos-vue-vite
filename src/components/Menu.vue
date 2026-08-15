@@ -130,7 +130,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <nav class="relative z-40 flex-shrink-0 font-sans text-slate-900 dark:text-slate-200 select-none flex flex-col min-h-screen border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300 shadow-sm"
+    <nav class="relative z-50 flex-shrink-0 font-sans text-slate-900 dark:text-slate-200 select-none flex flex-col min-h-screen border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300 shadow-sm"
         :class="sidebarStore.isCollapsed ? 'w-20' : 'w-64'">
 
         <div class="p-3 flex-1 flex flex-col justify-between relative h-full">

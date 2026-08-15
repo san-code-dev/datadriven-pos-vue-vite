@@ -80,20 +80,25 @@ const fetchSchemaFromApi = async () => {
     }
 
     try {
-        const activeFilters = filterStore.getFiltersByTab(currentPath)
-
         // Hilangkan trailing slash dari path jika ada
         const cleanPath = currentPath.replace(/\/+$/, '')
         const requestUrl = `${cleanPath}/get-all`
 
-        const response = await api.get(requestUrl, {
-            params: {
-                filter: JSON.stringify(activeFilters)
-            }
-        })
+        // Cek apakah menu/komponen ini berjenis 'master' 
+        // (Sesuaikan properti penanda master pada `matchedMenu`, misal: matchedMenu.type === 'master' atau dari properti lainnya)
+        const isMasterComponent = matchedMenu.type === 'master'
+
+        // Ambil filter hanya jika komponen tersebut adalah master
+        const activeFilters = isMasterComponent ? filterStore.getFiltersByTab(currentPath) : null
+
+        const params = {}
+        if (isMasterComponent && activeFilters) {
+            params.filter = JSON.stringify(activeFilters)
+        }
+
+        const response = await api.get(requestUrl, { params })
 
         const responseData = response.data
-        // console.log('[Api] Response for: ', requestUrl, ':', responseData)
 
         if (responseData) {
             const existingTab = tabStore.openedTabs.find(t => t.id === currentPath)
@@ -123,7 +128,6 @@ const fetchSchemaFromApi = async () => {
         isLoading.value = false
     }
 }
-
 
 const handleGlobalKeyDown = (event) => {
     if (event.repeat || isLoading.value) return

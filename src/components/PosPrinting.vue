@@ -5,14 +5,15 @@ import { PrintService } from '@/printing/printService'
 import { DriverConnection } from '@/printing/connections/driverConnection'
 import { NetworkConnection } from '@/printing/connections/networkConnection'
 import { BluetoothConnection } from '@/printing/connections/bluetoothConnection'
-import type { TransactionData, DocType, DocElement } from '@/printing/types'
+import type { DocType } from '@/printing/types'
+import { docTypeList, buildTransactionData } from '@/utils/mockData'
 
 const printService = new PrintService()
 const previewHtml = ref<string>('')
 const blobPreviewUrl = ref<string>('')
 
 // ==========================================
-// 1. REFS & STATE (Dinamis Sesuai Tipe Lengkap)
+// 1. REFS & STATE
 // ==========================================
 const isDeviceDialogOpen = ref(false)
 const printMode = ref<'driver' | 'network' | 'bluetooth'>('driver')
@@ -26,182 +27,17 @@ const isLoadingPrinters = ref(false)
 const statusMessage = ref('')
 const isSuccess = ref(true)
 
-// Kontrol Dokumen Dinamis
-const selectedDocType = ref<DocType>('receipt')
+// Kontrol Dokumen
+const selectedDocType = ref<DocType>('invoice')
 
 // Bluetooth States
 const bluetoothConnectionRef = ref<BluetoothConnection | null>(null)
 const bluetoothDeviceName = ref<string>('')
 const isScanningBluetooth = ref(false)
 
-// Data Dinamis Transaksi & Store Lengkap
-const storeInfo = ref({
-    name: 'KASIR POINT OF SALE',
-    address: 'Jl. Pahlawan No. 45, Surabaya',
-    phone: 'Telp: (031) 555-1234',
-    npwp: '01.234.567.8-901.000'
-})
+// Data terstruktur untuk PrintService (Diambil dari modul mockData)
+const transactionData = computed(() => buildTransactionData(selectedDocType.value))
 
-const customerInfo = ref({
-    name: 'PT Maju Sejahtera Abadi',
-    phone: '081234567890',
-    address: 'Jl. Ahmad Yani No. 88, Surabaya',
-    email: 'purchasing@majuabadi.com'
-})
-
-const metaInfo = ref({
-    invoiceNo: 'INV/2026/08/0091',
-    date: '14/08/2026 15:30',
-    cashier: 'Rian (Kasir 01)',
-    dueDate: '28/08/2026',
-    reference: 'PO-REF-9921'
-})
-
-const items = ref([
-    { sku: 'BRD-001', name: 'Kopi Espresso Blend (1kg)', qty: 2, price: 75000, subtotal: 150000, note: 'Extra roasting' },
-    { sku: 'BRD-002', name: 'Roti Bakar Coklat Keju', qty: 5, price: 15000, subtotal: 75000, note: '' },
-    { sku: 'BRD-003', name: 'Es Teh Manis Jasmine', qty: 10, price: 5000, subtotal: 50000, note: '' }
-])
-
-const paymentSummary = ref({
-    subtotal: 275000,
-    discount: 10000,
-    tax: 26500,
-    total: 291500,
-    paid: 300000,
-    change: 8500,
-    method: 'transfer' as const
-})
-
-const qrUrl = ref('https://mywebsite.com/verify/INV-0091')
-
-// Data terstruktur penuh untuk PrintService
-const transactionData = computed<TransactionData>(() => ({
-    docType: selectedDocType.value,
-    meta: { ...metaInfo.value },
-    store: { ...storeInfo.value },
-    customer: { ...customerInfo.value },
-    items: items.value.map(it => ({ ...it })),
-    payment: { ...paymentSummary.value },
-    qrUrl: qrUrl.value,
-    signature: {
-        preparedBy: metaInfo.value.cashier,
-        approvedBy: 'Manager Gudang',
-        receivedBy: customerInfo.value.name
-    }
-}))
-
-// ==========================================
-// 2. BLUEPRINT GENERATOR (Live Preview Berdasarkan DocType)
-// ==========================================
-const tableConfig = computed(() => {
-    return paperWidth.value === 32
-        ? [
-            { width: 16, align: 'left' as const, header: 'Item' },
-            { width: 4, align: 'center' as const, header: 'Qty' },
-            { width: 12, align: 'right' as const, header: 'Sub' }
-        ]
-        : [
-            { width: 26, align: 'left' as const, header: 'Nama Barang' },
-            { width: 6, align: 'center' as const, header: 'Qty' },
-            { width: 16, align: 'right' as const, header: 'Subtotal' }
-        ]
-})
-
-const receiptElements = computed<DocElement[]>(() => {
-    const elements: DocElement[] = []
-    const doc = selectedDocType.value
-
-    // Header Toko / Perusahaan
-    elements.push({ type: 'text', text: storeInfo.value.name, align: 'center', bold: true, size: 2 })
-    elements.push({ type: 'text', text: storeInfo.value.address, align: 'center' })
-    elements.push({ type: 'text', text: `${storeInfo.value.phone} | NPWP: ${storeInfo.value.npwp}`, align: 'center' })
-    elements.push({ type: 'separator', style: 'dashed' })
-
-    // Judul Dokumen & Salinan
-    const docTitles: Record<DocType, string> = {
-        receipt: 'STRUK KASIR',
-        invoice: 'FAKTUR / INVOICE',
-        delivery_order: 'SURAT JALAN',
-        purchase_order: 'PURCHASE ORDER',
-        report: 'LAPORAN TRANSAKSI',
-        label: 'LABEL BARCODE'
-    }
-    elements.push({ type: 'text', text: `${docTitles[doc]}`, align: 'center', bold: true })
-    elements.push({ type: 'separator', style: 'solid' })
-
-    // Meta Informasi (No. Dokumen, Tanggal, Pelanggan, dll)
-    elements.push({
-        type: 'table',
-        columns: [
-            { width: Math.floor(paperWidth.value / 2), align: 'left' },
-            { width: Math.ceil(paperWidth.value / 2), align: 'right' }
-        ],
-        rows: [
-            ['No:', metaInfo.value.invoiceNo],
-            ['Tgl:', metaInfo.value.date],
-            ['Kasir:', metaInfo.value.cashier || '-'],
-            ...(doc === 'invoice' || doc === 'purchase_order' ? [['Jatuh Tempo:', metaInfo.value.dueDate || '-']] : []),
-            ...(customerInfo.value.name ? [['Pelanggan:', customerInfo.value.name]] : [])
-        ]
-    })
-    elements.push({ type: 'separator', style: 'dashed' })
-
-    // Tabel Item Barang / Laporan
-    elements.push({
-        type: 'table',
-        columns: tableConfig.value,
-        showHeader: true,
-        rows: items.value.map((item) => [
-            item.name,
-            `${item.qty}`,
-            item.subtotal.toLocaleString('id-ID')
-        ])
-    })
-    elements.push({ type: 'separator', style: 'dashed' })
-
-    // Bagian Pembayaran / Ringkasan Total
-    if (doc !== 'delivery_order' && doc !== 'label') {
-        elements.push({
-            type: 'table',
-            columns: [
-                { width: Math.floor(paperWidth.value / 2), align: 'left' },
-                { width: Math.ceil(paperWidth.value / 2), align: 'right' }
-            ],
-            rows: [
-                ['Subtotal', paymentSummary.value.subtotal.toLocaleString('id-ID')],
-                ...(paymentSummary.value.discount ? [['Diskon', `-${paymentSummary.value.discount.toLocaleString('id-ID')}`]] : []),
-                ...(paymentSummary.value.tax ? [['Pajak (PPN)', paymentSummary.value.tax.toLocaleString('id-ID')]] : []),
-                ['TOTAL', paymentSummary.value.total.toLocaleString('id-ID')],
-                ...(doc === 'receipt' ? [
-                    ['Bayar (' + paymentSummary.value.method.toUpperCase() + ')', paymentSummary.value.paid.toLocaleString('id-ID')],
-                    ['Kembali', paymentSummary.value.change.toLocaleString('id-ID')]
-                ] : [])
-            ],
-            bold: true
-        })
-        elements.push({ type: 'separator', style: 'dashed' })
-    }
-
-    // QR Code / Barcode & Tanda Tangan
-    if (qrUrl.value) {
-        elements.push({ type: 'qrcode', value: qrUrl.value, align: 'center' })
-    }
-
-    elements.push({ type: 'space', lines: 1 })
-    elements.push({ type: 'text', text: 'Terima Kasih Atas Kepercayaan Anda!', align: 'center' })
-
-    // Tanda Tangan jika diperlukan
-    if (['invoice', 'delivery_order', 'purchase_order'].includes(doc)) {
-        elements.push({ type: 'space', lines: 1 })
-        elements.push({
-            type: 'signature_block',
-            labels: ['Disiapkan Oleh', 'Disetujui Oleh', 'Diterima Oleh']
-        })
-    }
-
-    return elements
-})
 const updatePreview = async () => {
     try {
         const htmlContent = await printService.renderToHtml(
@@ -210,19 +46,16 @@ const updatePreview = async () => {
         )
         previewHtml.value = htmlContent
 
-        // 1. Revoke URL lama jika ada agar tidak leak memory
         if (blobPreviewUrl.value) {
             URL.revokeObjectURL(blobPreviewUrl.value)
         }
 
-        // 2. Buat Blob URL baru dari HTML string
         const blob = new Blob([htmlContent], { type: 'text/html' })
         blobPreviewUrl.value = URL.createObjectURL(blob)
     } catch (err) {
         console.error('[PosPrinting] Gagal merender preview HTML:', err)
     }
 }
-
 
 // ==========================================
 // 3. COMPUTED & VALIDATION HELPERS
@@ -403,9 +236,9 @@ onUnmounted(() => {
                 </div>
                 <select v-model="selectedDocType"
                     class="px-2.5 py-1 text-xs rounded-lg border border-slate-700 bg-slate-800 text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                    <option value="receipt">Struk Kasir (Receipt)</option>
-                    <option value="invoice">Faktur (Invoice)</option>
-                    <option value="delivery_order">Surat Jalan (DO)</option>
+                    <option v-for="doc in docTypeList" :key="doc.value" :value="doc.value">
+                        {{ doc.label }}
+                    </option>
                 </select>
             </div>
 
@@ -418,8 +251,8 @@ onUnmounted(() => {
         </div>
 
         <!-- 1. LIVE DYNAMIC RECEIPT PREVIEW -->
-
         <iframe class="w-full h-full border-0" :src="blobPreviewUrl" title="Receipt Preview"></iframe>
+
         <!-- 2. FLOATING ACTION DOCK (FOOTER BAR) -->
         <div
             class="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-between gap-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800">
@@ -541,7 +374,7 @@ onUnmounted(() => {
                                     class="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950/50 flex items-center gap-2">
                                     <Icon icon="mdi:bluetooth-connect" class="w-4 h-4 text-emerald-500 shrink-0" />
                                     <span class="truncate font-medium">{{ bluetoothDeviceName || 'no device'
-                                        }}</span>
+                                    }}</span>
                                 </div>
                                 <button type="button" :disabled="isScanningBluetooth"
                                     class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1 shrink-0 cursor-pointer"

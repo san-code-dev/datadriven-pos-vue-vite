@@ -4,9 +4,7 @@ import type { TransactionData, DocumentBlueprint, DocElement } from '../types'
  * Template invoice/faktur untuk kertas A4/A5.
  * Dipakai oleh PdfRenderer / HtmlRenderer (bukan ESC/POS).
  */
-export function buildInvoiceBlueprint(
-  data: TransactionData,
-): DocumentBlueprint {
+export function invoiceBluePrint(data: TransactionData): DocumentBlueprint {
   const elements: DocElement[] = []
 
   // --- Header toko ---

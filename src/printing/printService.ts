@@ -5,9 +5,7 @@ import type {
 } from './types'
 
 // Templates
-import { buildReceiptBlueprint } from './templates/receiptTemplate'
-import { buildInvoiceBlueprint } from './templates/invoiceTemplate'
-import { buildDeliveryOrderBlueprint } from './templates/deliveryOrderTemplate'
+import { invoiceBluePrint } from './templates/invoiceTemplate'
 
 // Renderers
 import { EscPosRenderer } from './renderers/escposRenderer'
@@ -48,18 +46,7 @@ export class PrintService {
     data: TransactionData,
     paperWidth: 32 | 48 = 32,
   ): DocumentBlueprint {
-    switch (data.docType) {
-      case 'receipt':
-        return buildReceiptBlueprint(data, paperWidth)
-      case 'invoice':
-        return buildInvoiceBlueprint(data)
-      case 'delivery_order':
-        return buildDeliveryOrderBlueprint(data)
-      default:
-        throw new Error(
-          `Template untuk docType "${data.docType}" belum diimplementasikan.`,
-        )
-    }
+    return invoiceBluePrint(data)
   }
 
   // ---------- 3. Cetak ke printer fisik (thermal/label) ----------

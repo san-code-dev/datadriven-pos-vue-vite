@@ -2,6 +2,7 @@
 
 import { fileURLToPath, URL } from 'node:url'
 import path from 'node:path'
+import fs from 'node:fs' // ← tambahkan ini
 
 import { defineConfig } from 'vite'
 import Vue from '@vitejs/plugin-vue'
@@ -20,7 +21,7 @@ import LinkAttributes from 'markdown-it-link-attributes'
 import Shiki from 'markdown-it-shiki'
 import VueDevTools from 'vite-plugin-vue-devtools'
 
-// === Tambahkan Import Electron Plugins ===
+// === Tambahkan Import Electron Plugins
 import electron from 'vite-plugin-electron'
 import renderer from 'vite-plugin-electron-renderer'
 
@@ -32,6 +33,9 @@ export default defineConfig({
       preload: 'media',
       // Other options: https://github.com/danielroe/beasties#usage
     },
+  },
+  optimizeDeps: {
+    exclude: ['puppeteer', '@puppeteer/browsers'],
   },
   plugins: [
     VueRouter({
@@ -134,10 +138,27 @@ export default defineConfig({
     }),
 
     // === Integrasi Plugin Electron ===
+
     electron([
       {
         // Main process
         entry: 'electron/main.ts',
+        vite: {
+          build: {
+            rollupOptions: {
+              output: {
+                format: 'cjs',
+                entryFileNames: '[name].js',
+              },
+              external: [
+                'serialport',
+                '@serialport/bindings-cpp',
+                '@serialport/parser-readline',
+                'ws',
+              ],
+            },
+          },
+        },
       },
       {
         // Preload script
@@ -147,11 +168,16 @@ export default defineConfig({
         },
         vite: {
           build: {
+            lib: {
+              entry: 'electron/preload.ts',
+              formats: ['cjs'],
+              fileName: () => '[name].js',
+            },
             rollupOptions: {
+              // Tambahkan output format cjs di sini juga!
               output: {
                 format: 'cjs',
-                inlineDynamicImports: true,
-                entryFileNames: 'preload.js', // tetap preload.js tapi isinya format CJS
+                entryFileNames: '[name].js',
               },
             },
           },

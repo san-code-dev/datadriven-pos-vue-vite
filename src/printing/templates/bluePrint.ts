@@ -1,5 +1,9 @@
 import type { TransactionData } from '@/utils/mockData'
 
+// Re-export TransactionData supaya file lain (mis. printService) cukup
+// bergantung pada bluePrint.ts, tanpa perlu tahu/impor mockData secara langsung.
+export type { TransactionData } from '@/utils/mockData'
+
 // ==========================================
 // TYPES — Blueprint (output Template Layer)
 // Format abstrak — dikonsumsi oleh semua Renderer

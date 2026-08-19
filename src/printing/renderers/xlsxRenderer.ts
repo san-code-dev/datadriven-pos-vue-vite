@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs'
-import type { DocumentBlueprint } from '../types'
+import type { DocumentBlueprint } from '../templates/bluePrint'
 import type { Renderer, RenderOptions } from './renderer.interface'
 
 export interface XlsxOptions extends RenderOptions {

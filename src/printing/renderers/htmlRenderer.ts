@@ -1,6 +1,6 @@
-import type { DocumentBlueprint, DocElement } from '../types'
+import type { DocElement } from '../types'
 import type { Renderer, RenderOptions } from './renderer.interface'
-
+import type { DocumentBlueprint } from '../templates/bluePrint'
 /**
  * Merender blueprint jadi HTML string.
  * Dipakai untuk: preview di UI, basis konversi ke PDF (via puppeteer/wkhtmltopdf),

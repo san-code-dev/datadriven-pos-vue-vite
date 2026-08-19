@@ -1,5 +1,5 @@
 import ReceiptPrinterEncoder from '@point-of-sale/receipt-printer-encoder'
-import type { DocumentBlueprint } from '../types'
+import type { DocumentBlueprint } from '../templates/bluePrint'
 import type { Renderer, RenderOptions } from './renderer.interface'
 
 export interface EscPosOptions extends RenderOptions {

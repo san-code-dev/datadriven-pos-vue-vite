@@ -1,5 +1,4 @@
-import type { TransactionData } from '@/utils/mockData'
-import type { DocumentBlueprint } from './templates/bluePrint'
+import type { TransactionData, DocumentBlueprint } from './templates/bluePrint'
 import { invoiceBluePrint } from './templates/bluePrint'
 
 // Renderers
@@ -38,11 +37,14 @@ export interface OperationResult {
  * PRINT SERVICE — Orchestrator 5 Layer
  * ==========================================
  *
- *   Data Layer          → TransactionData (input, lihat MockData.ts)
- *   Template Layer       → buildXxxBlueprint() (lihat BluePrint.ts)
+ *   Data Layer          → TransactionData (lihat mockData.ts)
+ *   Template Layer       → buildXxxBlueprint() (lihat bluePrint.ts, yang me-load mockData.ts)
  *   Renderer Layer        → EscPos / Pdf / Html / Xlsx / Zpl
  *   Connection Layer       → kirim ke hardware fisik
  *   Distribution Layer      → kirim ke channel digital
+ *
+ * PrintService sengaja TIDAK meng-impor mockData secara langsung —
+ * TransactionData didapat lewat re-export dari bluePrint.ts.
  */
 export class PrintService {
   // ---------- 1+2. Data → Template ----------
@@ -125,8 +127,8 @@ export class PrintService {
 // CONTOH PEMAKAIAN
 // ==========================================
 /*
-import { PrintService } from './PrintService'
-import type { TransactionData } from './MockData'
+import { PrintService } from './printService'
+import type { TransactionData } from './templates/bluePrint'
 import { NetworkConnection } from './connections/networkConnection'
 import { EmailChannel } from './distribution/emailChannel'
 import { WhatsAppChannel } from './distribution/whatsappChannel'

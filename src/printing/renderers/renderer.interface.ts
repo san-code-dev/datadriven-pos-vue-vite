@@ -1,5 +1,4 @@
-import type { DocumentBlueprint } from '../types'
-
+import type { DocumentBlueprint } from '../templates/bluePrint'
 export interface RenderOptions {
   [key: string]: unknown
 }

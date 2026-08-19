@@ -1,8 +1,66 @@
-import { app, ipcMain, BrowserWindow } from "electron";
+import { ipcMain, dialog, app, BrowserWindow } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import net from "node:net";
 import { spawn } from "node:child_process";
+import { SerialPort } from "serialport";
+import fs from "node:fs/promises";
+function registerSerialHandlers() {
+  ipcMain.handle("list-serial-ports", async () => {
+    try {
+      const ports = await SerialPort.list();
+      return ports.map((p) => ({ path: p.path, manufacturer: p.manufacturer }));
+    } catch (err) {
+      console.error("[Serial] Gagal list port:", err);
+      return [];
+    }
+  });
+  ipcMain.handle("print-raw-serial", async (_, { path: path2, baudRate, rawBuffer }) => {
+    return new Promise((resolve) => {
+      try {
+        const port = new SerialPort({ path: path2, baudRate }, (err) => {
+          if (err) {
+            resolve({ success: false, error: `Gagal membuka port ${path2}: ${err.message}` });
+            return;
+          }
+          port.write(Buffer.from(rawBuffer), (writeErr) => {
+            if (writeErr) {
+              resolve({ success: false, error: writeErr.message });
+              port.close();
+              return;
+            }
+            port.drain(() => {
+              port.close();
+              resolve({ success: true });
+            });
+          });
+        });
+      } catch (error) {
+        resolve({ success: false, error: error.message });
+      }
+    });
+  });
+}
+function registerSaveFileHandler(getWin) {
+  ipcMain.handle("save-file-dialog", async (_, { fileName, fileBuffer, mimeType }) => {
+    const win2 = getWin();
+    if (!win2) return { success: false, error: "Window tidak tersedia." };
+    const filters = mimeType === "application/pdf" ? [{ name: "PDF", extensions: ["pdf"] }] : mimeType.includes("sheet") ? [{ name: "Excel", extensions: ["xlsx"] }] : [{ name: "All Files", extensions: ["*"] }];
+    const { canceled, filePath } = await dialog.showSaveDialog(win2, {
+      defaultPath: fileName,
+      filters
+    });
+    if (canceled || !filePath) {
+      return { success: false, error: "Dibatalkan oleh user." };
+    }
+    try {
+      await fs.writeFile(filePath, Buffer.from(fileBuffer));
+      return { success: true, path: filePath };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+}
 app.commandLine.appendSwitch("enable-web-bluetooth", "true");
 app.commandLine.appendSwitch(
   "enable-experimental-web-platform-features",
@@ -25,7 +83,7 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
       contextIsolation: true,
-      experimentalFeatures: true
+      experimentalFeatures: false
       // Pastikan fitur eksperimental aktif di context web
     }
   });
@@ -226,7 +284,29 @@ ipcMain.handle(
       });
     });
   }
-);
+), ipcMain.handle("render-pdf", async (_, { blueprint, options }) => {
+  try {
+    const htmlRenderer = new HtmlRenderer();
+    const html = await htmlRenderer.render(blueprint);
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox"]
+    });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
+    const pdfUint8Array = await page.pdf({
+      format: (options == null ? void 0 : options.format) || (blueprint.pageSize === "A5" ? "A5" : "A4"),
+      printBackground: (options == null ? void 0 : options.printBackground) ?? true,
+      margin: { top: "10mm", bottom: "10mm", left: "10mm", right: "10mm" }
+    });
+    await browser.close();
+    return { success: true, data: Buffer.from(pdfUint8Array) };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}), // ==========================================
+// 4. APP LIFECYCLE
+// ==========================================
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
@@ -236,7 +316,11 @@ app.on("window-all-closed", () => {
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  registerSerialHandlers();
+  registerSaveFileHandler(() => win);
+});
 export {
   MAIN_DIST,
   RENDERER_DIST,

@@ -68,7 +68,6 @@ export function buildDeliveryOrderBlueprint(
 
   return {
     docType: 'delivery_order',
-    copyType: data.copyType,
     pageSize: 'A5',
     elements,
   }

@@ -8,7 +8,6 @@ export function buildInvoiceBlueprint(
   data: TransactionData,
 ): DocumentBlueprint {
   const elements: DocElement[] = []
-  const isAccounting = data.copyType === 'accounting'
 
   // --- Header toko ---
   elements.push({
@@ -50,43 +49,23 @@ export function buildInvoiceBlueprint(
   elements.push({ type: 'separator' })
 
   // --- Tabel item lengkap ---
-  const cols = isAccounting
-    ? [
-        { width: 8, align: 'left' as const, header: 'SKU' },
-        { width: 34, align: 'left' as const, header: 'Item' },
-        { width: 8, align: 'center' as const, header: 'Qty' },
-        { width: 16, align: 'right' as const, header: 'Harga' },
-        { width: 10, align: 'right' as const, header: 'Pajak' },
-        { width: 24, align: 'right' as const, header: 'Subtotal' },
-      ]
-    : [
-        { width: 46, align: 'left' as const, header: 'Item' },
-        { width: 10, align: 'center' as const, header: 'Qty' },
-        { width: 20, align: 'right' as const, header: 'Harga' },
-        { width: 24, align: 'right' as const, header: 'Subtotal' },
-      ]
+  const cols = [
+    { width: 46, align: 'left' as const, header: 'Item' },
+    { width: 10, align: 'center' as const, header: 'Qty' },
+    { width: 20, align: 'right' as const, header: 'Harga' },
+    { width: 24, align: 'right' as const, header: 'Subtotal' },
+  ]
 
   elements.push({
     type: 'table',
     columns: cols,
     showHeader: true,
-    rows: data.items.map((it) =>
-      isAccounting
-        ? [
-            it.sku || '-',
-            it.name,
-            `${it.qty}`,
-            formatCurrency(it.price),
-            it.tax ? formatCurrency(it.tax) : '-',
-            formatCurrency(it.subtotal),
-          ]
-        : [
-            it.name,
-            `${it.qty}`,
-            formatCurrency(it.price),
-            formatCurrency(it.subtotal),
-          ],
-    ),
+    rows: data.items.map((it) => [
+      it.name,
+      `${it.qty}`,
+      formatCurrency(it.price),
+      formatCurrency(it.subtotal),
+    ]),
   })
   elements.push({ type: 'separator' })
 
@@ -123,7 +102,6 @@ export function buildInvoiceBlueprint(
 
   return {
     docType: 'invoice',
-    copyType: data.copyType,
     pageSize: 'A4',
     elements,
   }

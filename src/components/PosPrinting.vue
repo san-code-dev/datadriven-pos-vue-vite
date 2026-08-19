@@ -5,10 +5,11 @@ import { PrintService } from '@/printing/printService'
 import { DriverConnection } from '@/printing/connections/driverConnection'
 import { NetworkConnection } from '@/printing/connections/networkConnection'
 import { BluetoothConnection } from '@/printing/connections/bluetoothConnection'
-import type { TransactionData, DocType, CopyType, DocElement } from '@/printing/types'
+import type { TransactionData, DocType, DocElement } from '@/printing/types'
 
 const printService = new PrintService()
 const previewHtml = ref<string>('')
+const blobPreviewUrl = ref<string>('')
 
 // ==========================================
 // 1. REFS & STATE (Dinamis Sesuai Tipe Lengkap)
@@ -27,7 +28,6 @@ const isSuccess = ref(true)
 
 // Kontrol Dokumen Dinamis
 const selectedDocType = ref<DocType>('receipt')
-const selectedCopyType = ref<CopyType>('customer')
 
 // Bluetooth States
 const bluetoothConnectionRef = ref<BluetoothConnection | null>(null)
@@ -78,7 +78,6 @@ const qrUrl = ref('https://mywebsite.com/verify/INV-0091')
 // Data terstruktur penuh untuk PrintService
 const transactionData = computed<TransactionData>(() => ({
     docType: selectedDocType.value,
-    copyType: selectedCopyType.value,
     meta: { ...metaInfo.value },
     store: { ...storeInfo.value },
     customer: { ...customerInfo.value },
@@ -112,7 +111,6 @@ const tableConfig = computed(() => {
 const receiptElements = computed<DocElement[]>(() => {
     const elements: DocElement[] = []
     const doc = selectedDocType.value
-    const copy = selectedCopyType.value
 
     // Header Toko / Perusahaan
     elements.push({ type: 'text', text: storeInfo.value.name, align: 'center', bold: true, size: 2 })
@@ -129,7 +127,7 @@ const receiptElements = computed<DocElement[]>(() => {
         report: 'LAPORAN TRANSAKSI',
         label: 'LABEL BARCODE'
     }
-    elements.push({ type: 'text', text: `${docTitles[doc]} (${copy.toUpperCase()})`, align: 'center', bold: true })
+    elements.push({ type: 'text', text: `${docTitles[doc]}`, align: 'center', bold: true })
     elements.push({ type: 'separator', style: 'solid' })
 
     // Meta Informasi (No. Dokumen, Tanggal, Pelanggan, dll)
@@ -204,20 +202,26 @@ const receiptElements = computed<DocElement[]>(() => {
 
     return elements
 })
-
 const updatePreview = async () => {
     try {
-        // Panggil renderToHtml dari PrintService yang otomatis memanggil buildBlueprint & HtmlRenderer
-        previewHtml.value = await printService.renderToHtml(
+        const htmlContent = await printService.renderToHtml(
             transactionData.value,
             paperWidth.value
         )
+        previewHtml.value = htmlContent
+
+        // 1. Revoke URL lama jika ada agar tidak leak memory
+        if (blobPreviewUrl.value) {
+            URL.revokeObjectURL(blobPreviewUrl.value)
+        }
+
+        // 2. Buat Blob URL baru dari HTML string
+        const blob = new Blob([htmlContent], { type: 'text/html' })
+        blobPreviewUrl.value = URL.createObjectURL(blob)
     } catch (err) {
         console.error('[PosPrinting] Gagal merender preview HTML:', err)
-        previewHtml.value = '<div style="color: red; padding: 10px;">Gagal memuat preview</div>'
     }
 }
-
 
 
 // ==========================================
@@ -379,6 +383,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+    if (blobPreviewUrl.value) {
+        URL.revokeObjectURL(blobPreviewUrl.value)
+    }
     window.removeEventListener('keydown', handleGlobalKeyDown)
 })
 </script>
@@ -399,9 +406,6 @@ onUnmounted(() => {
                     <option value="receipt">Struk Kasir (Receipt)</option>
                     <option value="invoice">Faktur (Invoice)</option>
                     <option value="delivery_order">Surat Jalan (DO)</option>
-                    <option value="purchase_order">Purchase Order (PO)</option>
-                    <option value="report">Laporan (Report)</option>
-                    <option value="label">Label Barcode</option>
                 </select>
             </div>
 
@@ -410,80 +414,12 @@ onUnmounted(() => {
                     <Icon icon="mdi:card-account-details-outline" class="w-4 h-4 text-emerald-400" />
                     <span>Salinan (Copy):</span>
                 </div>
-                <select v-model="selectedCopyType"
-                    class="px-2.5 py-1 text-xs rounded-lg border border-slate-700 bg-slate-800 text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                    <option value="customer">Customer</option>
-                    <option value="merchant">Merchant (Toko)</option>
-                    <option value="kitchen">Kitchen (Dapur)</option>
-                    <option value="warehouse">Warehouse (Gudang)</option>
-                    <option value="accounting">Accounting</option>
-                </select>
             </div>
         </div>
 
         <!-- 1. LIVE DYNAMIC RECEIPT PREVIEW -->
 
-        <iframe doc-type="html" class="w-full h-full border-0 bg-black" :srcdoc="previewHtml"
-            title="Receipt Preview"></iframe>
-
-        <!-- <div class="flex-1 w-full overflow-y-auto p-4 md:p-8 flex flex-col items-center justify-start pb-24">
-            <div class="flex items-center gap-2 mb-4 text-[11px] font-semibold tracking-wider uppercase text-slate-400">
-                <Icon icon="mdi:eye-outline" class="w-4 h-4" />
-                <span>Live Preview — {{ selectedDocType.toUpperCase() }} ({{ paperWidth === 32 ? '58mm' : '80mm'
-                    }})</span>
-            </div>
-
-            <div :style="{ width: paperWidth === 32 ? '58mm' : '80mm' }"
-                class="bg-white text-slate-900 shadow-2xl font-mono text-[11px] leading-tight rounded-sm transition-all duration-300 p-4 relative">
-                <template v-for="(el, idx) in receiptElements" :key="idx">
-                    <div v-if="el.type === 'text'" :class="[
-                        'w-full py-0.5',
-                        el.align === 'center' ? 'text-center' : el.align === 'right' ? 'text-right' : 'text-left',
-                        el.bold ? 'font-bold text-slate-900' : 'text-slate-700',
-                        el.size && el.size > 1 ? 'text-xs tracking-tight uppercase font-extrabold' : 'text-[10px]'
-                    ]">
-                        {{ el.text }}
-                    </div>
-
-                    <div v-else-if="el.type === 'separator'"
-                        :class="['my-2', el.style === 'solid' ? 'border-b border-solid border-slate-800' : 'border-b border-dashed border-slate-300']" />
-
-                    <div v-else-if="el.type === 'table'" class="w-full space-y-1 my-1">
-                        <div v-for="(row, rIdx) in el.rows" :key="rIdx" class="flex items-start text-[10px]"
-                            :class="el.bold ? 'font-bold text-slate-900' : 'text-slate-700'">
-                            <div v-for="(cell, cIdx) in row" :key="cIdx" :style="{
-                                width: el.columns?.[cIdx] ? `${(el.columns[cIdx].width / paperWidth) * 100}%` : 'auto'
-                            }" :class="[
-                                'truncate',
-                                el.columns?.[cIdx]?.align === 'center' ? 'text-center' : el.columns?.[cIdx]?.align === 'right' ? 'text-right' : 'text-left'
-                            ]">
-                                {{ cell }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div v-else-if="el.type === 'qrcode'"
-                        class="text-center py-2 flex flex-col items-center justify-center">
-                        <div
-                            class="w-16 h-16 bg-slate-100 border border-slate-300 flex flex-col items-center justify-center text-[7px] text-slate-500 font-sans p-1">
-                            <Icon icon="mdi:qrcode" class="w-10 h-10 text-slate-800" />
-                            <span class="truncate w-full text-center">QR CODE</span>
-                        </div>
-                    </div>
-
-                    <div v-else-if="el.type === 'signature_block'"
-                        class="w-full flex justify-between pt-6 text-center text-[9px]">
-                        <div v-for="(label, sIdx) in el.labels" :key="sIdx" class="flex flex-col items-center flex-1">
-                            <span class="mb-8 font-medium text-slate-700">{{ label }}</span>
-                            <span class="border-b border-slate-400 w-16 inline-block"></span>
-                        </div>
-                    </div>
-
-                    <div v-else-if="el.type === 'space'" :style="{ height: `${(el.lines || 1) * 8}px` }" />
-                </template>
-</div>
-</div> -->
-
+        <iframe class="w-full h-full border-0" :src="blobPreviewUrl" title="Receipt Preview"></iframe>
         <!-- 2. FLOATING ACTION DOCK (FOOTER BAR) -->
         <div
             class="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-between gap-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800">

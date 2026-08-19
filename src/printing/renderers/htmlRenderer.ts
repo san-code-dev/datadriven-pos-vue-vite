@@ -36,7 +36,7 @@ export class HtmlRenderer implements Renderer<string> {
   html, body {
     margin: 0;
     padding: 0;
-    background: #111827; /* Background luar otomatis gelap agar kontras dengan kertas */
+    background: #333; /* Background luar otomatis gelap agar kontras dengan kertas */
     display: flex;
     justify-content: center;
   }

@@ -16,7 +16,6 @@ export function buildReceiptBlueprint(
   paperWidth: 32 | 48 = 32,
 ): DocumentBlueprint {
   const elements: DocElement[] = []
-  const isKitchen = data.copyType === 'kitchen'
 
   const itemCols: TableColumn[] =
     paperWidth === 32
@@ -50,10 +49,6 @@ export function buildReceiptBlueprint(
     bold: true,
     size: 2,
   })
-  if (!isKitchen) {
-    elements.push({ type: 'text', text: data.store.address, align: 'center' })
-    elements.push({ type: 'text', text: data.store.phone, align: 'center' })
-  }
   elements.push({ type: 'separator' })
 
   // --- Metadata ---
@@ -66,77 +61,59 @@ export function buildReceiptBlueprint(
     ],
     rows: [[data.meta.invoiceNo, data.meta.date]],
   })
-  if (isKitchen) {
-    elements.push({
-      type: 'text',
-      text: `KITCHEN ORDER${data.meta.cashier ? ' — ' + data.meta.cashier : ''}`,
-      align: 'center',
-      bold: true,
-    })
-  }
+
   elements.push({ type: 'separator' })
 
   // --- Items ---
-  if (isKitchen) {
-    elements.push({
-      type: 'table',
-      columns: kitchenCols,
-      rows: data.items.map((it) => [
-        it.note ? `${it.name} (${it.note})` : it.name,
-        `${it.qty}x`,
-      ]),
-    })
-  } else {
-    elements.push({
-      type: 'table',
-      columns: itemCols,
-      rows: data.items.map((it) => [
-        it.name,
-        `${it.qty}x`,
-        formatCurrency(it.subtotal),
-      ]),
-    })
-  }
+
+  elements.push({
+    type: 'table',
+    columns: itemCols,
+    rows: data.items.map((it) => [
+      it.name,
+      `${it.qty}x`,
+      formatCurrency(it.subtotal),
+    ]),
+  })
+
   elements.push({ type: 'separator' })
 
   // --- Payment (skip untuk kitchen copy) ---
-  if (!isKitchen) {
-    const rows: string[][] = [
-      ['TOTAL', formatCurrency(data.payment.total)],
-      [labelForMethod(data.payment.method), formatCurrency(data.payment.paid)],
-      ['KEMBALI', formatCurrency(data.payment.change)],
-    ]
-    elements.push({
-      type: 'table',
-      columns: [
-        { width: half, align: 'left' },
-        { width: paperWidth - half, align: 'right' },
-      ],
-      rows,
-      bold: true,
-    })
-    elements.push({ type: 'separator' })
 
-    if (data.qrUrl) {
-      elements.push({ type: 'qrcode', value: data.qrUrl, align: 'center' })
-      elements.push({ type: 'space', lines: 1 })
-    }
+  const rows: string[][] = [
+    ['TOTAL', formatCurrency(data.payment.total)],
+    [labelForMethod(data.payment.method), formatCurrency(data.payment.paid)],
+    ['KEMBALI', formatCurrency(data.payment.change)],
+  ]
+  elements.push({
+    type: 'table',
+    columns: [
+      { width: half, align: 'left' },
+      { width: paperWidth - half, align: 'right' },
+    ],
+    rows,
+    bold: true,
+  })
+  elements.push({ type: 'separator' })
 
-    elements.push({
-      type: 'text',
-      text: 'Terima Kasih Atas Kunjungan Anda!',
-      align: 'center',
-    })
-    elements.push({
-      type: 'text',
-      text: 'Barang yang dibeli tidak dapat ditukar.',
-      align: 'center',
-    })
+  if (data.qrUrl) {
+    elements.push({ type: 'qrcode', value: data.qrUrl, align: 'center' })
+    elements.push({ type: 'space', lines: 1 })
   }
+
+  elements.push({
+    type: 'text',
+    text: 'Terima Kasih Atas Kunjungan Anda!',
+    align: 'center',
+  })
+  elements.push({
+    type: 'text',
+    text: 'Barang yang dibeli tidak dapat ditukar.',
+    align: 'center',
+  })
 
   return {
     docType: 'receipt',
-    copyType: data.copyType,
     pageSize: paperWidth === 32 ? 'thermal58' : 'thermal80',
     elements,
   }

@@ -10,13 +10,6 @@ export type DocType =
   | 'report' // laporan (sales, stock opname, dst)
   | 'label' // label barcode/SKU
 
-export type CopyType =
-  | 'customer'
-  | 'merchant'
-  | 'kitchen'
-  | 'warehouse'
-  | 'accounting'
-
 export interface StoreInfo {
   name: string
   address: string
@@ -54,7 +47,6 @@ export interface PaymentInfo {
 
 export interface TransactionData {
   docType: DocType
-  copyType: CopyType
   meta: {
     invoiceNo: string
     date: string
@@ -122,7 +114,6 @@ export type DocElement =
 
 export interface DocumentBlueprint {
   docType: DocType
-  copyType: CopyType
   pageSize?: 'thermal58' | 'thermal80' | 'A4' | 'A5' | 'label'
   elements: DocElement[]
 }

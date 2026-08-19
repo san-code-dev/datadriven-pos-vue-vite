@@ -18,7 +18,7 @@ export function useRealtimeSync(
 
     // Fungsi internal untuk mendaftarkan listener
     const register = () => {
-      // console.log(`[Socket]⚡ Mendaftarkan listener untuk event: ${eventName}`)
+      // console.log(`[Socket]⚡ Listening.. to: ${eventName}`)
 
       // Bersihkan listener lama untuk menghindari duplikasi event
       socket.off(eventName)
@@ -76,6 +76,7 @@ export function useRealtimeSync(
     const key = typeof formKey === 'string' ? formKey : formKey?.value || ''
     if (socket && key) {
       socket.off(`realtime_update:${key}`)
+      // console.log(`[Socket]⚡ Stop listening to: ${key}`)
     }
   })
 }

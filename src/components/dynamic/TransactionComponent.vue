@@ -448,7 +448,7 @@ const selectDialogSelectData = async (selectedRow: any, context: string, fieldKe
   }
 
   if (context === 'history') {
-    router.push('/tes')
+    router.push('posprint')
   }
   closeSelectDialog()
 }

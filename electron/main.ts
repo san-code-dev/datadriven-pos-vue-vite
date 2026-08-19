@@ -4,7 +4,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import net from 'node:net'
 import { spawn } from 'node:child_process'
-
+import { registerSerialHandlers } from './serialHandler'
+import { registerSaveFileHandler } from './saveFileHandler'
 // ==========================================
 // 1. AKTIFKAN EXPERIMENTAL & BLUETOOTH FLAGS
 // ==========================================
@@ -34,7 +35,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      experimentalFeatures: true, // Pastikan fitur eksperimental aktif di context web
+      experimentalFeatures: false, // Pastikan fitur eksperimental aktif di context web
     },
   })
 
@@ -273,20 +274,50 @@ ipcMain.handle(
       })
     })
   },
-)
+),
+  ipcMain.handle('render-pdf', async (_, { blueprint, options }) => {
+    try {
+      const htmlRenderer = new HtmlRenderer()
+      const html = await htmlRenderer.render(blueprint)
 
-// ==========================================
-// 4. APP LIFECYCLE
-// ==========================================
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit()
-    win = null
-  }
-})
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox'],
+      })
+
+      const page = await browser.newPage()
+      await page.setContent(html, { waitUntil: 'networkidle0' })
+
+      const pdfUint8Array = await page.pdf({
+        format: options?.format || (blueprint.pageSize === 'A5' ? 'A5' : 'A4'),
+        printBackground: options?.printBackground ?? true,
+        margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+      })
+
+      await browser.close()
+
+      // Kembalikan sebagai Array/Buffer yang bisa diterima IPC
+      return { success: true, data: Buffer.from(pdfUint8Array) }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  }),
+  // ==========================================
+  // 4. APP LIFECYCLE
+  // ==========================================
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit()
+      win = null
+    }
+  })
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow()
 })
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  createWindow()
+  registerSerialHandlers()
+  registerSaveFileHandler(() => win)
+})

@@ -1,14 +1,17 @@
 // electron/preload.ts
-const { contextBridge, ipcRenderer } = require('electron')
+import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Ambil list printer terpasang di OS
+  // --- yang sudah ada ---
   getPrinters: () => ipcRenderer.invoke('get-printers'),
+  printRawDriver: (args: any) => ipcRenderer.invoke('print-raw-driver', args),
+  printRawNetwork: (args: any) => ipcRenderer.invoke('print-raw-network', args),
 
-  // Cetak Raw ESC/POS lewat Driver OS
-  printRawDriver: (payload) => ipcRenderer.invoke('print-raw-driver', payload),
+  // --- BARU: tambahkan ini ---
+  printRawSerial: (args: any) => ipcRenderer.invoke('print-raw-serial', args),
+  listSerialPorts: () => ipcRenderer.invoke('list-serial-ports'),
+  saveFileDialog: (args: any) => ipcRenderer.invoke('save-file-dialog', args),
 
-  // Cetak Raw ESC/POS lewat LAN/Network IP
-  printRawNetwork: (payload) =>
-    ipcRenderer.invoke('print-raw-network', payload),
+  renderPdf: (data: any) => ipcRenderer.invoke('render-pdf', data),
+  renderXlsx: (data: any) => ipcRenderer.invoke('render-xlsx', data),
 })

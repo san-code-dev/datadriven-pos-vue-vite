@@ -21,7 +21,7 @@
       "~~/*": ["*"]
     },
     "moduleResolution": "bundler",
-    "types": ["vite-plugin-vue-layouts/client"],
+    "types": ["node","vite-plugin-vue-layouts/client"],
     "allowJs": true,
     "strict": false
   }

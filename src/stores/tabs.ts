@@ -16,6 +16,7 @@ export const useTabStore = defineStore('tabs', {
           route: '/dashboard',
         },
         gridsConfig: [], // Struktur: [{ gridKey, coordinate: {x, y}, column: [{ key, size }] }]
+        refreshKey: 0,
       },
     ],
   }),
@@ -32,6 +33,7 @@ export const useTabStore = defineStore('tabs', {
           apiResponse,
           currentMenu,
           gridsConfig: [],
+          refreshKey: 0,
         })
       } else {
         if (apiResponse) existingTab.apiResponse = apiResponse

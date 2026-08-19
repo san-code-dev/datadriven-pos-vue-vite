@@ -36,7 +36,7 @@ const flatMenus = computed(() => {
     if (!authStore.menus) return []
     const extraMenus = [
         { key: 'dashboard', label: 'Dashboard', route: '/dashboard', menuCategory: 'General', icon: 'mdi:view-dashboard-outline' },
-        { key: 'posprint', label: 'Tes print', route: '/posprint', menuCategory: 'General', icon: 'mdi:printer-outline' },
+        { key: 'print', label: 'Tes print', route: '/print', menuCategory: 'General', icon: 'mdi:printer-outline' },
         { key: 'setting', label: 'Settings', route: '/setting', menuCategory: 'General', icon: 'mdi:cog-outline' }
     ]
     return [...extraMenus, ...authStore.menus]
@@ -234,14 +234,14 @@ onUnmounted(() => {
                 </div>
 
                 <!-- POS Print -->
-                <div class="relative group" @click="router.push('/posprint')">
+                <div class="relative group" @click="router.push('/print')">
                     <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative transition-all duration-200 gap-3"
                         :class="[
-                            route.path === '/posprint'
+                            route.path === '/print'
                                 ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
                                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
                         ]">
-                        <div v-if="route.path === '/posprint'"
+                        <div v-if="route.path === '/print'"
                             class="absolute left-0 top-2.5 bottom-2.5 w-1 bg-emerald-500 dark:bg-emerald-400 rounded-r">
                         </div>
                         <Icon icon="mdi:printer-outline" class="text-xl flex-shrink-0" />

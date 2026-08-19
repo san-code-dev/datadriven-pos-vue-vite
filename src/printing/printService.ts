@@ -1,11 +1,6 @@
-import type {
-  TransactionData,
-  OperationResult,
-  DocumentBlueprint,
-} from './types'
-
-// Templates
-import { invoiceBluePrint } from './templates/invoiceTemplate'
+import type { TransactionData } from '@/utils/mockData'
+import type { DocumentBlueprint } from './templates/bluePrint'
+import { invoiceBluePrint } from './templates/bluePrint'
 
 // Renderers
 import { EscPosRenderer } from './renderers/escposRenderer'
@@ -29,17 +24,15 @@ const htmlRenderer = new HtmlRenderer()
 const xlsxRenderer = new XlsxRenderer()
 const zplRenderer = new ZplRenderer()
 
-/**
- * ==========================================
- * PRINT SERVICE — Orchestrator 5 Layer
- * ==========================================
- *
- *   Data Layer          → TransactionData (input)
- *   Template Layer       → buildXxxBlueprint()
- *   Renderer Layer        → EscPos / Pdf / Html / Xlsx / Zpl
- *   Connection Layer       → kirim ke hardware fisik
- *   Distribution Layer      → kirim ke channel digital
- */
+// ==========================================
+// TYPES — Hasil operasi Service
+// ==========================================
+export interface OperationResult {
+  success: boolean
+  error?: string
+  meta?: Record<string, unknown>
+}
+
 export class PrintService {
   // ---------- 1+2. Data → Template ----------
   private buildBlueprint(
@@ -121,7 +114,8 @@ export class PrintService {
 // CONTOH PEMAKAIAN
 // ==========================================
 /*
-import { PrintService } from './printService'
+import { PrintService } from './PrintService'
+import type { TransactionData } from './MockData'
 import { NetworkConnection } from './connections/networkConnection'
 import { EmailChannel } from './distribution/emailChannel'
 import { WhatsAppChannel } from './distribution/whatsappChannel'
@@ -130,7 +124,6 @@ const printService = new PrintService()
 
 const transaction: TransactionData = {
     docType: 'receipt',
-    copyType: 'customer',
     meta: { invoiceNo: 'INV/2026/08/0091', date: '15/08/26 10:00' },
     store: { name: 'KASIR POS', address: 'Jl. Pahlawan No. 45, Surabaya', phone: '(031) 555-1234' },
     items: [{ name: 'Kopi Espresso', qty: 1, price: 15000, subtotal: 15000 }],

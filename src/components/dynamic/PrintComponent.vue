@@ -5,7 +5,7 @@ import { PrintService } from '@/printing/printService'
 import { DriverConnection } from '@/printing/connections/driverConnection'
 import { NetworkConnection } from '@/printing/connections/networkConnection'
 import { BluetoothConnection } from '@/printing/connections/bluetoothConnection'
-import type { DocType } from '@/printing/types'
+import type { DocType } from '@/utils/mockData'
 import { docTypeList, buildTransactionData } from '@/utils/mockData'
 
 const printService = new PrintService()
@@ -35,7 +35,7 @@ const bluetoothConnectionRef = ref<BluetoothConnection | null>(null)
 const bluetoothDeviceName = ref<string>('')
 const isScanningBluetooth = ref(false)
 
-// Data terstruktur untuk PrintService (Diambil dari modul mockData)
+// Data terstruktur untuk PrintService (Diambil dari modul MockData)
 const transactionData = computed(() => buildTransactionData(selectedDocType.value))
 
 const updatePreview = async () => {
@@ -374,7 +374,7 @@ onUnmounted(() => {
                                     class="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950/50 flex items-center gap-2">
                                     <Icon icon="mdi:bluetooth-connect" class="w-4 h-4 text-emerald-500 shrink-0" />
                                     <span class="truncate font-medium">{{ bluetoothDeviceName || 'no device'
-                                    }}</span>
+                                        }}</span>
                                 </div>
                                 <button type="button" :disabled="isScanningBluetooth"
                                     class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1 shrink-0 cursor-pointer"

@@ -1,17 +1,88 @@
-import type { DocType, TransactionData } from '@/printing/types'
+// ==========================================
+// TYPES — Data Layer (Transaction & entitas terkait)
+// ==========================================
+
+export type DocType =
+  | 'receipt' // struk kasir
+  | 'invoice' // faktur A4/A5
+  | 'delivery_order' // surat jalan
+  | 'purchase_order' // PO ke supplier
+  | 'report' // laporan (sales, stock opname, dst)
+  | 'label' // label barcode/SKU
+
+export interface StoreInfo {
+  name: string
+  address: string
+  phone: string
+  npwp?: string
+  logoUrl?: string
+}
+
+export interface CustomerInfo {
+  name: string
+  phone?: string
+  address?: string
+  email?: string
+}
+
+export interface TransactionItem {
+  sku?: string
+  name: string
+  qty: number
+  price: number
+  subtotal: number
+  note?: string
+  tax?: number
+}
+
+export interface PaymentInfo {
+  subtotal: number
+  discount?: number
+  tax?: number
+  total: number
+  paid: number
+  change: number
+  method: 'cash' | 'debit' | 'credit' | 'qris' | 'transfer' | 'other'
+}
+
+export interface TransactionData {
+  docType: DocType
+  meta: {
+    invoiceNo: string
+    date: string
+    cashier?: string
+    dueDate?: string // untuk invoice B2B
+    reference?: string // no. PO / SO terkait
+  }
+  store: StoreInfo
+  customer?: CustomerInfo
+  items: TransactionItem[]
+  payment: PaymentInfo
+  qrUrl?: string
+  signature?: {
+    preparedBy?: string
+    approvedBy?: string
+    receivedBy?: string
+  }
+  extra?: Record<string, unknown>
+}
+
+// ==========================================
+// MOCK DATA
+// ==========================================
 
 export const docTypeList: Array<{ value: DocType; label: string }> = [
   { value: 'invoice', label: 'Faktur (Invoice)' },
 ]
 
-export const storeInfo = {
+export const storeInfo: StoreInfo = {
   name: 'NOTA KASIR',
   address: 'Jl. Pahlawan No. 45, Surabaya',
   phone: 'Telp: (031) 555-1234',
   npwp: '01.234.567.8-901.000',
 }
 
-export const customerInfo = {
+export const customerInfo: CustomerInfo = {
   name: 'PT Maju Sejahtera Abadi',
   phone: '081234567890',
   address: 'Jl. Ahmad Yani No. 88, Surabaya',
@@ -26,7 +97,7 @@ export const metaInfo = {
   reference: 'PO-REF-9921',
 }
 
-export const items = [
+export const items: TransactionItem[] = [
   {
     sku: 'BRD-001',
     name: 'Kopi Espresso Blend (1kg)',
@@ -53,14 +124,14 @@ export const items = [
   },
 ]
 
-export const paymentSummary = {
+export const paymentSummary: PaymentInfo = {
   subtotal: 275000,
   discount: 10000,
   tax: 26500,
   total: 291500,
   paid: 300000,
   change: 8500,
-  method: 'transfer' as const,
+  method: 'transfer',
 }
 
 export const qrUrl = 'https://mywebsite.com/verify/INV-0091'

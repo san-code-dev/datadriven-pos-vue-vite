@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import PosPrinting from '@/components/PosPrinting.vue';
+import PrintComponent from '@/components/dynamic/PrintComponent.vue'; '@/components/dynamic/PrintComponent.vue';
 
 </script>
 
@@ -8,7 +8,7 @@ import PosPrinting from '@/components/PosPrinting.vue';
         <Menu />
 
         <div class="flex-1 ">
-            <PosPrinting />
+            <PrintComponent />
         </div>
     </div>
 </template>

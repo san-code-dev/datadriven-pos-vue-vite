@@ -76,7 +76,7 @@ export const docTypeList: Array<{ value: DocType; label: string }> = [
 ]
 
 export const storeInfo: StoreInfo = {
-  name: 'NOTA KASIR',
+  name: 'Faktur Penjualan',
   address: 'Jl. Pahlawan No. 45, Surabaya',
   phone: 'Telp: (031) 555-1234',
   npwp: '01.234.567.8-901.000',

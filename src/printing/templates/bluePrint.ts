@@ -1,4 +1,4 @@
-import type { DocType, TransactionData } from '@/utils/mockData'
+import type { TransactionData } from '@/utils/mockData'
 
 // ==========================================
 // TYPES — Blueprint (output Template Layer)
@@ -46,7 +46,6 @@ export type DocElement =
   | { type: 'signature_block'; labels: string[] }
 
 export interface DocumentBlueprint {
-  docType: DocType
   pageSize?: 'thermal58' | 'thermal80' | 'A4' | 'A5' | 'label'
   elements: DocElement[]
 }
@@ -150,7 +149,6 @@ export function invoiceBluePrint(data: TransactionData): DocumentBlueprint {
   }
 
   return {
-    docType: 'invoice',
     pageSize: 'A4',
     elements,
   }

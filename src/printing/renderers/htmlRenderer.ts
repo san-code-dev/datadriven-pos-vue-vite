@@ -39,6 +39,7 @@ export class HtmlRenderer implements Renderer<string> {
     background: #333; /* Background luar otomatis gelap agar kontras dengan kertas */
     display: flex;
     justify-content: center;
+    items-align:center;
   }
   /* Kertas Struk / Dokumen */
   .document-sheet {

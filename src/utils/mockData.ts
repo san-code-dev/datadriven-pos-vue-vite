@@ -2,14 +2,6 @@
 // TYPES — Data Layer (Transaction & entitas terkait)
 // ==========================================
 
-export type DocType =
-  | 'receipt' // struk kasir
-  | 'invoice' // faktur A4/A5
-  | 'delivery_order' // surat jalan
-  | 'purchase_order' // PO ke supplier
-  | 'report' // laporan (sales, stock opname, dst)
-  | 'label' // label barcode/SKU
-
 export interface StoreInfo {
   name: string
   address: string
@@ -46,7 +38,6 @@ export interface PaymentInfo {
 }
 
 export interface TransactionData {
-  docType: DocType
   meta: {
     invoiceNo: string
     date: string
@@ -71,12 +62,8 @@ export interface TransactionData {
 // MOCK DATA
 // ==========================================
 
-export const docTypeList: Array<{ value: DocType; label: string }> = [
-  { value: 'invoice', label: 'Faktur (Invoice)' },
-]
-
 export const storeInfo: StoreInfo = {
-  name: 'Faktur Penjualan',
+  name: 'FAKTUR PENJUALAN',
   address: 'Jl. Pahlawan No. 45, Surabaya',
   phone: 'Telp: (031) 555-1234',
   npwp: '01.234.567.8-901.000',
@@ -136,8 +123,7 @@ export const paymentSummary: PaymentInfo = {
 
 export const qrUrl = 'https://mywebsite.com/verify/INV-0091'
 
-export const buildTransactionData = (docType: DocType): TransactionData => ({
-  docType,
+export const buildTransactionData = (): TransactionData => ({
   meta: { ...metaInfo },
   store: { ...storeInfo },
   customer: { ...customerInfo },

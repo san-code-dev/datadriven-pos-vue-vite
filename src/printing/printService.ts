@@ -33,6 +33,17 @@ export interface OperationResult {
   meta?: Record<string, unknown>
 }
 
+/**
+ * ==========================================
+ * PRINT SERVICE — Orchestrator 5 Layer
+ * ==========================================
+ *
+ *   Data Layer          → TransactionData (input, lihat MockData.ts)
+ *   Template Layer       → buildXxxBlueprint() (lihat BluePrint.ts)
+ *   Renderer Layer        → EscPos / Pdf / Html / Xlsx / Zpl
+ *   Connection Layer       → kirim ke hardware fisik
+ *   Distribution Layer      → kirim ke channel digital
+ */
 export class PrintService {
   // ---------- 1+2. Data → Template ----------
   private buildBlueprint(
@@ -123,7 +134,6 @@ import { WhatsAppChannel } from './distribution/whatsappChannel'
 const printService = new PrintService()
 
 const transaction: TransactionData = {
-    docType: 'receipt',
     meta: { invoiceNo: 'INV/2026/08/0091', date: '15/08/26 10:00' },
     store: { name: 'KASIR POS', address: 'Jl. Pahlawan No. 45, Surabaya', phone: '(031) 555-1234' },
     items: [{ name: 'Kopi Espresso', qty: 1, price: 15000, subtotal: 15000 }],
@@ -141,7 +151,7 @@ const emailChannel = new EmailChannel({
     fromAddress: 'toko@gmail.com', fromName: 'Kasir POS',
 })
 await printService.distribute(
-    { ...transaction, docType: 'invoice' },
+    transaction,
     emailChannel,
     { recipient: 'customer@email.com', subject: 'Invoice Pembelian' }
 )
@@ -149,7 +159,7 @@ await printService.distribute(
 // 3. Kirim link WA (mode deeplink)
 const waChannel = new WhatsAppChannel({ mode: 'deeplink' })
 const waResult = await printService.distribute(
-    { ...transaction, docType: 'invoice' },
+    transaction,
     waChannel,
     { recipient: '08123456789', message: 'Terima kasih sudah berbelanja!' }
 )

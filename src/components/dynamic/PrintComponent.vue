@@ -5,8 +5,7 @@ import { PrintService } from '@/printing/printService'
 import { DriverConnection } from '@/printing/connections/driverConnection'
 import { NetworkConnection } from '@/printing/connections/networkConnection'
 import { BluetoothConnection } from '@/printing/connections/bluetoothConnection'
-import type { DocType } from '@/utils/mockData'
-import { docTypeList, buildTransactionData } from '@/utils/mockData'
+import { buildTransactionData } from '@/utils/mockData'
 
 const printService = new PrintService()
 const previewHtml = ref<string>('')
@@ -27,16 +26,13 @@ const isLoadingPrinters = ref(false)
 const statusMessage = ref('')
 const isSuccess = ref(true)
 
-// Kontrol Dokumen
-const selectedDocType = ref<DocType>('invoice')
-
 // Bluetooth States
 const bluetoothConnectionRef = ref<BluetoothConnection | null>(null)
 const bluetoothDeviceName = ref<string>('')
 const isScanningBluetooth = ref(false)
 
 // Data terstruktur untuk PrintService (Diambil dari modul MockData)
-const transactionData = computed(() => buildTransactionData(selectedDocType.value))
+const transactionData = computed(() => buildTransactionData())
 
 const updatePreview = async () => {
     try {
@@ -231,21 +227,8 @@ onUnmounted(() => {
             class="flex flex-wrap items-center justify-between gap-3 bg-slate-900/90 border-b border-slate-800 px-4 py-2.5 z-20">
             <div class="flex items-center gap-3">
                 <div class="flex items-center gap-1.5 text-xs text-slate-300 font-medium">
-                    <Icon icon="mdi:file-document-outline" class="w-4 h-4 text-emerald-400" />
-                    <span>Jenis Dokumen:</span>
-                </div>
-                <select v-model="selectedDocType"
-                    class="px-2.5 py-1 text-xs rounded-lg border border-slate-700 bg-slate-800 text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                    <option v-for="doc in docTypeList" :key="doc.value" :value="doc.value">
-                        {{ doc.label }}
-                    </option>
-                </select>
-            </div>
-
-            <div class="flex items-center gap-3">
-                <div class="flex items-center gap-1.5 text-xs text-slate-300 font-medium">
                     <Icon icon="mdi:card-account-details-outline" class="w-4 h-4 text-emerald-400" />
-                    <span>Salinan (Copy):</span>
+                    <span>Information</span>
                 </div>
             </div>
         </div>
@@ -299,8 +282,6 @@ onUnmounted(() => {
                         <div>
                             <h3 class="text-xs font-bold text-slate-800 dark:text-slate-100">Pilih Perangkat & Transmisi
                             </h3>
-                            <p class="text-[10px] text-slate-400 dark:text-slate-500">Mode: <span
-                                    class="text-emerald-400 font-semibold uppercase">{{ selectedDocType }}</span></p>
                         </div>
                     </div>
                     <button type="button" class="text-slate-400 hover:text-slate-200 p-1 rounded-lg"

@@ -1,4 +1,6 @@
 import type { TransactionData } from '@/utils/mockData'
+import { useNumberFormat } from '@/composables/number-format'
+const numberFormat = useNumberFormat()
 
 // Re-export TransactionData supaya file lain (mis. printService) cukup
 // bergantung pada bluePrint.ts, tanpa perlu tahu/impor mockData secara langsung.
@@ -115,21 +117,24 @@ export function invoiceBluePrint(data: TransactionData): DocumentBlueprint {
     rows: data.items.map((it) => [
       it.name,
       `${it.qty}`,
-      formatCurrency(it.price),
-      formatCurrency(it.subtotal),
+      numberFormat.formatCurrency(it.price),
+      numberFormat.formatCurrency(it.subtotal),
     ]),
   })
   elements.push({ type: 'separator' })
 
   // --- Ringkasan pembayaran ---
   const summaryRows: string[][] = [
-    ['Subtotal', formatCurrency(data.payment.subtotal)],
+    ['Subtotal', numberFormat.formatCurrency(data.payment.subtotal)],
   ]
   if (data.payment.discount)
-    summaryRows.push(['Diskon', `-${formatCurrency(data.payment.discount)}`])
+    summaryRows.push([
+      'Diskon',
+      `-${numberFormat.formatCurrency(data.payment.discount)}`,
+    ])
   if (data.payment.tax)
-    summaryRows.push(['PPN', formatCurrency(data.payment.tax)])
-  summaryRows.push(['TOTAL', formatCurrency(data.payment.total)])
+    summaryRows.push(['PPN', numberFormat.formatCurrency(data.payment.tax)])
+  summaryRows.push(['TOTAL', numberFormat.formatCurrency(data.payment.total)])
 
   elements.push({
     type: 'table',
@@ -156,8 +161,4 @@ export function invoiceBluePrint(data: TransactionData): DocumentBlueprint {
     pageSize: 'A4',
     elements,
   }
-}
-
-function formatCurrency(n: number): string {
-  return `Rp ${n.toLocaleString('id-ID')}`
 }

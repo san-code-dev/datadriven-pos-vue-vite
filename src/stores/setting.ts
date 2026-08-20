@@ -2,13 +2,13 @@ import { numeric } from 'mathjs'
 import { defineStore } from 'pinia'
 
 export const useSettingsStore = defineStore('settings', {
-    state: () => ({
-        locale: 'id-ID',
-        currency: 'IDR',
-        decimals: 0,
-        numeric: 0,
-        // Tambahkan ini: default true atau false sesuai keinginanmu
-    }),
+  state: () => ({
+    locale: 'id-ID',
+    currency: 'IDR',
+    decimals: 0,
+    numeric: 0,
+    // Tambahkan ini: default true atau false sesuai keinginanmu
+  }),
 
-    persist: true, // Pengaturan sistem ini selalu tersimpan otomatis
+  persist: true, // Pengaturan sistem ini selalu tersimpan otomatis
 })

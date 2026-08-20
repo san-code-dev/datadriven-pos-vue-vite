@@ -1,169 +1,46 @@
-import type { TransactionData, DocumentBlueprint } from './templates/bluePrint'
-import { invoiceBluePrint } from './templates/bluePrint'
-
-// Renderers
+// src/printing/printService.ts
+import type { DocumentBlueprint, OperationResult } from './types'
 import { EscPosRenderer } from './renderers/escposRenderer'
 import { HtmlRenderer } from './renderers/htmlRenderer'
 import { XlsxRenderer } from './renderers/xlsxRenderer'
 import { ZplRenderer } from './renderers/zplRenderer'
-
-// Connections
 import type { PrintConnection } from './connections/connection.interface'
-
-// Distribution
-import type {
-  DistributionChannel,
-  DistributionPayload,
-  DistributionTarget,
-} from './distribution/distribution.interface'
-import type { Buffer } from 'exceljs'
 
 const escposRenderer = new EscPosRenderer()
 const htmlRenderer = new HtmlRenderer()
 const xlsxRenderer = new XlsxRenderer()
 const zplRenderer = new ZplRenderer()
 
-// ==========================================
-// TYPES — Hasil operasi Service
-// ==========================================
-export interface OperationResult {
-  success: boolean
-  error?: string
-  meta?: Record<string, unknown>
-}
-
-/**
- * ==========================================
- * PRINT SERVICE — Orchestrator 5 Layer
- * ==========================================
- *
- *   Data Layer          → TransactionData (lihat mockData.ts)
- *   Template Layer       → buildXxxBlueprint() (lihat bluePrint.ts, yang me-load mockData.ts)
- *   Renderer Layer        → EscPos / Pdf / Html / Xlsx / Zpl
- *   Connection Layer       → kirim ke hardware fisik
- *   Distribution Layer      → kirim ke channel digital
- *
- * PrintService sengaja TIDAK meng-impor mockData secara langsung —
- * TransactionData didapat lewat re-export dari bluePrint.ts.
- */
 export class PrintService {
-  // ---------- 1+2. Data → Template ----------
-  private buildBlueprint(
-    data: TransactionData,
-    paperWidth: 32 | 48 = 32,
-  ): DocumentBlueprint {
-    return invoiceBluePrint(data)
-  }
-
-  // ---------- 3. Cetak ke printer fisik (thermal/label) ----------
   async printToHardware(
-    data: TransactionData,
+    blueprint: DocumentBlueprint,
     connection: PrintConnection,
-    options: { paperWidth?: 32 | 48; format?: 'escpos' | 'zpl' } = {},
   ): Promise<OperationResult> {
-    const blueprint = this.buildBlueprint(data, options.paperWidth ?? 32)
+    // Tentukan lebar kertas (32 kolom = 58mm, 48 kolom = 80mm) berdasarkan blueprint API
+    const paperWidth = blueprint.pageSize === 'thermal80' ? 48 : 32
+    const isZpl =
+      blueprint.pageSize === 'label' || blueprint.docType === 'label'
 
-    const buffer =
-      options.format === 'zpl'
-        ? await zplRenderer.render(blueprint)
-        : await escposRenderer.render(blueprint, {
-            width: options.paperWidth ?? 32,
-          })
+    const buffer = isZpl
+      ? await zplRenderer.render(blueprint)
+      : await escposRenderer.render(blueprint, { width: paperWidth })
 
-    return connection.send(buffer)
+    return connection.send(
+      typeof buffer === 'string' ? new TextEncoder().encode(buffer) : buffer,
+    )
   }
 
-  // ---------- Render dokumen jadi PDF (untuk invoice/surat jalan/preview) ----------
-  async renderToPdf(data: TransactionData): Promise<Uint8Array> {
-    const blueprint = this.buildBlueprint(data)
-    const result = await (window as any).electronAPI.renderPdf(blueprint)
-
-    if (!result.success) throw new Error(result.error)
-
-    return new Uint8Array(result.data)
-  }
-
-  // ---------- Render dokumen jadi HTML (preview UI) ----------
-  async renderToHtml(
-    data: TransactionData,
-    paperWidth: 32 | 48 = 32,
-  ): Promise<string> {
-    const blueprint = this.buildBlueprint(data, paperWidth)
+  async renderToHtml(blueprint: DocumentBlueprint): Promise<string> {
     return htmlRenderer.render(blueprint)
   }
 
-  // ---------- Render dokumen jadi XLSX (laporan/export data) ----------
-  async renderToXlsx(data: TransactionData): Promise<Buffer> {
-    const blueprint = this.buildBlueprint(data)
+  async renderToPdf(blueprint: DocumentBlueprint): Promise<Uint8Array> {
+    const result = await (window as any).electronAPI.renderPdf(blueprint)
+    if (!result.success) throw new Error(result.error)
+    return new Uint8Array(result.data)
+  }
+
+  async renderToXlsx(blueprint: DocumentBlueprint): Promise<any> {
     return xlsxRenderer.render(blueprint)
   }
-
-  // ---------- 5. Distribusi ke channel digital ----------
-  async distribute(
-    data: TransactionData,
-    channel: DistributionChannel,
-    target: DistributionTarget,
-    format: 'pdf' | 'xlsx' = 'pdf',
-  ): Promise<OperationResult> {
-    const fileBuffer =
-      format === 'pdf'
-        ? await this.renderToPdf(data)
-        : await this.renderToXlsx(data)
-
-    const payload: DistributionPayload = {
-      fileBuffer,
-      fileName: `${data.meta.invoiceNo.replace(/[/\\]/g, '-')}.${format}`,
-      mimeType:
-        format === 'pdf'
-          ? 'application/pdf'
-          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    }
-
-    return channel.send(payload, target)
-  }
 }
-
-// ==========================================
-// CONTOH PEMAKAIAN
-// ==========================================
-/*
-import { PrintService } from './printService'
-import type { TransactionData } from './templates/bluePrint'
-import { NetworkConnection } from './connections/networkConnection'
-import { EmailChannel } from './distribution/emailChannel'
-import { WhatsAppChannel } from './distribution/whatsappChannel'
-
-const printService = new PrintService()
-
-const transaction: TransactionData = {
-    meta: { invoiceNo: 'INV/2026/08/0091', date: '15/08/26 10:00' },
-    store: { name: 'KASIR POS', address: 'Jl. Pahlawan No. 45, Surabaya', phone: '(031) 555-1234' },
-    items: [{ name: 'Kopi Espresso', qty: 1, price: 15000, subtotal: 15000 }],
-    payment: { subtotal: 15000, total: 15000, paid: 20000, change: 5000, method: 'cash' },
-    qrUrl: 'https://mywebsite.com/invoice/INV-9982',
-}
-
-// 1. Cetak fisik ke printer LAN
-await printService.printToHardware(transaction, new NetworkConnection('192.168.1.200', 9100))
-
-// 2. Kirim invoice PDF via email
-const emailChannel = new EmailChannel({
-    host: 'smtp.gmail.com', port: 587, secure: false,
-    auth: { user: 'toko@gmail.com', pass: 'app-password' },
-    fromAddress: 'toko@gmail.com', fromName: 'Kasir POS',
-})
-await printService.distribute(
-    transaction,
-    emailChannel,
-    { recipient: 'customer@email.com', subject: 'Invoice Pembelian' }
-)
-
-// 3. Kirim link WA (mode deeplink)
-const waChannel = new WhatsAppChannel({ mode: 'deeplink' })
-const waResult = await printService.distribute(
-    transaction,
-    waChannel,
-    { recipient: '08123456789', message: 'Terima kasih sudah berbelanja!' }
-)
-console.log(waResult.meta?.waLink) // buka link ini di browser/window baru
-*/

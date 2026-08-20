@@ -5,7 +5,14 @@ import { PrintService } from '@/printing/printService'
 import { DriverConnection } from '@/printing/connections/driverConnection'
 import { NetworkConnection } from '@/printing/connections/networkConnection'
 import { BluetoothConnection } from '@/printing/connections/bluetoothConnection'
-import { buildTransactionData } from '@/utils/mockData'
+import type { DocumentBlueprint } from '@/printing/types'
+
+// ==========================================
+// PROPS (Data berasal dari Parent)
+// ==========================================
+const props = defineProps<{
+    blueprint: DocumentBlueprint
+}>()
 
 const printService = new PrintService()
 const previewHtml = ref<string>('')
@@ -31,14 +38,14 @@ const bluetoothConnectionRef = ref<BluetoothConnection | null>(null)
 const bluetoothDeviceName = ref<string>('')
 const isScanningBluetooth = ref(false)
 
-// Data terstruktur untuk PrintService (Diambil dari modul MockData)
-const transactionData = computed(() => buildTransactionData())
-
+// ==========================================
+// 2. RENDER PREVIEW (Dari Blueprint)
+// ==========================================
 const updatePreview = async () => {
+    if (!props.blueprint) return
     try {
         const htmlContent = await printService.renderToHtml(
-            transactionData.value,
-            paperWidth.value
+            props.blueprint,
         )
         previewHtml.value = htmlContent
 
@@ -86,7 +93,11 @@ const statusAlertClass = computed(() =>
 // 4. METHODS & HARDWARE HANDLERS
 // ==========================================
 const loadPrinters = async () => {
-    if (!window.electronAPI) return
+    // Fungsi Electron Asli Milik Anda dipertahankan
+    if (!(window as any).electronAPI) {
+        console.warn('[PosPrinting] Electron API tidak terdeteksi.')
+        return
+    }
     isLoadingPrinters.value = true
     try {
         printerList.value = await DriverConnection.listPrinters()
@@ -124,7 +135,7 @@ const scanBluetoothDevice = async () => {
     statusMessage.value = 'Mencari perangkat Bluetooth...'
 
     const conn = new BluetoothConnection()
-    const result = await conn.scanAndPair()
+    const result = await conn.scanAndPair() // Fungsi native BT milik Anda dipertahankan
 
     if (result.success) {
         bluetoothConnectionRef.value = conn
@@ -139,7 +150,7 @@ const scanBluetoothDevice = async () => {
 }
 
 const confirmAndPrint = async () => {
-    if (isPrintDisabled.value) return
+    if (isPrintDisabled.value || !props.blueprint) return
     isPrinting.value = true
     statusMessage.value = ''
 
@@ -157,10 +168,10 @@ const confirmAndPrint = async () => {
             connection = bluetoothConnectionRef.value as BluetoothConnection
         }
 
+        // MENCETAK MENGGUNAKAN PROPS BLUEPRINT
         const result = await printService.printToHardware(
-            transactionData.value,
+            props.blueprint,
             connection,
-            { paperWidth: paperWidth.value }
         )
 
         if (!result.success) throw new Error(result.error)
@@ -202,7 +213,8 @@ const handleGlobalKeyDown = (e: KeyboardEvent) => {
     }
 }
 
-watch([transactionData, paperWidth], () => {
+// Memantau Blueprint dan Lebar kertas
+watch([() => props.blueprint, paperWidth], () => {
     updatePreview()
 }, { immediate: true, deep: true })
 
@@ -228,13 +240,18 @@ onUnmounted(() => {
             <div class="flex items-center gap-3">
                 <div class="flex items-center gap-1.5 text-xs text-slate-300 font-medium">
                     <Icon icon="mdi:card-account-details-outline" class="w-4 h-4 text-emerald-400" />
-                    <span>Information</span>
+                    <span>{{ props.blueprint?.docType || 'Information' }}</span>
                 </div>
             </div>
         </div>
 
         <!-- 1. LIVE DYNAMIC RECEIPT PREVIEW -->
-        <iframe class="w-full h-full border-0" :src="blobPreviewUrl" title="Receipt Preview"></iframe>
+        <iframe v-if="props.blueprint" class="w-full h-full border-0 bg-white" :src="blobPreviewUrl"
+            title="Receipt Preview"></iframe>
+
+        <div v-else class="w-full h-full flex items-center justify-center text-slate-500 text-sm">
+            Menunggu Blueprint dari Server...
+        </div>
 
         <!-- 2. FLOATING ACTION DOCK (FOOTER BAR) -->
         <div
@@ -254,8 +271,8 @@ onUnmounted(() => {
                 </div>
             </div>
 
-            <button type="button"
-                class="px-5 py-2.5 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20 cursor-pointer"
+            <button type="button" :disabled="!props.blueprint"
+                class="px-5 py-2.5 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20 cursor-pointer disabled:opacity-50"
                 @click="handlePrintClick">
                 <Icon icon="mdi:printer-pos-outline" class="w-4 h-4" />
                 <span>Cetak</span>
@@ -320,7 +337,7 @@ onUnmounted(() => {
                                 <span>Memuat daftar printer...</span>
                             </div>
                             <select v-else v-model="selectedPrinter"
-                                class="w-full px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                                class="w-full px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer">
                                 <option value="" disabled>-- Pilih Printer Sistem --</option>
                                 <option v-for="p in printerList" :key="p.name" :value="p.name">
                                     {{ p.name }} {{ p.isDefault ? '(Default)' : '' }}
@@ -355,10 +372,10 @@ onUnmounted(() => {
                                     class="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950/50 flex items-center gap-2">
                                     <Icon icon="mdi:bluetooth-connect" class="w-4 h-4 text-emerald-500 shrink-0" />
                                     <span class="truncate font-medium">{{ bluetoothDeviceName || 'no device'
-                                    }}</span>
+                                        }}</span>
                                 </div>
                                 <button type="button" :disabled="isScanningBluetooth"
-                                    class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1 shrink-0 cursor-pointer"
+                                    class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-50"
                                     @click="scanBluetoothDevice">
                                     <Icon v-if="isScanningBluetooth" icon="mdi:loading"
                                         class="w-3.5 h-3.5 animate-spin" />

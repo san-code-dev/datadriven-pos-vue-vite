@@ -1,4 +1,4 @@
-import type { DocumentBlueprint } from '../templates/bluePrint'
+import type { DocumentBlueprint } from '../types'
 import type { Renderer, RenderOptions } from './renderer.interface'
 
 export interface ZplOptions extends RenderOptions {

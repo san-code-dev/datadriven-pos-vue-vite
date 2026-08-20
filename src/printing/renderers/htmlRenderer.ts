@@ -1,6 +1,7 @@
 import type { DocElement } from '../types'
 import type { Renderer, RenderOptions } from './renderer.interface'
-import type { DocumentBlueprint } from '../templates/bluePrint'
+import type { DocumentBlueprint } from '../types'
+
 /**
  * Merender blueprint jadi HTML string.
  * Dipakai untuk: preview di UI, basis konversi ke PDF (via puppeteer/wkhtmltopdf),
@@ -39,7 +40,7 @@ export class HtmlRenderer implements Renderer<string> {
     background: #333; /* Background luar otomatis gelap agar kontras dengan kertas */
     display: flex;
     justify-content: center;
-    items-align:center;
+    align-items: center;
   }
   /* Kertas Struk / Dokumen */
   .document-sheet {
@@ -64,7 +65,33 @@ export class HtmlRenderer implements Renderer<string> {
   .signature-block { display: flex; justify-content: space-between; margin-top: 40px; }
   .signature-box { text-align: center; width: 30%; }
   .signature-line { border-top: 1px solid #333; margin-top: 48px; padding-top: 4px; }
-  .qr-placeholder { width: 80px; height: 80px; border: 1px solid #ccc; margin: 8px auto; display: flex; align-items: center; justify-content: center; font-size: 9px; }
+  
+  /* Style khusus QR Code (Persegi) */
+  .qr-placeholder { 
+    width: 80px; 
+    height: 80px; 
+    border: 1px solid #ccc; 
+    margin: 8px auto; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 9px; 
+  }
+  .qr-placeholder img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  /* Style khusus Barcode Linear (Memanjang Horizontal) */
+  .barcode-container {
+    margin: 6px 0;
+  }
+  .barcode-container img {
+    max-width: 100%;  /* Mencegah barcode melebihi lebar kertas thermal */
+    height: auto;     /* Menjaga rasio proporsional garis barcode */
+    display: inline-block;
+  }
 </style>
 </head>
 <body>
@@ -79,8 +106,10 @@ ${body}
     switch (el.type) {
       case 'text':
         return `<div class="${this.alignClass(el.align)} ${el.bold ? 'bold' : ''} ${el.italic ? 'italic' : ''}" style="${el.size ? `font-size:${11 + el.size * 3}px` : ''}">${escapeHtml(el.text)}</div>`
+
       case 'separator':
         return `<div class="separator"></div>`
+
       case 'table': {
         const header = el.showHeader
           ? `<thead><tr>${el.columns.map((c) => `<th class="${this.alignClass(c.align)}">${escapeHtml(c.header || '')}</th>`).join('')}</tr></thead>`
@@ -98,16 +127,24 @@ ${body}
           .join('')
         return `<table>${header}<tbody>${rows}</tbody></table>`
       }
+
       case 'qrcode':
         return `<div class="${this.alignClass(el.align)}"><div class="qr-placeholder" data-qr-value="${escapeHtml(el.value)}">QR: ${escapeHtml(el.value.slice(0, 20))}</div></div>`
+
       case 'barcode':
-        return `<div class="${this.alignClass(el.align)}"><div class="qr-placeholder" data-barcode-value="${escapeHtml(el.value)}">||‖|‖||</div></div>`
+        return `<div class="${this.alignClass(el.align)} barcode-container">
+          <img src="https://barcode.tec-it.com/barcode.ashx?code=${escapeHtml(el.format)}&data=${escapeHtml(el.value)}&dpi=150" alt="Barcode ${escapeHtml(el.value)}" />
+        </div>`
+
       case 'image':
         return `<div class="${this.alignClass(el.align)}"><img src="${el.url}" style="max-width:${el.width || 100}%" /></div>`
+
       case 'space':
         return `<div style="height:${(el.lines || 1) * 10}px"></div>`
+
       case 'pagebreak':
         return `<div style="page-break-after: always"></div>`
+
       case 'signature_block':
         return `<div class="signature-block">${el.labels
           .map(
@@ -128,6 +165,7 @@ ${body}
 }
 
 function escapeHtml(str: string): string {
+  if (!str) return ''
   return str.replace(
     /[&<>"']/g,
     (c) =>

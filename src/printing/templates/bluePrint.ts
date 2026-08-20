@@ -1,88 +1,33 @@
-import type { TransactionData } from '@/utils/mockData'
+import type { TransactionData, DocumentBlueprint, DocElement } from '../types'
 import { useNumberFormat } from '@/composables/number-format'
-const numberFormat = useNumberFormat()
 
-// Re-export TransactionData supaya file lain (mis. printService) cukup
-// bergantung pada bluePrint.ts, tanpa perlu tahu/impor mockData secara langsung.
-export type { TransactionData } from '@/utils/mockData'
-
-// ==========================================
-// TYPES — Blueprint (output Template Layer)
-// Format abstrak — dikonsumsi oleh semua Renderer
-// ==========================================
-
-export interface TableColumn {
-  width: number
-  align: 'left' | 'center' | 'right'
-  header?: string
-}
-
-export type DocElement =
-  | {
-      type: 'text'
-      text: string
-      align?: 'left' | 'center' | 'right'
-      bold?: boolean
-      size?: number
-      italic?: boolean
-    }
-  | { type: 'separator'; style?: 'solid' | 'dashed' }
-  | {
-      type: 'table'
-      columns: TableColumn[]
-      rows: string[][]
-      bold?: boolean
-      showHeader?: boolean
-    }
-  | { type: 'qrcode'; value: string; align?: 'left' | 'center' | 'right' }
-  | {
-      type: 'barcode'
-      value: string
-      format?: 'CODE128' | 'EAN13'
-      align?: 'left' | 'center' | 'right'
-    }
-  | {
-      type: 'image'
-      url: string
-      align?: 'left' | 'center' | 'right'
-      width?: number
-    }
-  | { type: 'space'; lines?: number }
-  | { type: 'pagebreak' }
-  | { type: 'signature_block'; labels: string[] }
-
-export interface DocumentBlueprint {
-  pageSize?: 'thermal58' | 'thermal80' | 'A4' | 'A5' | 'label'
-  elements: DocElement[]
-}
-
-// ==========================================
-// TEMPLATE — Invoice/Faktur (kertas A4/A5)
-// Dipakai oleh PdfRenderer / HtmlRenderer (bukan ESC/POS)
-// ==========================================
-export function invoiceBluePrint(data: TransactionData): DocumentBlueprint {
+export function invoiceBluePrint(
+  data: TransactionData,
+  pageSize: 'thermal58' | 'thermal80' | 'A4' = 'A4',
+): DocumentBlueprint {
+  const numberFormat = useNumberFormat()
   const elements: DocElement[] = []
 
   // --- Header toko ---
   elements.push({
     type: 'text',
     text: data.store.name,
-    align: 'left',
+    align: 'center',
     bold: true,
     size: 2,
   })
-  elements.push({ type: 'text', text: data.store.address, align: 'left' })
-  elements.push({ type: 'text', text: data.store.phone, align: 'left' })
+  elements.push({ type: 'text', text: data.store.address, align: 'center' })
+  elements.push({ type: 'text', text: data.store.phone, align: 'center' })
   if (data.store.npwp) {
     elements.push({
       type: 'text',
       text: `NPWP: ${data.store.npwp}`,
-      align: 'left',
+      align: 'center',
     })
   }
-  elements.push({ type: 'separator', style: 'solid' })
+  elements.push({ type: 'separator', style: 'dashed' })
 
-  // --- Info invoice & customer (2 kolom) ---
+  // --- Info invoice ---
   elements.push({
     type: 'table',
     columns: [
@@ -90,19 +35,16 @@ export function invoiceBluePrint(data: TransactionData): DocumentBlueprint {
       { width: 50, align: 'right' },
     ],
     rows: [
-      [`No. Invoice: ${data.meta.invoiceNo}`, `Tanggal: ${data.meta.date}`],
+      [`No: ${data.meta.invoiceNo}`, `${data.meta.date}`],
       [
-        data.customer?.name ? `Kepada: ${data.customer.name}` : '',
-        data.meta.dueDate ? `Jatuh Tempo: ${data.meta.dueDate}` : '',
+        data.customer?.name ? `Cust: ${data.customer.name}` : '',
+        data.meta.cashier ? `Kasir: ${data.meta.cashier}` : '',
       ],
     ],
   })
-  if (data.customer?.address) {
-    elements.push({ type: 'text', text: data.customer.address, align: 'left' })
-  }
-  elements.push({ type: 'separator' })
+  elements.push({ type: 'separator', style: 'dashed' })
 
-  // --- Tabel item lengkap ---
+  // --- Tabel item ---
   const cols = [
     { width: 46, align: 'left' as const, header: 'Item' },
     { width: 10, align: 'center' as const, header: 'Qty' },
@@ -113,7 +55,7 @@ export function invoiceBluePrint(data: TransactionData): DocumentBlueprint {
   elements.push({
     type: 'table',
     columns: cols,
-    showHeader: true,
+    showHeader: pageSize === 'A4',
     rows: data.items.map((it) => [
       it.name,
       `${it.qty}`,
@@ -121,7 +63,7 @@ export function invoiceBluePrint(data: TransactionData): DocumentBlueprint {
       numberFormat.formatCurrency(it.subtotal),
     ]),
   })
-  elements.push({ type: 'separator' })
+  elements.push({ type: 'separator', style: 'dashed' })
 
   // --- Ringkasan pembayaran ---
   const summaryRows: string[][] = [
@@ -135,30 +77,38 @@ export function invoiceBluePrint(data: TransactionData): DocumentBlueprint {
   if (data.payment.tax)
     summaryRows.push(['PPN', numberFormat.formatCurrency(data.payment.tax)])
   summaryRows.push(['TOTAL', numberFormat.formatCurrency(data.payment.total)])
+  summaryRows.push(['DIBAYAR', numberFormat.formatCurrency(data.payment.paid)])
+  summaryRows.push([
+    'KEMBALI',
+    numberFormat.formatCurrency(data.payment.change),
+  ])
 
   elements.push({
     type: 'table',
     columns: [
-      { width: 70, align: 'left' },
-      { width: 30, align: 'right' },
+      { width: 60, align: 'left' },
+      { width: 40, align: 'right' },
     ],
     rows: summaryRows,
     bold: true,
   })
-  elements.push({ type: 'space', lines: 2 })
-
-  // --- Tanda tangan (opsional, untuk copy tertentu) ---
-  if (data.signature) {
-    const labels = Object.values(data.signature).filter(Boolean) as string[]
-    elements.push({ type: 'signature_block', labels })
-  }
+  elements.push({ type: 'space', lines: 1 })
 
   if (data.qrUrl) {
-    elements.push({ type: 'qrcode', value: data.qrUrl, align: 'right' })
+    elements.push({ type: 'qrcode', value: data.qrUrl, align: 'center' })
   }
 
+  elements.push({ type: 'space', lines: 1 })
+  elements.push({
+    type: 'text',
+    text: 'Terima kasih atas kunjungan Anda',
+    align: 'center',
+    italic: true,
+  })
+
   return {
-    pageSize: 'A4',
+    docType: 'invoice',
+    pageSize: pageSize,
     elements,
   }
 }

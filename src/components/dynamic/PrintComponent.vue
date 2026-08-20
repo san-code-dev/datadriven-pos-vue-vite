@@ -11,7 +11,7 @@ import type { DocumentBlueprint } from '@/printing/types'
 // PROPS (Data berasal dari Parent)
 // ==========================================
 const props = defineProps<{
-    blueprint: DocumentBlueprint
+    blueprint: DocumentBlueprint | null
 }>()
 
 const printService = new PrintService()
@@ -19,15 +19,35 @@ const previewHtml = ref<string>('')
 const blobPreviewUrl = ref<string>('')
 
 // ==========================================
-// 1. REFS & STATE
+// 1. REFS & STATE (Daftar Opsi & Local State)
 // ==========================================
+const selectedDocType = ref<string>('receipt')
+const selectedPageSize = ref<string>('thermal58')
+
+const docTypeOptions = [
+    { label: 'Struk / Receipt', value: 'receipt' },
+    { label: 'Faktur / Invoice', value: 'invoice' },
+    { label: 'Laporan / Report', value: 'report' },
+    { label: 'Label Barcode', value: 'label' },
+    { label: 'Purchase Order', value: 'purchase_order' },
+    { label: 'Surat Jalan / Delivery Order', value: 'delivery_order' },
+]
+
+const pageSizeOptions = [
+    { label: 'Thermal 58mm', value: 'thermal58' },
+    { label: 'Thermal 80mm', value: 'thermal80' },
+    { label: 'Label Stiker', value: 'label' },
+    { label: 'A4', value: 'A4' },
+    { label: 'A5', value: 'A5' },
+    { label: 'Letter', value: 'Letter' },
+]
+
 const isDeviceDialogOpen = ref(false)
 const printMode = ref<'driver' | 'network' | 'bluetooth'>('driver')
 const printerList = ref<Array<{ name: string; isDefault: boolean }>>([])
 const selectedPrinter = ref('')
 const networkHost = ref('192.168.1.200')
 const networkPort = ref(9100)
-const paperWidth = ref<32 | 48>(32) // 32 = 58mm, 48 = 80mm
 const isPrinting = ref(false)
 const isLoadingPrinters = ref(false)
 const statusMessage = ref('')
@@ -39,14 +59,37 @@ const bluetoothDeviceName = ref<string>('')
 const isScanningBluetooth = ref(false)
 
 // ==========================================
-// 2. RENDER PREVIEW (Dari Blueprint)
+// 2. COMPUTED BLUEPRINT (Dinamis dari Pilihan)
+// ==========================================
+// Menghasilkan blueprint gabungan antara props + pilihan user
+const activeBlueprint = computed<DocumentBlueprint | null>(() => {
+    if (!props.blueprint) return null
+    return {
+        ...props.blueprint,
+        docType: selectedDocType.value,
+        pageSize: selectedPageSize.value,
+    }
+})
+
+// Sync state lokal ketika props.blueprint berubah dari parent
+watch(
+    () => props.blueprint,
+    (newBp) => {
+        if (newBp) {
+            if (newBp.docType) selectedDocType.value = newBp.docType
+            if (newBp.pageSize) selectedPageSize.value = newBp.pageSize
+        }
+    },
+    { immediate: true, deep: true }
+)
+
+// ==========================================
+// 3. RENDER PREVIEW (Real-time ke iframe)
 // ==========================================
 const updatePreview = async () => {
-    if (!props.blueprint) return
+    if (!activeBlueprint.value) return
     try {
-        const htmlContent = await printService.renderToHtml(
-            props.blueprint,
-        )
+        const htmlContent = await printService.renderToHtml(activeBlueprint.value)
         previewHtml.value = htmlContent
 
         if (blobPreviewUrl.value) {
@@ -60,8 +103,22 @@ const updatePreview = async () => {
     }
 }
 
+// Watch perubahannya agar langsung ter-update otomatis di iframe
+watch(
+    [activeBlueprint, selectedDocType, selectedPageSize],
+    () => {
+        updatePreview()
+    },
+    { immediate: true, deep: true }
+)
+
+// Helper sinkronisasi cepat tombol 58mm / 80mm
+const setThermalSize = (size: 'thermal58' | 'thermal80') => {
+    selectedPageSize.value = size
+}
+
 // ==========================================
-// 3. COMPUTED & VALIDATION HELPERS
+// 4. COMPUTED & VALIDATION HELPERS
 // ==========================================
 const isNetworkIpValid = computed(() => {
     const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/
@@ -69,7 +126,7 @@ const isNetworkIpValid = computed(() => {
 })
 
 const isPrintDisabled = computed(() => {
-    if (isPrinting.value || isLoadingPrinters.value) return true
+    if (isPrinting.value || isLoadingPrinters.value || !activeBlueprint.value) return true
     if (printMode.value === 'driver' && !selectedPrinter.value) return true
     if (printMode.value === 'network' && !isNetworkIpValid.value) return true
     if (printMode.value === 'bluetooth' && !bluetoothConnectionRef.value?.isPaired()) return true
@@ -90,10 +147,9 @@ const statusAlertClass = computed(() =>
 )
 
 // ==========================================
-// 4. METHODS & HARDWARE HANDLERS
+// 5. HARDWARE & PRINT HANDLERS
 // ==========================================
 const loadPrinters = async () => {
-    // Fungsi Electron Asli Milik Anda dipertahankan
     if (!(window as any).electronAPI) {
         console.warn('[PosPrinting] Electron API tidak terdeteksi.')
         return
@@ -135,7 +191,7 @@ const scanBluetoothDevice = async () => {
     statusMessage.value = 'Mencari perangkat Bluetooth...'
 
     const conn = new BluetoothConnection()
-    const result = await conn.scanAndPair() // Fungsi native BT milik Anda dipertahankan
+    const result = await conn.scanAndPair()
 
     if (result.success) {
         bluetoothConnectionRef.value = conn
@@ -150,7 +206,7 @@ const scanBluetoothDevice = async () => {
 }
 
 const confirmAndPrint = async () => {
-    if (isPrintDisabled.value || !props.blueprint) return
+    if (isPrintDisabled.value || !activeBlueprint.value) return
     isPrinting.value = true
     statusMessage.value = ''
 
@@ -168,9 +224,9 @@ const confirmAndPrint = async () => {
             connection = bluetoothConnectionRef.value as BluetoothConnection
         }
 
-        // MENCETAK MENGGUNAKAN PROPS BLUEPRINT
+        // MENCETAK MENGGUNAKAN ACTIVE BLUEPRINT (SESUAI OPSI DOKUMEN & UKURAN TERBARU)
         const result = await printService.printToHardware(
-            props.blueprint,
+            activeBlueprint.value,
             connection,
         )
 
@@ -188,7 +244,7 @@ const confirmAndPrint = async () => {
 }
 
 // ==========================================
-// 5. GLOBAL KEYBOARD LISTENERS
+// 6. GLOBAL KEYBOARD LISTENERS
 // ==========================================
 const handleGlobalKeyDown = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement
@@ -213,11 +269,6 @@ const handleGlobalKeyDown = (e: KeyboardEvent) => {
     }
 }
 
-// Memantau Blueprint dan Lebar kertas
-watch([() => props.blueprint, paperWidth], () => {
-    updatePreview()
-}, { immediate: true, deep: true })
-
 onMounted(() => {
     window.addEventListener('keydown', handleGlobalKeyDown)
     loadPrinters()
@@ -232,55 +283,54 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="relative w-full h-full min-h-[500px] flex flex-col overflow-hidden bg-gray-950 select-none">
+    <div class="relative w-full h-full min-h-[500px] flex flex-col overflow-hidden bg-slate-950 select-none">
 
-        <!-- TOP CONTROL BAR: PILIH JENIS DOKUMEN & COPY TYPE -->
+        <!-- TOP CONTROL BAR: PILIH JENIS DOKUMEN & UKURAN HALAMAN -->
         <div
             class="flex flex-wrap items-center justify-between gap-3 bg-slate-900/90 border-b border-slate-800 px-4 py-2.5 z-20">
-            <div class="flex items-center gap-3">
-                <div class="flex items-center gap-1.5 text-xs text-slate-300 font-medium">
-                    <Icon icon="mdi:card-account-details-outline" class="w-4 h-4 text-emerald-400" />
-                    <span>{{ props.blueprint?.docType || 'Information' }}</span>
+
+            <!-- Opsi Pilih Document Type & Page Size -->
+            <div class="flex flex-wrap items-center gap-4">
+
+                <!-- Select Page Size -->
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-medium text-slate-400 flex items-center gap-1.5">
+                        <Icon icon="mdi:file-file-outline" class="w-4 h-4 text-emerald-400" />
+                        <span>Ukuran Kertas:</span>
+                    </label>
+                    <select v-model="selectedPageSize"
+                        class="bg-slate-800 text-slate-100 border border-slate-700 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer font-medium">
+                        <option v-for="opt in pageSizeOptions" :key="opt.value" :value="opt.value">
+                            {{ opt.label }}
+                        </option>
+                    </select>
                 </div>
+
+            </div>
+
+            <!-- Quick Info -->
+            <div class="hidden md:flex items-center gap-2 text-xs text-slate-400">
+
+                <button type="button" :disabled="!props.blueprint"
+                    class="px-2 py-1.5 text-xs  rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20 cursor-pointer disabled:opacity-50"
+                    @click="handlePrintClick">
+                    <Icon icon="mdi:printer-pos-outline" class="w-4 h-4" />
+                    <span>Cetak</span>
+                    <kbd
+                        class="px-1.5 py-0.5 text-[9px] font-mono bg-emerald-700/80 rounded border border-emerald-400/30">Enter</kbd>
+                </button>
             </div>
         </div>
 
-        <!-- 1. LIVE DYNAMIC RECEIPT PREVIEW -->
+        <!-- 1. LIVE DYNAMIC RECEIPT PREVIEW (IFRAME) -->
         <iframe v-if="props.blueprint" class="w-full h-full border-0 bg-white" :src="blobPreviewUrl"
             title="Receipt Preview"></iframe>
 
-        <div v-else class="w-full h-full flex items-center justify-center text-slate-500 text-sm">
-            Menunggu Blueprint dari Server...
+        <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-500 text-sm gap-2">
+            <Icon icon="mdi:tray-full" class="w-10 h-10 text-slate-600" />
+            <span>Pilih atau kirim blueprint dokumen untuk menampilkan preview...</span>
         </div>
 
-        <!-- 2. FLOATING ACTION DOCK (FOOTER BAR) -->
-        <div
-            class="absolute bottom-4 left-4 right-4 z-30 flex items-center justify-between gap-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-2.5 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800">
-            <div class="flex items-center gap-2">
-                <span class="text-[10px] font-semibold text-slate-400 uppercase hidden sm:inline">Kertas:</span>
-                <div
-                    class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <button type="button" :class="[
-                        'px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer',
-                        paperWidth === 32 ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-300'
-                    ]" @click="paperWidth = 32">58 mm</button>
-                    <button type="button" :class="[
-                        'px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer',
-                        paperWidth === 48 ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-300'
-                    ]" @click="paperWidth = 48">80 mm</button>
-                </div>
-            </div>
-
-            <button type="button" :disabled="!props.blueprint"
-                class="px-5 py-2.5 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20 cursor-pointer disabled:opacity-50"
-                @click="handlePrintClick">
-                <Icon icon="mdi:printer-pos-outline" class="w-4 h-4" />
-                <span>Cetak</span>
-                <kbd class="px-1.5 py-0.5 text-[9px] font-mono bg-emerald-700/80 rounded border border-emerald-400/30">Enter
-                    /
-                    F9</kbd>
-            </button>
-        </div>
 
         <!-- 3. DIALOG 3 MODE PRINTER -->
         <div v-if="isDeviceDialogOpen"
@@ -329,8 +379,7 @@ onUnmounted(() => {
                         <!-- Mode Driver OS -->
                         <div v-if="printMode === 'driver'" class="flex flex-col space-y-1">
                             <label class="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">Pilih
-                                Printer
-                                Terpasang</label>
+                                Printer Terpasang</label>
                             <div v-if="isLoadingPrinters"
                                 class="py-2 flex items-center justify-center text-slate-400 gap-2 text-xs">
                                 <Icon icon="mdi:loading" class="w-4 h-4 animate-spin text-emerald-500" />
@@ -349,8 +398,7 @@ onUnmounted(() => {
                         <div v-else-if="printMode === 'network'" class="grid grid-cols-3 gap-2">
                             <div class="col-span-2 flex flex-col space-y-1">
                                 <label class="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">IP
-                                    Socket
-                                    Printer</label>
+                                    Socket Printer</label>
                                 <input v-model="networkHost" type="text" placeholder="192.168.1.200"
                                     class="w-full px-3 py-2 text-xs font-mono rounded-xl border border-slate-700 bg-slate-950 text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
                             </div>
@@ -365,14 +413,12 @@ onUnmounted(() => {
                         <!-- Mode Bluetooth BLE -->
                         <div v-else class="flex flex-col space-y-1">
                             <label class="text-[10px] font-semibold tracking-wide text-slate-400 uppercase">Perangkat
-                                Bluetooth
-                                Printer</label>
+                                Bluetooth Printer</label>
                             <div class="flex items-center gap-2">
                                 <div
                                     class="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950/50 flex items-center gap-2">
                                     <Icon icon="mdi:bluetooth-connect" class="w-4 h-4 text-emerald-500 shrink-0" />
-                                    <span class="truncate font-medium">{{ bluetoothDeviceName || 'no device'
-                                        }}</span>
+                                    <span class="truncate font-medium">{{ bluetoothDeviceName || 'no device' }}</span>
                                 </div>
                                 <button type="button" :disabled="isScanningBluetooth"
                                     class="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-50"

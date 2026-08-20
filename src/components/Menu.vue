@@ -211,7 +211,7 @@ onUnmounted(() => {
                             ]" />
                     </div>
 
-                    <div v-show="openCategory === category" class="absolute z-50 top-0 w-52 flyout-container"
+                    <div v-show="openCategory === category" class="absolute z-50 top-0 w-64 flyout-container"
                         :class="sidebarStore.isCollapsed ? 'left-[72px]' : 'left-[244px]'">
                         <ul
                             class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-1.5 space-y-1 rounded-xl shadow-xl shadow-slate-200/40 dark:shadow-none animate-fadeInFast">
@@ -226,7 +226,7 @@ onUnmounted(() => {
                                         class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 flex-shrink-0"></div>
                                     <div v-else class="w-1.5 h-1.5 rounded-full bg-transparent mr-2 flex-shrink-0">
                                     </div>
-                                    <span>{{ menu.label }}</span>
+                                    <span class="text-sm font-bold">{{ menu.label }}</span>
                                 </button>
                             </li>
                         </ul>

@@ -166,22 +166,99 @@ const availableReports = [
             "docType": "label",
             "pageSize": "label",
             "elements": [
-                { "type": "text", "text": "KEDAI KOPI SENJA", "align": "center", "bold": true },
-                { "type": "text", "text": "Biji Kopi Arabica 200g", "align": "center", "size": 1 },
+                { "type": "text", "text": "TINTA UV DTF CMYK 100ML", "align": "center", "bold": true, "size": 2 },
+                { "type": "space", "lines": 1 },
+                { "type": "text", "text": "Rp 75.000", "align": "center", "bold": true, "size": 2 },
                 { "type": "space", "lines": 1 },
                 { "type": "barcode", "format": 'CODE128', "value": "8991234567890", "align": "center" },
                 { "type": "space", "lines": 1 },
-                { "type": "text", "text": "Rp 75.000", "align": "center", "bold": true, "size": 2 },
-                { "type": "space", "lines": 1 }
             ]
         } as DocumentBlueprint
+    },
+    {
+        id: 'invoice_a4',
+        title: 'Faktur Penjualan (A4)',
+        description: 'Format profesional untuk klien B2B',
+        icon: '📄',
+        blueprint: {
+            "docType": "invoice",
+            "pageSize": "A4",
+            "elements": [
+                { "type": "text", "text": "FAKTUR PENJUALAN", "align": "right", "bold": true, "size": 3 },
+                { "type": "text", "text": "KEDAI KOPI SENJA", "align": "left", "bold": true },
+                { "type": "text", "text": "Jl. Sudirman No. 45, Jakarta", "align": "left" },
+                { "type": "separator", "style": "solid" },
+                {
+                    "type": "table",
+                    "columns": [{ "width": 25, "align": "left" }, { "width": 25, "align": "right" }],
+                    "rows": [["No. Faktur: INV/2026/08/001", "Tanggal: 20/08/2026"], ["Kepada: PT Maju Jaya", "Jatuh Tempo: 27/08/2026"]]
+                },
+                { "type": "space", "lines": 1 },
+                {
+                    "type": "table",
+                    "columns": [{ "width": 10, "header": "Qty" }, { "width": 30, "header": "Deskripsi" }, { "width": 20, "header": "Total" }],
+                    "rows": [["10", "Biji Kopi Arabika 1kg", "1.500.000"], ["5", "Cangkir Keramik Set", "500.000"]]
+                },
+                { "type": "signature_block", "labels": ["Dibuat Oleh", "Diterima Oleh"] }
+            ]
+        }
+    },
+    {
+        id: 'po_a4',
+        title: 'Purchase Order (PO)',
+        description: 'Dokumen pemesanan barang ke supplier',
+        icon: '📦',
+        blueprint: {
+            "docType": "purchase_order",
+            "pageSize": "A4",
+            "elements": [
+                { "type": "text", "text": "PURCHASE ORDER", "align": "center", "bold": true, "size": 3 },
+                { "type": "text", "text": "Kepada: Supplier Kopi Nusantara", "align": "left" },
+                { "type": "separator", "style": "solid" },
+                {
+                    "type": "table",
+                    "columns": [{ "width": 20 }, { "width": 40 }],
+                    "rows": [["PO Number", "PO-2026-088"], ["Ship To", "Gudang Pusat, Jakarta"]]
+                },
+                { "type": "space", "lines": 1 },
+                {
+                    "type": "table",
+                    "columns": [{ "width": 10, "header": "No" }, { "width": 40, "header": "Item" }, { "width": 10, "header": "Qty" }],
+                    "rows": [["1", "Green Bean Gayo", "50kg"], ["2", "Packaging Bag", "500pcs"]]
+                }
+            ]
+        }
+    },
+    {
+        id: 'do_a4',
+        title: 'Surat Jalan (DO)',
+        description: 'Bukti pengiriman barang',
+        icon: '🚚',
+        blueprint: {
+            "docType": "delivery_order",
+            "pageSize": "A5",
+            "elements": [
+                { "type": "text", "text": "SURAT JALAN", "align": "center", "bold": true, "size": 2 },
+                { "type": "text", "text": "No: DO-2026-001", "align": "center" },
+                {
+                    "type": "table",
+                    "columns": [{ "width": 25 }, { "width": 25 }],
+                    "rows": [["Pengirim: Kedai Senja", "Penerima: Kafe Cabang"]]
+                },
+                { "type": "space", "lines": 1 },
+                { "type": "table", "columns": [{ "width": 10 }, { "width": 30 }], "rows": [["2", "Meja Kayu Jati"], ["4", "Kursi Cafe"]] },
+                { "type": "space", "lines": 2 },
+                { "type": "signature_block", "labels": ["Sopir", "Penerima"] }
+            ]
+        }
     }
+
 ]
 
 // Fungsi untuk melempar blueprint ke komponen cetak
-const loadDocument = (reportId: string, blueprintData: DocumentBlueprint) => {
+const loadDocument = (reportId: string, blueprintData: unknown) => {
     activeReportId.value = reportId
-    printBlueprint.value = blueprintData
+    printBlueprint.value = blueprintData as DocumentBlueprint
 }
 </script>
 
@@ -204,12 +281,11 @@ const loadDocument = (reportId: string, blueprintData: DocumentBlueprint) => {
                                 ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 dark:bg-blue-900/20'
                                 : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md dark:bg-slate-800 dark:border-slate-700'
                         ]">
-                        <span>{{ report.icon }}</span>
                         <div class="flex-1">
-                            <h6 class="font-bold text-slate-800 dark:text-white text-base mb-1">
+                            <span class="text-slate-800 dark:text-white/85 mb-1 text-sm">
                                 {{ report.title }}
-                            </h6>
-                            <p class="text-slate-500 text-sm">
+                            </span>
+                            <p class="text-slate-500 text-xs">
                                 {{ report.description }}
                             </p>
                         </div>

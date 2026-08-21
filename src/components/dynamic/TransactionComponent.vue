@@ -668,7 +668,6 @@ onBeforeUnmount(() => {
         @close="closeSelectDialog" @select="selectDialogSelectData" />
     </div>
   </div>
-  <DataCheck :variable="schema" />
 </template>
 
 <style scoped>

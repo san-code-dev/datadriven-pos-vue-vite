@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@point-of-sale/receipt-printer-encoder": "^3.0.3",
-    "@revolist/revo-dropdown": "^3.0.9",
+    "@revolist/revo-dropdown": "^3.0.10",
     "@revolist/revogrid-column-date": "^2.0.25",
     "@revolist/revogrid-column-numeral": "^2.0.11",
     "@revolist/revogrid-column-select": "^3.2.0",

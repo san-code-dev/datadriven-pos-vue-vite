@@ -106,7 +106,7 @@ import NumberColumnType from '@revolist/revogrid-column-numeral'
 import SelectTypePlugin from '@revolist/revogrid-column-select'
 import DateTypePlugin from '@revolist/revogrid-column-date'
 import { useRealtimeSync } from '@/composables/useRealtimeSync'
-import { gridSelectSingleCell, getActiveCellState } from '@/composables/grid'
+import { getActiveCellState } from '@/composables/grid'
 
 const props = defineProps({
 	menu: { type: Object, required: true },
@@ -143,18 +143,6 @@ const formKey = computed(() => {
 	return props.menu.key.toLowerCase()
 })
 
-
-// const getActiveCellState = async () => {
-// 	const grid = getGrid(gridRef)
-// 	if (typeof grid.getFocused !== 'function') return { x: 0, y: 0, column: {}, model: {} }
-// 	const focused = await grid.getFocused()
-// 	return {
-// 		x: focused?.cell?.x ?? 0,
-// 		y: focused?.cell?.y ?? 0,
-// 		column: focused?.column || {},
-// 		model: focused?.model || {}
-// 	}
-// }
 
 const columnTypes = {
 	numeric: new NumberColumnType('0,0'),

@@ -24,15 +24,6 @@ const blobPreviewUrl = ref<string>('')
 const selectedDocType = ref<string>('receipt')
 const selectedPageSize = ref<string>('thermal58')
 
-const docTypeOptions = [
-    { label: 'Struk / Receipt', value: 'receipt' },
-    { label: 'Faktur / Invoice', value: 'invoice' },
-    { label: 'Laporan / Report', value: 'report' },
-    { label: 'Label Barcode', value: 'label' },
-    { label: 'Purchase Order', value: 'purchase_order' },
-    { label: 'Surat Jalan / Delivery Order', value: 'delivery_order' },
-]
-
 const pageSizeOptions = [
     { label: 'Thermal 58mm', value: 'thermal58' },
     { label: 'Thermal 80mm', value: 'thermal80' },
@@ -64,11 +55,12 @@ const isScanningBluetooth = ref(false)
 // Menghasilkan blueprint gabungan antara props + pilihan user
 const activeBlueprint = computed<DocumentBlueprint | null>(() => {
     if (!props.blueprint) return null
-    return {
+    // Cast fields to satisfy DocumentBlueprint typing
+    return ({
         ...props.blueprint,
-        docType: selectedDocType.value,
-        pageSize: selectedPageSize.value,
-    }
+        docType: selectedDocType.value as unknown as DocumentBlueprint['docType'],
+        pageSize: selectedPageSize.value as unknown as DocumentBlueprint['pageSize'],
+    } as DocumentBlueprint)
 })
 
 // Sync state lokal ketika props.blueprint berubah dari parent

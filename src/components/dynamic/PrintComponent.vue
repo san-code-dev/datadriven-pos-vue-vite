@@ -10,9 +10,7 @@ import type { DocumentBlueprint } from '@/printing/types'
 // ==========================================
 // PROPS (Data berasal dari Parent)
 // ==========================================
-const props = defineProps<{
-    blueprint: DocumentBlueprint | null
-}>()
+const props = defineProps<{ blueprint: DocumentBlueprint | null }>()
 
 const printService = new PrintService()
 const previewHtml = ref<string>('')
@@ -25,7 +23,6 @@ const selectedDocType = ref<string>('receipt')
 const selectedPageSize = ref<string>('thermal58')
 
 const pageSizeOptions = [
-
     { label: 'Thermal 58mm', value: 'thermal58' },
     { label: 'Thermal 80mm', value: 'thermal80' },
     { label: 'Label Stiker', value: 'label' },
@@ -58,7 +55,6 @@ const activeBlueprint = computed<DocumentBlueprint | null>(() => {
     // Cast fields to satisfy DocumentBlueprint typing
     return ({
         ...props.blueprint,
-        docType: selectedDocType.value as unknown as DocumentBlueprint['docType'],
         pageSize: selectedPageSize.value as unknown as DocumentBlueprint['pageSize'],
     } as DocumentBlueprint)
 })
@@ -68,7 +64,6 @@ watch(
     () => props.blueprint,
     (newBp) => {
         if (newBp) {
-            if (newBp.docType) selectedDocType.value = newBp.docType
             if (newBp.pageSize) selectedPageSize.value = newBp.pageSize
         }
     },
@@ -312,8 +307,11 @@ onUnmounted(() => {
                 </button>
                 <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="handlePrintClick">
                     <Icon icon="catppuccin:pdf" class="w-4 h-4" />
-                    <span>pdf</span>
-
+                    <span>Simpan pdf</span>
+                </button>
+                <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="handlePrintClick">
+                    <Icon icon="catppuccin:ms-excel" class="w-4 h-4" />
+                    <span>Simpan xls</span>
                 </button>
                 <button type="button" :disabled="!props.blueprint" class="btn-action-emerald-600"
                     @click="handlePrintClick">

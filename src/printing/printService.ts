@@ -18,8 +18,7 @@ export class PrintService {
   ): Promise<OperationResult> {
     // Tentukan lebar kertas (32 kolom = 58mm, 48 kolom = 80mm) berdasarkan blueprint API
     const paperWidth = blueprint.pageSize === 'thermal80' ? 48 : 32
-    const isZpl =
-      blueprint.pageSize === 'label' || blueprint.docType === 'label'
+    const isZpl = blueprint.pageSize === 'label'
 
     const buffer = isZpl
       ? await zplRenderer.render(blueprint)

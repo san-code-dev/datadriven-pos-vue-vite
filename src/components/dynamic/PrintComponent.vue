@@ -25,35 +25,13 @@ const selectedDocType = ref<string>('receipt')
 const selectedPageSize = ref<string>('thermal58')
 
 const pageSizeOptions = [
-    // --- Standard Office / Document Printers (Inkjet, Laser, Copy) ---
-    { label: 'A4 (210 x 297 mm)', value: 'A4' },
-    { label: 'A5 (148 x 210 mm)', value: 'A5' },
-    { label: 'A3 (297 x 420 mm)', value: 'A3' },
-    { label: 'Letter (8.5 x 11 in)', value: 'Letter' },
-    { label: 'Legal (8.5 x 14 in)', value: 'Legal' },
-    { label: 'Folio / F4 (8.5 x 13 in)', value: 'Folio' },
 
-    // --- Dot Matrix Printers (Continuous Form / Wartel / Struk Continuous) ---
-    { label: 'Dot Matrix - Standard Continuous (9.5 x 11 in)', value: 'dot-matrix-full' },
-    { label: 'Dot Matrix - Half Continuous (9.5 x 5.5 in)', value: 'dot-matrix-half' },
-    { label: 'Dot Matrix - Slip', value: 'dot-matrix-slip' },
-    { label: 'Dot Matrix - Roll 76mm', value: 'dot-matrix-roll-76' },
-
-    // --- Thermal & POS Printers (Kasir, Kitchen, Antrean) ---
-    { label: 'Thermal 58mm', value: 'thermal-58' },
-    { label: 'Thermal 80mm', value: 'thermal-80' },
-
-    // --- Label & Barcode Printers (Warehouse, Shipping, Retail) ---
-    { label: 'Label 1 Column', value: 'label-1-column' },
-    { label: 'Label 2 Columns', value: 'label-2-columns' },
-    { label: 'Label 3 Columns', value: 'label-3-columns' },
-    { label: 'Shipping Label A6', value: 'label-shipping-a6' },
-    { label: 'Barcode Label (4 x 6 in)', value: 'label-4x6' },
-
-    // --- Large Format / Plotter (Arsitektur / Cetak Cetakan Lebar) ---
-    { label: 'Plotter / Architectural A2', value: 'A2' },
-    { label: 'Plotter / Architectural A1', value: 'A1' },
-    { label: 'Plotter / Architectural A0', value: 'A0' },
+    { label: 'Thermal 58mm', value: 'thermal58' },
+    { label: 'Thermal 80mm', value: 'thermal80' },
+    { label: 'Label Stiker', value: 'label' },
+    { label: 'A4', value: 'A4' },
+    { label: 'A5', value: 'A5' },
+    { label: 'Letter', value: 'Letter' },
 ];
 const isDeviceDialogOpen = ref(false)
 const printMode = ref<'driver' | 'network' | 'bluetooth'>('driver')

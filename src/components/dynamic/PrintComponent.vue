@@ -25,14 +25,36 @@ const selectedDocType = ref<string>('receipt')
 const selectedPageSize = ref<string>('thermal58')
 
 const pageSizeOptions = [
-    { label: 'Thermal 58mm', value: 'thermal58' },
-    { label: 'Thermal 80mm', value: 'thermal80' },
-    { label: 'Label Stiker', value: 'label' },
-    { label: 'A4', value: 'A4' },
-    { label: 'A5', value: 'A5' },
-    { label: 'Letter', value: 'Letter' },
-]
+    // --- Standard Office / Document Printers (Inkjet, Laser, Copy) ---
+    { label: 'A4 (210 x 297 mm)', value: 'A4' },
+    { label: 'A5 (148 x 210 mm)', value: 'A5' },
+    { label: 'A3 (297 x 420 mm)', value: 'A3' },
+    { label: 'Letter (8.5 x 11 in)', value: 'Letter' },
+    { label: 'Legal (8.5 x 14 in)', value: 'Legal' },
+    { label: 'Folio / F4 (8.5 x 13 in)', value: 'Folio' },
 
+    // --- Dot Matrix Printers (Continuous Form / Wartel / Struk Continuous) ---
+    { label: 'Dot Matrix - Standard Continuous (9.5 x 11 in)', value: 'dot-matrix-full' },
+    { label: 'Dot Matrix - Half Continuous (9.5 x 5.5 in)', value: 'dot-matrix-half' },
+    { label: 'Dot Matrix - Slip', value: 'dot-matrix-slip' },
+    { label: 'Dot Matrix - Roll 76mm', value: 'dot-matrix-roll-76' },
+
+    // --- Thermal & POS Printers (Kasir, Kitchen, Antrean) ---
+    { label: 'Thermal 58mm', value: 'thermal-58' },
+    { label: 'Thermal 80mm', value: 'thermal-80' },
+
+    // --- Label & Barcode Printers (Warehouse, Shipping, Retail) ---
+    { label: 'Label 1 Column', value: 'label-1-column' },
+    { label: 'Label 2 Columns', value: 'label-2-columns' },
+    { label: 'Label 3 Columns', value: 'label-3-columns' },
+    { label: 'Shipping Label A6', value: 'label-shipping-a6' },
+    { label: 'Barcode Label (4 x 6 in)', value: 'label-4x6' },
+
+    // --- Large Format / Plotter (Arsitektur / Cetak Cetakan Lebar) ---
+    { label: 'Plotter / Architectural A2', value: 'A2' },
+    { label: 'Plotter / Architectural A1', value: 'A1' },
+    { label: 'Plotter / Architectural A0', value: 'A0' },
+];
 const isDeviceDialogOpen = ref(false)
 const printMode = ref<'driver' | 'network' | 'bluetooth'>('driver')
 const printerList = ref<Array<{ name: string; isDefault: boolean }>>([])
@@ -302,14 +324,25 @@ onUnmounted(() => {
 
             <!-- Quick Info -->
             <div class="hidden md:flex items-center gap-2 text-xs text-slate-400">
+                <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="handlePrintClick">
+                    <Icon icon="mdi:edit" class="w-4 h-4" />
+                    <span>Edit</span>
+                </button>
+                <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="handlePrintClick">
+                    <Icon icon="basil:share-outline" class="w-4 h-4" />
+                    <span>Share</span>
+                </button>
+                <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="handlePrintClick">
+                    <Icon icon="catppuccin:pdf" class="w-4 h-4" />
+                    <span>pdf</span>
 
-                <button type="button" :disabled="!props.blueprint"
-                    class="px-2 py-1.5 text-xs  rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20 cursor-pointer disabled:opacity-50"
+                </button>
+                <button type="button" :disabled="!props.blueprint" class="btn-action-emerald-600"
                     @click="handlePrintClick">
                     <Icon icon="mdi:printer-pos-outline" class="w-4 h-4" />
                     <span>Cetak</span>
-                    <kbd
-                        class="px-1.5 py-0.5 text-[9px] font-mono bg-emerald-700/80 rounded border border-emerald-400/30">Enter</kbd>
+                    <kbd class="btn-kbd">[Enter]</kbd>
+
                 </button>
             </div>
         </div>

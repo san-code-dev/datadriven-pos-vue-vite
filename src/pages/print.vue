@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import PrintComponent from '@/components/dynamic/PrintComponent.vue'
-import type { DocumentBlueprint, DocElement } from '@/printing/types'
+import type { DocumentBlueprint } from '@/printing/types'
+// import Menu from '@/components/Menu.vue' // Pastikan ini di-import jika ada komponen Menu
 
 const printBlueprint = ref<DocumentBlueprint | null>(null)
 const activeReportId = ref<string | null>(null)
-const selectedElementIndex = ref<number | null>(null)
-const draggedIndex = ref<number | null>(null)
 
-// --- DATA DUMMY BLUEPRINT ---
+// --- DATA DUMMY: Kumpulan Blueprint dari "API Server" ---
 const availableReports = [
     {
         id: 'receipt_58',
@@ -256,267 +255,73 @@ const availableReports = [
 
 ]
 
-// --- MUAT DOKUMEN ---
-const loadDocument = (reportId: string, blueprintData: DocumentBlueprint) => {
+// Fungsi untuk melempar blueprint ke komponen cetak
+const loadDocument = (reportId: string, blueprintData: unknown) => {
     activeReportId.value = reportId
-    printBlueprint.value = JSON.parse(JSON.stringify(blueprintData))
-    selectedElementIndex.value = null
+    printBlueprint.value = blueprintData as DocumentBlueprint
 }
-
-// --- DRAG & DROP HANDLERS ---
-const onDragStart = (index: number, event: DragEvent) => {
-    draggedIndex.value = index
-    if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = 'move'
-    }
-}
-
-const onDrop = (targetIndex: number) => {
-    if (draggedIndex.value === null || !printBlueprint.value) return
-
-    const elements = printBlueprint.value.elements
-    const itemToMove = elements.splice(draggedIndex.value, 1)[0]
-    elements.splice(targetIndex, 0, itemToMove)
-
-    selectedElementIndex.value = targetIndex
-    draggedIndex.value = null
-}
-
-// --- MANIPULASI ELEMEN ---
-const addElement = (type: DocElement['type']) => {
-    if (!printBlueprint.value) return
-    let newEl: DocElement
-
-    switch (type) {
-        case 'text': newEl = { type: 'text', text: 'Teks Baru', align: 'left', size: 1 }; break
-        case 'separator': newEl = { type: 'separator', style: 'dashed' }; break
-        case 'space': newEl = { type: 'space', lines: 1 }; break
-        case 'qrcode': newEl = { type: 'qrcode', value: 'https://example.com', align: 'center' }; break
-        case 'barcode': newEl = { type: 'barcode', value: '1234567890', format: 'CODE128', align: 'center' }; break
-        default: newEl = { type: 'text', text: 'Teks Baru' }
-    }
-
-    printBlueprint.value.elements.push(newEl)
-    selectedElementIndex.value = printBlueprint.value.elements.length - 1
-}
-
-const removeSelectedElement = () => {
-    if (selectedElementIndex.value === null || !printBlueprint.value) return
-    printBlueprint.value.elements.splice(selectedElementIndex.value, 1)
-
-    if (printBlueprint.value.elements.length === 0) {
-        selectedElementIndex.value = null
-    } else if (selectedElementIndex.value >= printBlueprint.value.elements.length) {
-        selectedElementIndex.value = printBlueprint.value.elements.length - 1
-    }
-}
-
-// --- KEYBOARD LISTENER (DELETE / BACKSPACE) ---
-const handleKeyDown = (e: KeyboardEvent) => {
-    const activeEl = document.activeElement
-    const isInputFocused = activeEl && (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl.tagName))
-
-    if ((e.key === 'Delete' || e.key === 'Backspace') && !isInputFocused) {
-        removeSelectedElement()
-    }
-}
-
-onMounted(() => window.addEventListener('keydown', handleKeyDown))
-onUnmounted(() => window.removeEventListener('keydown', handleKeyDown))
 </script>
 
 <template>
-    <div
-        class="flex h-screen bg-slate-200 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-mono text-xs overflow-hidden select-none">
+    <div class="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+        <!-- Anggap komponen Menu Anda ada di sini -->
+        <Menu />
 
-        <!-- PANEL 1: NAVIGATOR TEMPLATE (KIRI) -->
-        <div class="w-60 border-r border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 flex flex-col">
-            <div
-                class="p-2 border-b border-slate-300 dark:border-slate-800 font-bold uppercase tracking-wider text-[10px] text-slate-500 dark:text-slate-400">
-                Templates
-            </div>
-            <div class="flex-1 overflow-y-auto p-1.5 space-y-1">
-                <button v-for="report in availableReports" :key="report.id"
-                    @click="loadDocument(report.id, report.blueprint)"
-                    class="w-full text-left p-2 rounded border transition-all flex items-center gap-2" :class="[
-                        activeReportId === report.id
-                            ? 'bg-blue-600 text-white border-blue-600 font-semibold'
-                            : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200'
-                    ]">
-                    <span>{{ report.icon }}</span>
-                    <span class="truncate">{{ report.title }}</span>
-                </button>
-            </div>
-        </div>
+        <!-- Area Konten Utama -->
+        <div class="flex-1 flex p-6 gap-6 h-screen overflow-hidden">
 
-        <!-- PANEL 2: EXCEL-LIKE COMPACT SHEET EDITOR (TENGAH) -->
-        <div v-if="printBlueprint"
-            class="w-[480px] border-r border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col">
+            <!-- KOLOM KIRI: Daftar Pilihan Dokumen -->
+            <div class="w-1/2 flex flex-col gap-4 overflow-y-auto pr-2 pb-10">
 
-            <!-- Action Bar Compact -->
-            <div
-                class="p-2 border-b border-slate-300 dark:border-slate-800 flex items-center justify-between bg-slate-100 dark:bg-slate-900 gap-1">
-                <div class="flex items-center gap-1 overflow-x-auto">
-                    <button @click="addElement('text')"
-                        class="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded hover:bg-slate-200 dark:hover:bg-slate-700 font-sans text-[11px] font-medium">+
-                        Text</button>
-                    <button @click="addElement('separator')"
-                        class="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded hover:bg-slate-200 dark:hover:bg-slate-700 font-sans text-[11px] font-medium">+
-                        Line</button>
-                    <button @click="addElement('space')"
-                        class="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded hover:bg-slate-200 dark:hover:bg-slate-700 font-sans text-[11px] font-medium">+
-                        Space</button>
-                    <button @click="addElement('qrcode')"
-                        class="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded hover:bg-slate-200 dark:hover:bg-slate-700 font-sans text-[11px] font-medium">+
-                        QR</button>
-                </div>
-                <select v-model="printBlueprint.pageSize"
-                    class="px-1.5 py-1 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded font-sans text-[11px]">
-                    <option value="thermal58" class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">58mm
-                    </option>
-                    <option value="thermal80" class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">80mm
-                    </option>
-                    <option value="A4" class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">A4</option>
-                </select>
-            </div>
+                <div class="grid gap-3 mt-4">
+                    <button v-for="report in availableReports" :key="report.id"
+                        @click="loadDocument(report.id, report.blueprint)"
+                        class="flex items-start text-left p-4 rounded-2xl border transition-all duration-200" :class="[
+                            activeReportId === report.id
+                                ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 dark:bg-blue-900/20'
+                                : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md dark:bg-slate-800 dark:border-slate-700'
+                        ]">
+                        <div class="flex-1">
+                            <span class="text-slate-800 dark:text-white/85 mb-1 text-sm">
+                                {{ report.title }}
+                            </span>
+                            <p class="text-slate-500 text-xs">
+                                {{ report.description }}
+                            </p>
+                        </div>
 
-            <!-- Excel Grid Header -->
-            <div
-                class="grid grid-cols-12 bg-slate-200 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-700 font-bold text-[10px] text-slate-700 dark:text-slate-300 uppercase text-center">
-                <div class="col-span-1 border-r border-slate-300 dark:border-slate-700 py-1">Drag</div>
-                <div class="col-span-1 border-r border-slate-300 dark:border-slate-700 py-1">#</div>
-                <div class="col-span-3 border-r border-slate-300 dark:border-slate-700 py-1 text-left px-1.5">Type</div>
-                <div class="col-span-7 py-1 text-left px-1.5">Properties (Inline Edit)</div>
-            </div>
-
-            <!-- Sheet Rows List -->
-            <div
-                class="flex-1 overflow-y-auto divide-y divide-slate-300 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                <div v-for="(el, idx) in printBlueprint.elements" :key="idx" draggable="true"
-                    @dragstart="onDragStart(idx, $event)" @dragover.prevent @drop="onDrop(idx)"
-                    @click="selectedElementIndex = idx"
-                    class="grid grid-cols-12 items-center cursor-pointer transition-colors" :class="[
-                        selectedElementIndex === idx
-                            ? 'bg-blue-100 dark:bg-blue-950/80 ring-2 ring-inset ring-blue-500'
-                            : 'hover:bg-slate-100 dark:hover:bg-slate-800/60',
-                        draggedIndex === idx ? 'opacity-30 bg-slate-300 dark:bg-slate-700' : ''
-                    ]">
-                    <!-- Drag Handle -->
-                    <div
-                        class="col-span-1 border-r border-slate-200 dark:border-slate-800 py-1.5 text-center cursor-grab active:cursor-grabbing text-slate-500 dark:text-slate-400 font-bold">
-                        ⠿
-                    </div>
-
-                    <!-- Index Number -->
-                    <div
-                        class="col-span-1 border-r border-slate-200 dark:border-slate-800 py-1.5 text-center font-bold text-slate-500 dark:text-slate-400">
-                        {{ idx + 1 }}
-                    </div>
-
-                    <!-- Element Type -->
-                    <div
-                        class="col-span-3 border-r border-slate-200 dark:border-slate-800 py-1.5 px-1.5 font-bold text-blue-700 dark:text-blue-400 truncate">
-                        {{ el.type }}
-                    </div>
-
-                    <!-- Editable Properties -->
-                    <div
-                        class="col-span-7 py-1 px-1.5 flex items-center gap-1.5 overflow-hidden text-slate-900 dark:text-slate-100">
-
-                        <!-- Props: TEXT -->
-                        <template v-if="el.type === 'text'">
-                            <input v-model="el.text" type="text"
-                                class="flex-1 bg-transparent text-slate-900 dark:text-slate-100 border-none outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-blue-500 rounded px-1 truncate"
-                                placeholder="Content..." />
-                            <select v-model="el.align"
-                                class="bg-transparent border-none outline-none text-[11px] text-slate-700 dark:text-slate-300 font-semibold">
-                                <option value="left"
-                                    class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">L</option>
-                                <option value="center"
-                                    class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">C</option>
-                                <option value="right"
-                                    class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">R</option>
-                            </select>
-                            <button @click.stop="el.bold = !el.bold"
-                                class="px-1.5 py-0.5 font-bold rounded border border-slate-300 dark:border-slate-700"
-                                :class="el.bold ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-400'">B</button>
-                        </template>
-
-                        <!-- Props: SEPARATOR -->
-                        <template v-else-if="el.type === 'separator'">
-                            <select v-model="el.style"
-                                class="w-full bg-transparent text-slate-900 dark:text-slate-100 border-none outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-blue-500 rounded">
-                                <option value="dashed"
-                                    class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Garis Putus
-                                    (Dashed)</option>
-                                <option value="solid"
-                                    class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Garis Utuh
-                                    (Solid)</option>
-                            </select>
-                        </template>
-
-                        <!-- Props: SPACE -->
-                        <template v-else-if="el.type === 'space'">
-                            <span class="text-slate-600 dark:text-slate-400 font-semibold">Lines:</span>
-                            <input v-model.number="el.lines" type="number" min="1" max="10"
-                                class="w-12 bg-transparent text-slate-900 dark:text-slate-100 border-none outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-blue-500 rounded px-1" />
-                        </template>
-
-                        <!-- Props: QR / BARCODE -->
-                        <template v-else-if="el.type === 'qrcode' || el.type === 'barcode'">
-                            <input v-model="el.value" type="text"
-                                class="flex-1 bg-transparent text-slate-900 dark:text-slate-100 border-none outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-blue-500 rounded px-1 truncate" />
-                            <select v-model="el.align"
-                                class="bg-transparent border-none outline-none text-slate-700 dark:text-slate-300 font-semibold">
-                                <option value="left"
-                                    class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">L</option>
-                                <option value="center"
-                                    class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">C</option>
-                                <option value="right"
-                                    class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">R</option>
-                            </select>
-                        </template>
-
-                        <!-- Props: TABLE -->
-                        <template v-else-if="el.type === 'table'">
-                            <span class="text-slate-600 dark:text-slate-400 font-semibold truncate">{{ el.rows.length }}
-                                Baris Data Table</span>
-                        </template>
-
-                    </div>
+                        <!-- Indikator aktif (opsional, untuk UI lebih baik) -->
+                        <div v-if="activeReportId === report.id"
+                            class="text-blue-600 dark:text-blue-400 font-medium text-sm flex items-center h-full">
+                            ✓
+                        </div>
+                    </button>
                 </div>
             </div>
 
-            <!-- Compact Footer / Keyboard Hint -->
+            <!-- KOLOM KANAN: Preview & Eksekusi Komponen Print -->
             <div
-                class="p-2 border-t border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 text-[11px] text-slate-600 dark:text-slate-400 flex justify-between items-center font-sans">
-                <span class="flex items-center gap-1">
-                    Klik baris lalu tekan
-                    <kbd
-                        class="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 border border-slate-400 dark:border-slate-600 rounded font-mono text-[10px] text-slate-900 dark:text-slate-100 font-bold">DEL</kbd>
-                    atau
-                    <kbd
-                        class="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 border border-slate-400 dark:border-slate-600 rounded font-mono text-[10px] text-slate-900 dark:text-slate-100 font-bold">BKSP</kbd>
-                </span>
-                <span class="font-bold">Total: {{ printBlueprint.elements.length }}</span>
-            </div>
+                class="w-full h-full flex flex-col bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden relative shadow-sm">
 
-        </div>
+                <!-- Area Preview yang membungkus erat PrintComponent -->
+                <div class="flex-1 h-full overflow-hidden relative">
+                    <!-- Jika blueprint ada, panggil komponen -->
+                    <PrintComponent v-if="printBlueprint" :blueprint="printBlueprint" class="absolute inset-0" />
 
-        <!-- Empty State Center Panel -->
-        <div v-else
-            class="w-[480px] border-r border-slate-300 dark:border-slate-800 flex items-center justify-center text-slate-500 font-sans">
-            Pilih template di sisi kiri.
-        </div>
+                    <!-- Jika belum ada yang dipilih (Empty State) -->
+                    <div v-else class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+                        <svg class="w-16 h-16 mb-4 text-slate-300" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z">
+                            </path>
+                        </svg>
+                        <p class="text-base font-medium">Belum ada dokumen dipilih</p>
+                        <p class="text-sm">Klik salah satu dokumen di sebelah kiri.</p>
+                    </div>
+                </div>
 
-        <!-- PANEL 3: LIVE PREVIEW (KANAN) -->
-        <div
-            class="flex-1 bg-slate-300 dark:bg-slate-950 p-4 flex flex-col items-center justify-center overflow-hidden">
-            <div
-                class="w-full h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-400 dark:border-slate-800 overflow-hidden relative shadow-lg">
-                <PrintComponent v-if="printBlueprint" :blueprint="printBlueprint" class="absolute inset-0" />
             </div>
         </div>
-
     </div>
 </template>

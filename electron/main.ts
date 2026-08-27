@@ -1,5 +1,6 @@
 // electron/main.ts
-import { app, BrowserWindow, ipcMain, dialog, Notification, shell } from 'electron' // Tambahkan import shellimport * as fs from 'node:fs'
+import { app, BrowserWindow, ipcMain, dialog, Notification, shell } from 'electron'
+import * as fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import net from 'node:net'
@@ -8,12 +9,10 @@ import puppeteer from 'puppeteer'
 import { HtmlRenderer } from '../src/printing/renderers/htmlRenderer'
 import { registerSerialHandlers } from './serialHandler'
 import { registerSaveFileHandler } from './saveFileHandler'
-import * as fs from 'node:fs'
 
 // ==========================================
 // 1. AKTIFKAN EXPERIMENTAL & BLUETOOTH FLAGS
 // ==========================================
-// Wajib diletakkan sebelum app.whenReady()
 app.commandLine.appendSwitch('enable-web-bluetooth', 'true')
 app.commandLine.appendSwitch(
   'enable-experimental-web-platform-features',
@@ -28,37 +27,93 @@ export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 let win: BrowserWindow | null = null
+let splash: BrowserWindow | null = null
 
+// ==========================================
+// 2. WIDGET SPLASHSCREEN
+// ==========================================
+function createSplashWindow() {
+  splash = new BrowserWindow({
+    width: 420,
+    height: 320,
+    frame: false,
+    resizable: false,
+    alwaysOnTop: true,
+    transparent: false,
+    backgroundColor: '#0f172a',
+    center: true,
+    show: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  })
+
+
+
+  splash.loadFile('./splash.html').catch(() => {
+    // Fallback Data URL jika file splash.html belum/tidak ditemukan
+    splash?.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
+      <!DOCTYPE html>
+      <html>
+      <body style="background:#0f172a;color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;user-select:none;">
+        <div style="width:50px;height:50px;background:#10b981;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:24px;margin-bottom:12px;">R</div>
+        <h3 style="margin:0;letter-spacing:1px;">REVO-CORE</h3>
+        <p style="font-size:12px;color:#64748b;margin-top:6px;">Memuat aplikasi...</p>
+      </body>
+      </html>
+    `)}`)
+  })
+
+  splash.once('ready-to-show', () => {
+    splash?.show()
+  })
+}
+
+// ==========================================
+// 3. JENDELA UTAMA
+// ==========================================
 function createWindow() {
   win = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    show: false, // Window dibuat tersembunyi terlebih dahulu
+    width: 1080,
+    height: 720,
+    fullscreen: false,
+    show: false, // Dibuat tersembunyi awal sampai Splashscreen selesai
+    frame: false,
     backgroundColor: '#1e293b',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      experimentalFeatures: false, // Pastikan fitur eksperimental aktif di context web
+      experimentalFeatures: false,
     },
   })
 
-  // Munculkan window ketika siap di-render
+  // Transisi dari Splashscreen ke Jendela Utama
   win.once('ready-to-show', () => {
-    win?.show()
-    win?.focus()
-  })
+    setTimeout(() => {
+      // 1. Tutup Splashscreen
+      if (splash && !splash.isDestroyed()) {
+        splash.close()
+        splash = null
+      }
 
-  // ==========================================
-  // 2. ELECTRON BLUETOOTH DEVICE HANDLER
-  // ==========================================
+      if (win) {
+        // 2. Maksimal jendela ke seluruh layar (Maximized)
+        win.maximize()
+
+        // 3. Tampilkan dan fokuskan ke jendela utama
+        win.show()
+        win.focus()
+      }
+    }, 1000) // Delay jeda animasi splashscreen (1 detik)
+  })
   // Menangani dialog pemindaian Bluetooth dari Web Bluetooth API
   win.webContents.on(
     'select-bluetooth-device',
     (event, deviceList, callback) => {
       event.preventDefault()
       if (deviceList && deviceList.length > 0) {
-        // Pilih perangkat yang ditemukan pertama kali
         callback(deviceList[0].deviceId)
       } else {
         callback('')
@@ -66,12 +121,11 @@ function createWindow() {
     },
   )
 
-  // Menangani permintaan PIN/Pairing Bluetooth jika printer membutuhkannya
+  // Menangani permintaan PIN/Pairing Bluetooth
   win.webContents.session.setBluetoothPairingHandler((details, callback) => {
     if (details.pairingKind === 'confirmPin') {
       callback({ response: 'confirm' })
     } else if (details.pairingKind === 'providePin') {
-      // PIN default umum printer thermal (0000 atau 1234)
       callback({ response: 'success', pin: '0000' })
     } else {
       callback({ response: 'cancel' })
@@ -82,24 +136,27 @@ function createWindow() {
   if (VITE_DEV_SERVER_URL) {
     console.log('[Electron] Memuat Dev Server:', VITE_DEV_SERVER_URL)
     win.loadURL(VITE_DEV_SERVER_URL)
-    win.webContents.openDevTools()
+    win.webContents.openDevTools({ mode: 'detach' })
   } else {
     const indexPath = path.join(RENDERER_DIST, 'index.html')
     console.log('[Electron] Memuat File Lokal:', indexPath)
     win.loadFile(indexPath)
   }
 
-  // Tangkap error jika Vite gagal load
   win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('[Electron] Gagal load URL:', errorCode, errorDescription)
   })
 }
 
 // ==========================================
-// 3. IPC HANDLERS UNTUK HARDWARE POS
+// 4. IPC HANDLERS UNTUK HARDWARE POS
 // ==========================================
 
-import { ipcMain, Notification, shell, BrowserWindow } from 'electron'
+ipcMain.on('window:maximize', () => {
+  if (win) {
+    win.maximize() // Menggunakan maximize, bukan setFullScreen(true)
+  }
+})
 
 ipcMain.handle(
   'show-notification',
@@ -108,11 +165,11 @@ ipcMain.handle(
     payload: {
       title: string
       body: string
-      filePath?: string // Path file atau folder yang ingin dibuka
+      filePath?: string
     },
   ) => {
     if (!Notification.isSupported()) {
-      return { success: false, error: 'Notifikasi tidak didukung di sistem ini' }
+      return { success: false, error: 'Notifikasi tidak didukung' }
     }
 
     const notification = new Notification({
@@ -120,21 +177,26 @@ ipcMain.handle(
       body: payload.body,
     })
 
-    // Handler ketika Notifikasi diklik
     notification.on('click', async () => {
-      // 1. Jika ada payload filePath, buka file/folder tersebut
+      const targetWin = BrowserWindow.getFocusedWindow() || win
+
+      if (targetWin) {
+        // 1. Keluar dari fullscreen sementara agar OS bisa memindahkan fokus
+        if (targetWin.isFullScreen()) {
+          targetWin.setFullScreen(false)
+        }
+
+        // 2. Pulihkan jika diminimize dan fokuskan window
+        if (targetWin.isMinimized()) targetWin.restore()
+        targetWin.show()
+        targetWin.focus()
+      }
+
+      // 3. Jalankan aksi pembukaan file jika ada
       if (payload.filePath) {
         const errorMsg = await shell.openPath(payload.filePath)
         if (errorMsg) {
           console.error('[Shell Open Error]:', errorMsg)
-        }
-      } else {
-        // 2. Jika tidak ada filePath, fokuskan jendela aplikasi Electron
-        const win =
-          BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]
-        if (win) {
-          if (win.isMinimized()) win.restore()
-          win.focus()
         }
       }
     })
@@ -144,7 +206,11 @@ ipcMain.handle(
   },
 )
 
-// 2. Kirim raw ESC/POS ke OS Printer Spooler via Win32 Spooler API
+ipcMain.handle('get-printers', async () => {
+  if (!win) return []
+  return await win.webContents.getPrintersAsync()
+})
+
 ipcMain.handle('print-raw-driver', async (_, { printerName, rawBuffer }) => {
   return new Promise((resolve) => {
     try {
@@ -156,10 +222,8 @@ ipcMain.handle('print-raw-driver', async (_, { printerName, rawBuffer }) => {
         })
       }
 
-      // Konversi buffer ke Base64
       const base64Data = Buffer.from(rawBuffer).toString('base64')
 
-      // C# P/Invoke Script di dalam PowerShell
       const psScript = `
 Add-Type -TypeDefinition @"
 using System;
@@ -242,7 +306,6 @@ if (-not $success) {
 }
 `
 
-      // Spawn powershell
       const ps = spawn(
         'powershell',
         [
@@ -279,7 +342,6 @@ if (-not $success) {
         }
       })
 
-      // Tulis data base64 ke stdin stream
       ps.stdin.write(base64Data)
       ps.stdin.end()
     } catch (error: any) {
@@ -288,7 +350,6 @@ if (-not $success) {
   })
 })
 
-// 3. Cetak Raw ESC/POS ke Network / LAN Printer (IP:Port Socket)
 ipcMain.handle(
   'print-raw-network',
   async (_, { host, port = 9100, rawBuffer }) => {
@@ -344,15 +405,12 @@ ipcMain.handle(
         blueprint.pageSize === 'thermal58' || blueprint.pageSize === 'thermal80'
 
       if (isThermal) {
-        // Hitung tinggi asli elemen .document-sheet dalam satuan Pixel
         const bodyHeight = await page.evaluate(() => {
           const el = document.querySelector('.document-sheet')
           return el ? el.scrollHeight : document.body.scrollHeight
         })
 
-        // Tentukan lebar & tinggi persis agar PDF tidak kelebihan ruang kosong
         pdfOptions.width = blueprint.pageSize === 'thermal58' ? '58mm' : '80mm'
-        // Tambahkan buffer kecil (misal + 4px) agar tidak terpotong di bagian paling bawah
         pdfOptions.height = `${bodyHeight + 4}px`
         pdfOptions.margin = {
           top: '0px',
@@ -382,7 +440,6 @@ ipcMain.handle(
 
       await browser.close()
 
-      // --- POPUP DIALOG SAVE FILE ---
       const { canceled, filePath } = await dialog.showSaveDialog(win!, {
         title: 'Simpan Dokumen PDF',
         defaultPath: `${blueprint.title || 'dokumen'}.pdf`,
@@ -402,21 +459,27 @@ ipcMain.handle(
     }
   },
 )
+
 // ==========================================
-// 4. APP LIFECYCLE
+// 5. APP LIFECYCLE
 // ==========================================
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
     win = null
+    splash = null
   }
 })
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createSplashWindow()
+    createWindow()
+  }
 })
 
 app.whenReady().then(() => {
+  createSplashWindow()
   createWindow()
   registerSerialHandlers()
   registerSaveFileHandler(() => win)

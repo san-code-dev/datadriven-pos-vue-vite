@@ -138,13 +138,13 @@ export default defineConfig({
     }),
 
     // === Integrasi Plugin Electron ===
-
     electron([
       {
         // Main process
         entry: 'electron/main.ts',
         vite: {
           build: {
+            outDir: 'dist-electron',
             rollupOptions: {
               output: {
                 format: 'cjs',
@@ -155,6 +155,7 @@ export default defineConfig({
                 '@serialport/bindings-cpp',
                 '@serialport/parser-readline',
                 'ws',
+                'puppeteer',
               ],
             },
           },
@@ -168,22 +169,24 @@ export default defineConfig({
         },
         vite: {
           build: {
+            outDir: 'dist-electron',
             lib: {
               entry: 'electron/preload.ts',
               formats: ['cjs'],
-              fileName: () => '[name].js',
+              fileName: () => 'preload.js',
             },
             rollupOptions: {
-              // Tambahkan output format cjs di sini juga!
               output: {
                 format: 'cjs',
-                entryFileNames: '[name].js',
+                entryFileNames: 'preload.js',
+                inlineDynamicImports: true,
               },
             },
           },
         },
       },
     ]),
+    // JANGAN panggil renderer() di sini agar Vue tetap murni browser (ESM)
   ],
 
   resolve: {

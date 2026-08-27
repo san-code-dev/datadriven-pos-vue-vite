@@ -4,7 +4,6 @@
     "env.d.ts",
     "src/**/*",
     "src/**/*.vue",
-    "src/*",
     "src/electron.d.ts",
     "electron/**/*",
     "components.d.ts",

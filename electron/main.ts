@@ -110,7 +110,6 @@ ipcMain.handle(
   },
 )
 
-// 1. Ambil daftar printer OS bawaan Electron
 ipcMain.handle('get-printers', async () => {
   if (!win) return []
   return await win.webContents.getPrintersAsync()
@@ -289,101 +288,100 @@ ipcMain.handle(
       })
     })
   },
-),
-  ipcMain.handle(
-    'render-pdf',
-    async (_, payload: { blueprint: any; options?: any }) => {
-      try {
-        const { blueprint, options } = payload
-        const htmlRenderer = new HtmlRenderer()
-        const html = await htmlRenderer.render(blueprint, options)
+)
 
-        const browser = await puppeteer.launch({
-          headless: true,
-          args: ['--no-sandbox'],
-        })
+ipcMain.handle(
+  'render-pdf',
+  async (_, payload: { blueprint: any; options?: any }) => {
+    try {
+      const { blueprint, options } = payload
+      const htmlRenderer = new HtmlRenderer()
+      const html = await htmlRenderer.render(blueprint, options)
 
-        const page = await browser.newPage()
-        await page.setContent(html, { waitUntil: 'networkidle0' })
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox'],
+      })
 
-        const pdfOptions: puppeteer.PDFOptions = {
-          printBackground: true,
-          preferCSSPageSize: true,
-        }
+      const page = await browser.newPage()
+      await page.setContent(html, { waitUntil: 'domcontentloaded' })
 
-        const isThermal =
-          blueprint.pageSize === 'thermal58' ||
-          blueprint.pageSize === 'thermal80'
-
-        if (isThermal) {
-          // Hitung tinggi asli elemen .document-sheet dalam satuan Pixel
-          const bodyHeight = await page.evaluate(() => {
-            const el = document.querySelector('.document-sheet')
-            return el ? el.scrollHeight : document.body.scrollHeight
-          })
-
-          // Tentukan lebar & tinggi persis agar PDF tidak kelebihan ruang kosong
-          pdfOptions.width =
-            blueprint.pageSize === 'thermal58' ? '58mm' : '80mm'
-          // Tambahkan buffer kecil (misal + 4px) agar tidak terpotong di bagian paling bawah
-          pdfOptions.height = `${bodyHeight + 4}px`
-          pdfOptions.margin = {
-            top: '0px',
-            right: '0px',
-            bottom: '0px',
-            left: '0px',
-          }
-        } else if (blueprint.pageSize === 'A5') {
-          pdfOptions.format = 'A5'
-          pdfOptions.margin = {
-            top: '10mm',
-            right: '10mm',
-            bottom: '10mm',
-            left: '10mm',
-          }
-        } else {
-          pdfOptions.format = 'A4'
-          pdfOptions.margin = {
-            top: '10mm',
-            right: '10mm',
-            bottom: '10mm',
-            left: '10mm',
-          }
-        }
-
-        const pdfUint8Array = await page.pdf(pdfOptions)
-
-        await browser.close()
-
-        // --- POPUP DIALOG SAVE FILE ---
-        const { canceled, filePath } = await dialog.showSaveDialog(win!, {
-          title: 'Simpan Dokumen PDF',
-          defaultPath: `${blueprint.title || 'dokumen'}.pdf`,
-          filters: [{ name: 'Dokumen PDF', extensions: ['pdf'] }],
-        })
-
-        if (canceled || !filePath) {
-          return { success: false, canceled: true }
-        }
-
-        await fs.promises.writeFile(filePath, Buffer.from(pdfUint8Array))
-
-        return { success: true, filePath }
-      } catch (error: any) {
-        console.error('[Render-PDF Error]:', error)
-        return { success: false, error: error.message }
+      const pdfOptions: Parameters<typeof page.pdf>[0] = {
+        printBackground: true,
+        preferCSSPageSize: true,
       }
-    },
-  ),
-  // ==========================================
-  // 4. APP LIFECYCLE
-  // ==========================================
-  app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-      app.quit()
-      win = null
+
+      const isThermal =
+        blueprint.pageSize === 'thermal58' || blueprint.pageSize === 'thermal80'
+
+      if (isThermal) {
+        // Hitung tinggi asli elemen .document-sheet dalam satuan Pixel
+        const bodyHeight = await page.evaluate(() => {
+          const el = document.querySelector('.document-sheet')
+          return el ? el.scrollHeight : document.body.scrollHeight
+        })
+
+        // Tentukan lebar & tinggi persis agar PDF tidak kelebihan ruang kosong
+        pdfOptions.width = blueprint.pageSize === 'thermal58' ? '58mm' : '80mm'
+        // Tambahkan buffer kecil (misal + 4px) agar tidak terpotong di bagian paling bawah
+        pdfOptions.height = `${bodyHeight + 4}px`
+        pdfOptions.margin = {
+          top: '0px',
+          right: '0px',
+          bottom: '0px',
+          left: '0px',
+        }
+      } else if (blueprint.pageSize === 'A5') {
+        pdfOptions.format = 'A5'
+        pdfOptions.margin = {
+          top: '10mm',
+          right: '10mm',
+          bottom: '10mm',
+          left: '10mm',
+        }
+      } else {
+        pdfOptions.format = 'A4'
+        pdfOptions.margin = {
+          top: '10mm',
+          right: '10mm',
+          bottom: '10mm',
+          left: '10mm',
+        }
+      }
+
+      const pdfUint8Array = await page.pdf(pdfOptions)
+
+      await browser.close()
+
+      // --- POPUP DIALOG SAVE FILE ---
+      const { canceled, filePath } = await dialog.showSaveDialog(win!, {
+        title: 'Simpan Dokumen PDF',
+        defaultPath: `${blueprint.title || 'dokumen'}.pdf`,
+        filters: [{ name: 'Dokumen PDF', extensions: ['pdf'] }],
+      })
+
+      if (canceled || !filePath) {
+        return { success: false, canceled: true }
+      }
+
+      await fs.promises.writeFile(filePath, Buffer.from(pdfUint8Array))
+
+      return { success: true, filePath }
+    } catch (error: any) {
+      console.error('[Render-PDF Error]:', error)
+      return { success: false, error: error.message }
     }
-  })
+  },
+)
+// ==========================================
+// 4. APP LIFECYCLE
+// ==========================================
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit()
+    win = null
+  }
+})
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow()

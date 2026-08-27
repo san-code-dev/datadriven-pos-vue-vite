@@ -1,6 +1,6 @@
 <!-- src/App.vue -->
 <script setup lang="ts">
-import { watch, onUnmounted } from 'vue'
+import { watch, onUnmounted, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { initGlobalSocket, disconnectSocket } from '@/lib/socket'
 import "@revolist/revo-dropdown"
@@ -23,6 +23,13 @@ watch(
 )
 onUnmounted(() => {
     disconnectSocket()
+})
+
+onMounted(() => {
+    // Kirim sinyal ke Electron bahwa Vue & DOM sudah sepenuhnya selesai dimuat
+    if (window.electronAPI?.appReady) {
+        window.electronAPI.appReady()
+    }
 })
 </script>
 

@@ -4143,10 +4143,10 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1080,
     height: 720,
-    fullscreen: false,
     show: false,
-    // Dibuat tersembunyi awal sampai Splashscreen selesai
-    frame: false,
+    // Disembunyikan dulu sampai sinyal 'app-ready' dari Vue diterima
+    frame: true,
+    // Menampilkan titlebar bawaan OS beserta tombol Close, Minimize, dan Maximize
     backgroundColor: "#1e293b",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -4154,19 +4154,6 @@ function createWindow() {
       contextIsolation: true,
       experimentalFeatures: false
     }
-  });
-  win.once("ready-to-show", () => {
-    setTimeout(() => {
-      if (splash && !splash.isDestroyed()) {
-        splash.close();
-        splash = null;
-      }
-      if (win) {
-        win.maximize();
-        win.show();
-        win.focus();
-      }
-    }, 1e3);
   });
   win.webContents.on(
     "select-bluetooth-device",
@@ -4201,6 +4188,17 @@ function createWindow() {
     console.error("[Electron] Gagal load URL:", errorCode, errorDescription);
   });
 }
+ipcMain.on("app-ready", () => {
+  if (splash && !splash.isDestroyed()) {
+    splash.close();
+    splash = null;
+  }
+  if (win && !win.isVisible()) {
+    win.maximize();
+    win.show();
+    win.focus();
+  }
+});
 ipcMain.on("window:maximize", () => {
   if (win) {
     win.maximize();

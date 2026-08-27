@@ -15,5 +15,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     body: string
     filePath?: string
   }) => ipcRenderer.invoke('show-notification', payload),
-  maximizeWindow: () => ipcRenderer.send('window:maximize')
+  maximizeWindow: () => ipcRenderer.send('window:maximize'),
+  appReady: () => ipcRenderer.send('app-ready')
 })

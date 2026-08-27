@@ -10,5 +10,6 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   renderPdf: (data) => electron.ipcRenderer.invoke("render-pdf", data),
   renderXlsx: (data) => electron.ipcRenderer.invoke("render-xlsx", data),
   showNotification: (payload) => electron.ipcRenderer.invoke("show-notification", payload),
-  maximizeWindow: () => electron.ipcRenderer.send("window:maximize")
+  maximizeWindow: () => electron.ipcRenderer.send("window:maximize"),
+  appReady: () => electron.ipcRenderer.send("app-ready")
 });

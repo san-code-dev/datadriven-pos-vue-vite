@@ -49,8 +49,6 @@ function createSplashWindow() {
     },
   })
 
-
-
   splash.loadFile('./splash.html').catch(() => {
     // Fallback Data URL jika file splash.html belum/tidak ditemukan
     splash?.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
@@ -77,9 +75,8 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1080,
     height: 720,
-    fullscreen: false,
-    show: false, // Dibuat tersembunyi awal sampai Splashscreen selesai
-    frame: false,
+    show: false,      // Disembunyikan dulu sampai sinyal 'app-ready' dari Vue diterima
+    frame: true,      // Menampilkan titlebar bawaan OS beserta tombol Close, Minimize, dan Maximize
     backgroundColor: '#1e293b',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -89,25 +86,6 @@ function createWindow() {
     },
   })
 
-  // Transisi dari Splashscreen ke Jendela Utama
-  win.once('ready-to-show', () => {
-    setTimeout(() => {
-      // 1. Tutup Splashscreen
-      if (splash && !splash.isDestroyed()) {
-        splash.close()
-        splash = null
-      }
-
-      if (win) {
-        // 2. Maksimal jendela ke seluruh layar (Maximized)
-        win.maximize()
-
-        // 3. Tampilkan dan fokuskan ke jendela utama
-        win.show()
-        win.focus()
-      }
-    }, 1000) // Delay jeda animasi splashscreen (1 detik)
-  })
   // Menangani dialog pemindaian Bluetooth dari Web Bluetooth API
   win.webContents.on(
     'select-bluetooth-device',
@@ -149,12 +127,26 @@ function createWindow() {
 }
 
 // ==========================================
-// 4. IPC HANDLERS UNTUK HARDWARE POS
+// 4. IPC HANDLERS UNTUK TRANSISI & HARDWARE POS
 // ==========================================
+
+// Transisi halus dari Splashscreen ke Jendela Utama Maximized saat Vue selesai mounting
+ipcMain.on('app-ready', () => {
+  if (splash && !splash.isDestroyed()) {
+    splash.close()
+    splash = null
+  }
+
+  if (win && !win.isVisible()) {
+    win.maximize()
+    win.show()
+    win.focus()
+  }
+})
 
 ipcMain.on('window:maximize', () => {
   if (win) {
-    win.maximize() // Menggunakan maximize, bukan setFullScreen(true)
+    win.maximize()
   }
 })
 
@@ -181,18 +173,15 @@ ipcMain.handle(
       const targetWin = BrowserWindow.getFocusedWindow() || win
 
       if (targetWin) {
-        // 1. Keluar dari fullscreen sementara agar OS bisa memindahkan fokus
         if (targetWin.isFullScreen()) {
           targetWin.setFullScreen(false)
         }
 
-        // 2. Pulihkan jika diminimize dan fokuskan window
         if (targetWin.isMinimized()) targetWin.restore()
         targetWin.show()
         targetWin.focus()
       }
 
-      // 3. Jalankan aksi pembukaan file jika ada
       if (payload.filePath) {
         const errorMsg = await shell.openPath(payload.filePath)
         if (errorMsg) {

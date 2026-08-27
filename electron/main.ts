@@ -1,6 +1,5 @@
 // electron/main.ts
-import { app, BrowserWindow, ipcMain, dialog } from 'electron' // Tambahkan dialog
-import * as fs from 'node:fs'
+import { app, BrowserWindow, ipcMain, dialog, Notification, shell } from 'electron' // Tambahkan import shellimport * as fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import net from 'node:net'
@@ -9,7 +8,8 @@ import puppeteer from 'puppeteer'
 import { HtmlRenderer } from '../src/printing/renderers/htmlRenderer'
 import { registerSerialHandlers } from './serialHandler'
 import { registerSaveFileHandler } from './saveFileHandler'
-import { Notification } from 'electron'
+import * as fs from 'node:fs'
+
 // ==========================================
 // 1. AKTIFKAN EXPERIMENTAL & BLUETOOTH FLAGS
 // ==========================================
@@ -99,21 +99,50 @@ function createWindow() {
 // 3. IPC HANDLERS UNTUK HARDWARE POS
 // ==========================================
 
+import { ipcMain, Notification, shell, BrowserWindow } from 'electron'
+
 ipcMain.handle(
   'show-notification',
-  async (_, { title, body }: { title: string; body: string }) => {
-    if (Notification.isSupported()) {
-      new Notification({ title, body }).show()
-      return { success: true }
+  async (
+    _,
+    payload: {
+      title: string
+      body: string
+      filePath?: string // Path file atau folder yang ingin dibuka
+    },
+  ) => {
+    if (!Notification.isSupported()) {
+      return { success: false, error: 'Notifikasi tidak didukung di sistem ini' }
     }
-    return { success: false, error: 'Notifikasi tidak didukung di sistem ini' }
+
+    const notification = new Notification({
+      title: payload.title,
+      body: payload.body,
+    })
+
+    // Handler ketika Notifikasi diklik
+    notification.on('click', async () => {
+      // 1. Jika ada payload filePath, buka file/folder tersebut
+      if (payload.filePath) {
+        const errorMsg = await shell.openPath(payload.filePath)
+        if (errorMsg) {
+          console.error('[Shell Open Error]:', errorMsg)
+        }
+      } else {
+        // 2. Jika tidak ada filePath, fokuskan jendela aplikasi Electron
+        const win =
+          BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0]
+        if (win) {
+          if (win.isMinimized()) win.restore()
+          win.focus()
+        }
+      }
+    })
+
+    notification.show()
+    return { success: true }
   },
 )
-
-ipcMain.handle('get-printers', async () => {
-  if (!win) return []
-  return await win.webContents.getPrintersAsync()
-})
 
 // 2. Kirim raw ESC/POS ke OS Printer Spooler via Win32 Spooler API
 ipcMain.handle('print-raw-driver', async (_, { printerName, rawBuffer }) => {

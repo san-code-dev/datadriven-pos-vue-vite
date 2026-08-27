@@ -230,7 +230,11 @@ const confirmAndPrint = async () => {
     }
 }
 
-async function exportPdf() {
+async function exportPdf(e: MouseEvent) {
+    const btn = e.currentTarget as HTMLButtonElement
+    if (btn.disabled) return
+    btn.disabled = true
+
     try {
         // 1. Bersihkan proxy reaktif Vue
         const cleanBlueprint = JSON.parse(JSON.stringify(activeBlueprint.value))
@@ -242,7 +246,7 @@ async function exportPdf() {
         })
 
         if (result.success) {
-            console.log('PDF berhasil disimpan di:', result.filePath)
+            window.electronAPI.showNotification({ title: 'Struk disimpan!', body: 'Ketuk untuk lihat', filePath: result.filePath })
         } else if (result.canceled) {
             console.log('Pengguna membatalkan dialog simpan.')
         } else {
@@ -250,6 +254,8 @@ async function exportPdf() {
         }
     } catch (err) {
         console.error('Error IPC:', err)
+    } finally {
+        btn.disabled = false
     }
 }
 // ==========================================

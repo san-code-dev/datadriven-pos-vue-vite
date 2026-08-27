@@ -1,8 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { ipcMain, dialog, app, Notification, BrowserWindow } from "electron";
-import * as fs from "node:fs";
+import { ipcMain, dialog, app, Notification, shell, BrowserWindow } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import net from "node:net";
@@ -10,6 +9,7 @@ import { spawn } from "node:child_process";
 import puppeteer from "puppeteer";
 import { SerialPort } from "serialport";
 import fs$1 from "node:fs/promises";
+import * as fs from "node:fs";
 class HtmlRenderer {
   constructor() {
     __publicField(this, "name", "html");
@@ -282,18 +282,32 @@ function createWindow() {
 }
 ipcMain.handle(
   "show-notification",
-  async (_, { title, body }) => {
-    if (Notification.isSupported()) {
-      new Notification({ title, body }).show();
-      return { success: true };
+  async (_, payload) => {
+    if (!Notification.isSupported()) {
+      return { success: false, error: "Notifikasi tidak didukung di sistem ini" };
     }
-    return { success: false, error: "Notifikasi tidak didukung di sistem ini" };
+    const notification = new Notification({
+      title: payload.title,
+      body: payload.body
+    });
+    notification.on("click", async () => {
+      if (payload.filePath) {
+        const errorMsg = await shell.openPath(payload.filePath);
+        if (errorMsg) {
+          console.error("[Shell Open Error]:", errorMsg);
+        }
+      } else {
+        const win2 = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+        if (win2) {
+          if (win2.isMinimized()) win2.restore();
+          win2.focus();
+        }
+      }
+    });
+    notification.show();
+    return { success: true };
   }
 );
-ipcMain.handle("get-printers", async () => {
-  if (!win) return [];
-  return await win.webContents.getPrintersAsync();
-});
 ipcMain.handle("print-raw-driver", async (_, { printerName, rawBuffer }) => {
   return new Promise((resolve) => {
     try {

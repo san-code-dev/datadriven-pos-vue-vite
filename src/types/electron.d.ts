@@ -30,6 +30,7 @@ interface ElectronAPI {
   showNotification: (payload: {
     title: string
     body: string
+    filePath?: string
   }) => Promise<{ success: boolean; error?: string }>
 }
 
@@ -40,4 +41,4 @@ declare global {
   }
 }
 
-export {} // PENTING: Menandakan file ini adalah modul TypeScript yang aman untuk ambient declaration
+export { } // PENTING: Menandakan file ini adalah modul TypeScript yang aman untuk ambient declaration

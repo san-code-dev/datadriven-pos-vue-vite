@@ -10,5 +10,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveFileDialog: (args: any) => ipcRenderer.invoke('save-file-dialog', args),
   renderPdf: (data: any) => ipcRenderer.invoke('render-pdf', data),
   renderXlsx: (data: any) => ipcRenderer.invoke('render-xlsx', data),
-  showNotification: (payload: { title: string; body: string }) => ipcRenderer.invoke('show-notification', payload),
+  showNotification: (payload: {
+    title: string
+    body: string
+    filePath?: string
+  }) => ipcRenderer.invoke('show-notification', payload),
 })

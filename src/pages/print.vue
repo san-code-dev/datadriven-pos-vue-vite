@@ -273,10 +273,11 @@ const loadDocument = (reportId: string, blueprintData: unknown) => {
             <!-- KOLOM KIRI: Daftar Pilihan Dokumen -->
             <div class="w-1/4 flex flex-col gap-4 overflow-y-auto pr-2 pb-10">
 
-                <div class="grid gap-3 mt-4">
+                <div class="grid gap-2 mt-4">
                     <button v-for="report in availableReports" :key="report.id"
                         @click="loadDocument(report.id, report.blueprint)"
-                        class="flex items-start text-left p-4 rounded-2xl border transition-all duration-200" :class="[
+                        class="flex items-start text-left p-4 py-2 rounded-2xl border transition-all duration-200"
+                        :class="[
                             activeReportId === report.id
                                 ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 dark:bg-blue-900/20'
                                 : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-md dark:bg-slate-800 dark:border-slate-700'
@@ -285,9 +286,6 @@ const loadDocument = (reportId: string, blueprintData: unknown) => {
                             <span class="text-slate-800 dark:text-white/85 mb-1 text-sm">
                                 {{ report.title }}
                             </span>
-                            <p class="text-slate-500 text-xs">
-                                {{ report.description }}
-                            </p>
                         </div>
 
                         <!-- Indikator aktif (opsional, untuk UI lebih baik) -->

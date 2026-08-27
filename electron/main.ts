@@ -368,86 +368,69 @@ ipcMain.handle(
     })
   },
 )
+ipcMain.handle('render-pdf-from-html', async (event, { html, pageSize, options }) => {
+  let offscreenWindow: BrowserWindow | null = null
 
-ipcMain.handle(
-  'render-pdf',
-  async (_, payload: { blueprint: any; options?: any }) => {
-    try {
-      const { blueprint, options } = payload
-      const htmlRenderer = new HtmlRenderer()
-      const html = await htmlRenderer.render(blueprint, options)
-
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox'],
-      })
-
-      const page = await browser.newPage()
-      await page.setContent(html, { waitUntil: 'domcontentloaded' })
-
-      const pdfOptions: Parameters<typeof page.pdf>[0] = {
-        printBackground: true,
-        preferCSSPageSize: true,
+  try {
+    // 1. Buat window tersembunyi
+    offscreenWindow = new BrowserWindow({
+      show: false,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true
       }
+    })
 
-      const isThermal =
-        blueprint.pageSize === 'thermal58' || blueprint.pageSize === 'thermal80'
-
-      if (isThermal) {
-        const bodyHeight = await page.evaluate(() => {
-          const el = document.querySelector('.document-sheet')
-          return el ? el.scrollHeight : document.body.scrollHeight
-        })
-
-        pdfOptions.width = blueprint.pageSize === 'thermal58' ? '58mm' : '80mm'
-        pdfOptions.height = `${bodyHeight + 4}px`
-        pdfOptions.margin = {
-          top: '0px',
-          right: '0px',
-          bottom: '0px',
-          left: '0px',
-        }
-      } else if (blueprint.pageSize === 'A5') {
-        pdfOptions.format = 'A5'
-        pdfOptions.margin = {
-          top: '10mm',
-          right: '10mm',
-          bottom: '10mm',
-          left: '10mm',
-        }
-      } else {
-        pdfOptions.format = 'A4'
-        pdfOptions.margin = {
-          top: '10mm',
-          right: '10mm',
-          bottom: '10mm',
-          left: '10mm',
-        }
-      }
-
-      const pdfUint8Array = await page.pdf(pdfOptions)
-
-      await browser.close()
-
-      const { canceled, filePath } = await dialog.showSaveDialog(win!, {
-        title: 'Simpan Dokumen PDF',
-        defaultPath: `${blueprint.title || 'dokumen'}.pdf`,
-        filters: [{ name: 'Dokumen PDF', extensions: ['pdf'] }],
-      })
-
-      if (canceled || !filePath) {
-        return { success: false, canceled: true }
-      }
-
-      await fs.promises.writeFile(filePath, Buffer.from(pdfUint8Array))
-
-      return { success: true, filePath }
-    } catch (error: any) {
-      console.error('[Render-PDF Error]:', error)
-      return { success: false, error: error.message }
+    // 2. Load string HTML langsung via Data URL
+    const encodedHtml = encodeURIComponent(html)
+    await offscreenWindow.loadURL(`data:text/html;charset=utf-8,${encodedHtml}`)
+    const isThermal58 = pageSize === 'thermal58'
+    const isThermal80 = pageSize === 'thermal80'
+    const pdfOptions: Electron.PrintToPDFOptions = {
+      printBackground: true,
+      preferCSSPageSize: true, // <--- KUNCI UTAMA: Memaksa Electron membaca @page dari CSS
+      pageSize: isThermal58
+        ? { width: 58000, height: 200000 }
+        : isThermal80
+          ? { width: 80000, height: 200000 }
+          : (pageSize || 'A4'),
+      ...options
     }
-  },
-)
+
+    // if (pageSize === 'thermal58') {
+    //   pdfOptions.pageSize = { width: 58000, height: 200000 } // dalam micron (58mm)
+    // } else if (pageSize === 'thermal80') {
+    //   pdfOptions.pageSize = { width: 80000, height: 200000 } // dalam micron (80mm)
+    // } else {
+    //   pdfOptions.pageSize = pageSize || 'A4'
+    // }
+
+    // 4. Generate PDF buffer
+    const pdfData = await offscreenWindow.webContents.printToPDF(pdfOptions)
+
+    // 5. Minta user memilih tempat menyimpan berkas
+    const { filePath, canceled } = await dialog.showSaveDialog({
+      title: 'Simpan PDF Struk',
+      defaultPath: `Struk-${Date.now()}.pdf`,
+      filters: [{ name: 'PDF Files', extensions: ['pdf'] }]
+    })
+
+    if (canceled || !filePath) {
+      return { success: false, canceled: true }
+    }
+
+    // 6. Tulis file PDF ke disk
+    await fs.promises.writeFile(filePath, pdfData)
+
+    return { success: true, filePath }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  } finally {
+    if (offscreenWindow) {
+      offscreenWindow.destroy()
+    }
+  }
+})
 
 // ==========================================
 // 5. APP LIFECYCLE

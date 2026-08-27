@@ -8,18 +8,22 @@ import { BluetoothConnection } from '@/printing/connections/bluetoothConnection'
 import type { DocumentBlueprint } from '@/printing/types'
 
 // ==========================================
-// PROPS (Data berasal dari Parent)
+// PROPS & EMITS
 // ==========================================
 const props = defineProps<{ blueprint: DocumentBlueprint | null }>()
+const emit = defineEmits<{
+    (e: 'edit'): void
+    (e: 'share'): void
+    (e: 'export-excel'): void
+}>()
 
 const printService = new PrintService()
 const previewHtml = ref<string>('')
 const blobPreviewUrl = ref<string>('')
 
 // ==========================================
-// 1. REFS & STATE (Daftar Opsi & Local State)
+// 1. REFS & STATE
 // ==========================================
-const selectedDocType = ref<string>('receipt')
 const selectedPageSize = ref<string>('thermal58')
 
 const pageSizeOptions = [
@@ -29,7 +33,8 @@ const pageSizeOptions = [
     { label: 'A4', value: 'A4' },
     { label: 'A5', value: 'A5' },
     { label: 'Letter', value: 'Letter' },
-];
+]
+
 const isDeviceDialogOpen = ref(false)
 const printMode = ref<'driver' | 'network' | 'bluetooth'>('driver')
 const printerList = ref<Array<{ name: string; isDefault: boolean }>>([])
@@ -47,27 +52,24 @@ const bluetoothDeviceName = ref<string>('')
 const isScanningBluetooth = ref(false)
 
 // ==========================================
-// 2. COMPUTED BLUEPRINT (Dinamis dari Pilihan)
+// 2. COMPUTED & WATCH BLUEPRINT
 // ==========================================
-// Menghasilkan blueprint gabungan antara props + pilihan user
 const activeBlueprint = computed<DocumentBlueprint | null>(() => {
     if (!props.blueprint) return null
-    // Cast fields to satisfy DocumentBlueprint typing
-    return ({
+    return {
         ...props.blueprint,
         pageSize: selectedPageSize.value as unknown as DocumentBlueprint['pageSize'],
-    } as DocumentBlueprint)
+    } as DocumentBlueprint
 })
 
-// Sync state lokal ketika props.blueprint berubah dari parent
 watch(
-    () => props.blueprint,
-    (newBp) => {
-        if (newBp) {
-            if (newBp.pageSize) selectedPageSize.value = newBp.pageSize
+    () => props.blueprint?.pageSize,
+    (newPageSize) => {
+        if (newPageSize) {
+            selectedPageSize.value = newPageSize
         }
     },
-    { immediate: true, deep: true }
+    { immediate: true }
 )
 
 // ==========================================
@@ -79,6 +81,7 @@ const updatePreview = async () => {
         const htmlContent = await printService.renderToHtml(activeBlueprint.value)
         previewHtml.value = htmlContent
 
+        // Cleanup Blob lama sebelum membuat yang baru
         if (blobPreviewUrl.value) {
             URL.revokeObjectURL(blobPreviewUrl.value)
         }
@@ -90,22 +93,17 @@ const updatePreview = async () => {
     }
 }
 
-// Watch perubahannya agar langsung ter-update otomatis di iframe
+// Watch perubahan spesifik tanpa deep: true berlebih
 watch(
-    [activeBlueprint, selectedDocType, selectedPageSize],
+    [activeBlueprint, selectedPageSize],
     () => {
         updatePreview()
     },
-    { immediate: true, deep: true }
+    { immediate: true }
 )
 
-// Helper sinkronisasi cepat tombol 58mm / 80mm
-const setThermalSize = (size: 'thermal58' | 'thermal80') => {
-    selectedPageSize.value = size
-}
-
 // ==========================================
-// 4. COMPUTED & VALIDATION HELPERS
+// 4. VALIDATION HELPERS
 // ==========================================
 const isNetworkIpValid = computed(() => {
     const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/
@@ -149,7 +147,7 @@ const loadPrinters = async () => {
             selectedPrinter.value = defaultPrinter ? defaultPrinter.name : printerList.value[0].name
         } else {
             selectedPrinter.value = ''
-            statusMessage.value = 'Tidak ada printer thermal/fisik yang terdeteksi.'
+            statusMessage.value = 'Tidak ada printer terdeteksi.'
             isSuccess.value = false
         }
     } catch (err: any) {
@@ -162,6 +160,7 @@ const loadPrinters = async () => {
 }
 
 const handlePrintClick = async () => {
+    if (!props.blueprint) return
     statusMessage.value = ''
     isDeviceDialogOpen.value = true
     if (printMode.value === 'driver') {
@@ -177,19 +176,25 @@ const scanBluetoothDevice = async () => {
     isScanningBluetooth.value = true
     statusMessage.value = 'Mencari perangkat Bluetooth...'
 
-    const conn = new BluetoothConnection()
-    const result = await conn.scanAndPair()
+    try {
+        const conn = new BluetoothConnection()
+        const result = await conn.scanAndPair()
 
-    if (result.success) {
-        bluetoothConnectionRef.value = conn
-        bluetoothDeviceName.value = result.deviceName || ''
-        statusMessage.value = `Terhubung: ${result.deviceName}`
-        isSuccess.value = true
-    } else {
-        statusMessage.value = `Gagal scan Bluetooth: ${result.error || 'Perangkat tidak ditemukan'}`
+        if (result.success) {
+            bluetoothConnectionRef.value = conn
+            bluetoothDeviceName.value = result.deviceName || ''
+            statusMessage.value = `Terhubung: ${result.deviceName}`
+            isSuccess.value = true
+        } else {
+            statusMessage.value = `Gagal scan Bluetooth: ${result.error || 'Perangkat tidak ditemukan'}`
+            isSuccess.value = false
+        }
+    } catch (err: any) {
+        statusMessage.value = `Error Bluetooth: ${err.message || err}`
         isSuccess.value = false
+    } finally {
+        isScanningBluetooth.value = false
     }
-    isScanningBluetooth.value = false
 }
 
 const confirmAndPrint = async () => {
@@ -208,10 +213,9 @@ const confirmAndPrint = async () => {
             if (!bluetoothConnectionRef.value) {
                 throw new Error('Perangkat Bluetooth belum terhubung.')
             }
-            connection = bluetoothConnectionRef.value as BluetoothConnection
+            connection = bluetoothConnectionRef.value
         }
 
-        // MENCETAK MENGGUNAKAN ACTIVE BLUEPRINT (SESUAI OPSI DOKUMEN & UKURAN TERBARU)
         const result = await printService.printToHardware(
             activeBlueprint.value,
             connection,
@@ -232,32 +236,39 @@ const confirmAndPrint = async () => {
 
 async function exportPdf(e: MouseEvent) {
     const btn = e.currentTarget as HTMLButtonElement
-    if (btn.disabled) return
+    if (btn.disabled || !previewHtml.value) return
     btn.disabled = true
 
     try {
-        // 1. Bersihkan proxy reaktif Vue
-        const cleanBlueprint = JSON.parse(JSON.stringify(activeBlueprint.value))
+        if (!(window as any).electronAPI) {
+            alert('Fitur ini hanya tersedia di aplikasi desktop Electron.')
+            btn.disabled = false
+            return
+        }
 
-        // 2. Panggil IPC Electron
-        const result = await window.electronAPI.renderPdf({
-            blueprint: cleanBlueprint,
+        // Kirim langsung string HTML yang sudah jadi!
+        const result = await (window as any).electronAPI.renderPdfFromHtml({
+            html: previewHtml.value,
+            pageSize: selectedPageSize.value, // Kirim opsi ukuran jika diperlukan
             options: { printBackground: true }
         })
 
         if (result.success) {
-            window.electronAPI.showNotification({ title: 'Struk disimpan!', body: 'Ketuk untuk lihat', filePath: result.filePath })
-        } else if (result.canceled) {
-            console.log('Pengguna membatalkan dialog simpan.')
-        } else {
+            ; (window as any).electronAPI.showNotification({
+                title: 'PDF Berhasil Disimpan!',
+                body: 'Klik untuk membuka berkas',
+                filePath: result.filePath
+            })
+        } else if (!result.canceled) {
             console.error('Gagal mencetak PDF:', result.error)
         }
     } catch (err) {
-        console.error('Error IPC:', err)
+        console.error('Error IPC PDF:', err)
     } finally {
         btn.disabled = false
     }
 }
+
 // ==========================================
 // 6. GLOBAL KEYBOARD LISTENERS
 // ==========================================
@@ -267,8 +278,10 @@ const handleGlobalKeyDown = (e: KeyboardEvent) => {
 
     if (e.key === 'Enter') {
         if (!isDeviceDialogOpen.value) {
-            e.preventDefault()
-            handlePrintClick()
+            if (!isTyping) {
+                e.preventDefault()
+                handlePrintClick()
+            }
         } else if (!isTyping) {
             e.preventDefault()
             confirmAndPrint()
@@ -286,7 +299,6 @@ const handleGlobalKeyDown = (e: KeyboardEvent) => {
 
 onMounted(() => {
     window.addEventListener('keydown', handleGlobalKeyDown)
-    loadPrinters()
 })
 
 onUnmounted(() => {
@@ -300,14 +312,12 @@ onUnmounted(() => {
 <template>
     <div class="relative w-full h-full min-h-[500px] flex flex-col overflow-hidden bg-slate-950 select-none">
 
-        <!-- TOP CONTROL BAR: PILIH JENIS DOKUMEN & UKURAN HALAMAN -->
+        <!-- TOP CONTROL BAR -->
         <div
             class="flex flex-wrap items-center justify-between gap-3 bg-slate-900/90 border-b border-slate-800 px-4 py-2.5 z-20">
 
-            <!-- Opsi Pilih Document Type & Page Size -->
+            <!-- Opsi Pilih Page Size -->
             <div class="flex flex-wrap items-center gap-4">
-
-                <!-- Select Page Size -->
                 <div class="flex items-center gap-2">
                     <label class="text-xs font-medium text-slate-400 flex items-center gap-1.5">
                         <Icon icon="mdi:file-file-outline" class="w-4 h-4 text-emerald-400" />
@@ -320,38 +330,37 @@ onUnmounted(() => {
                         </option>
                     </select>
                 </div>
-
             </div>
 
-            <!-- Quick Info -->
+            <!-- Control Buttons -->
             <div class="hidden md:flex items-center gap-2 text-xs text-slate-400">
-                <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="handlePrintClick">
+                <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="emit('edit')">
                     <Icon icon="mdi:edit" class="w-4 h-4" />
                     <span>Edit</span>
                 </button>
-                <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="handlePrintClick">
+                <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="emit('share')">
                     <Icon icon="basil:share-outline" class="w-4 h-4" />
                     <span>Share</span>
                 </button>
                 <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="exportPdf">
                     <Icon icon="catppuccin:pdf" class="w-4 h-4" />
-                    <span>Simpan pdf</span>
+                    <span>Simpan PDF</span>
                 </button>
-                <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="handlePrintClick">
+                <button type="button" :disabled="!props.blueprint" class="btn-action-slate"
+                    @click="emit('export-excel')">
                     <Icon icon="catppuccin:ms-excel" class="w-4 h-4" />
-                    <span>Simpan xls</span>
+                    <span>Simpan XLS</span>
                 </button>
                 <button type="button" :disabled="!props.blueprint" class="btn-action-emerald-600"
                     @click="handlePrintClick">
                     <Icon icon="mdi:printer-pos-outline" class="w-4 h-4" />
                     <span>Cetak</span>
                     <kbd class="btn-kbd">[Enter]</kbd>
-
                 </button>
             </div>
         </div>
 
-        <!-- 1. LIVE DYNAMIC RECEIPT PREVIEW (IFRAME) -->
+        <!-- 1. LIVE PREVIEW (IFRAME) -->
         <iframe v-if="props.blueprint" class="w-full h-full border-0 bg-[#333]" :src="blobPreviewUrl"
             title="Receipt Preview"></iframe>
 
@@ -360,8 +369,7 @@ onUnmounted(() => {
             <span>Pilih atau kirim blueprint dokumen untuk menampilkan preview...</span>
         </div>
 
-
-        <!-- 3. DIALOG 3 MODE PRINTER -->
+        <!-- 2. DIALOG 3 MODE PRINTER -->
         <div v-if="isDeviceDialogOpen"
             class="absolute inset-0 z-40 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4"
             @click.self="closeDeviceDialog">
@@ -375,10 +383,8 @@ onUnmounted(() => {
                             class="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
                             <Icon icon="mdi:printer-pos-outline" class="w-4 h-4" />
                         </div>
-                        <div>
-                            <h3 class="text-xs font-bold text-slate-800 dark:text-slate-100">Pilih Perangkat & Transmisi
-                            </h3>
-                        </div>
+                        <h3 class="text-xs font-bold text-slate-800 dark:text-slate-100">Pilih Perangkat & Transmisi
+                        </h3>
                     </div>
                     <button type="button" class="text-slate-400 hover:text-slate-200 p-1 rounded-lg"
                         @click="closeDeviceDialog">

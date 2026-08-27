@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   printRawSerial: (args: any) => ipcRenderer.invoke('print-raw-serial', args),
   listSerialPorts: () => ipcRenderer.invoke('list-serial-ports'),
   saveFileDialog: (args: any) => ipcRenderer.invoke('save-file-dialog', args),
-  renderPdf: (data: any) => ipcRenderer.invoke('render-pdf', data),
+  renderPdfFromHtml: (data: any) => ipcRenderer.invoke('render-pdf-from-html', data),
   renderXlsx: (data: any) => ipcRenderer.invoke('render-xlsx', data),
   showNotification: (payload: {
     title: string

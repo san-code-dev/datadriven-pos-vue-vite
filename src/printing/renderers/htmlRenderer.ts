@@ -1,6 +1,6 @@
 import type { DocElement, DocumentBlueprint } from '../types'
 import type { Renderer } from './renderer.interface'
-import { generateBarcodeDataUri } from '../../utils/barcode' // Import helper barcode offline
+import { generateBarcodeSvgString } from '../../utils/barcode' // Import helper barcode offline
 
 export class HtmlRenderer implements Renderer<string> {
   readonly name = 'html'
@@ -38,7 +38,6 @@ export class HtmlRenderer implements Renderer<string> {
 <head>
 <meta charset="UTF-8" />
 <style>
-  /* STYLING CSS ANDA (Tetap Sama) */
   html, body {
     margin: 0;
     padding: 20px 0;
@@ -137,10 +136,10 @@ ${body}
 
       // === UBAH BAGIAN BARCODE DI SINI ===
       case 'barcode': {
-        const barcodeSrc = generateBarcodeDataUri(el.value, el.format || 'CODE128')
+        const svgContent = generateBarcodeSvgString(el.value, el.format || 'CODE128')
 
-        return `<div class="${this.alignClass(el.align)} barcode-container">
-    <img src="${barcodeSrc}" alt="Barcode ${escapeHtml(el.value)}" style="max-width: 100%; height: auto; display: inline-block;" />
+        return `<div class="${this.alignClass(el.align)} barcode-container" style="display: flex; justify-content: center; margin: 8px 0;">
+    ${svgContent}
   </div>`
       }
 

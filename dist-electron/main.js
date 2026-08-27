@@ -3852,54 +3852,20 @@ function requireJsBarcode() {
 }
 var JsBarcodeExports = requireJsBarcode();
 const JsBarcode = /* @__PURE__ */ getDefaultExportFromCjs(JsBarcodeExports);
-function stringToBase64(str) {
-  if (typeof window !== "undefined" && typeof window.btoa === "function") {
-    return window.btoa(unescape(encodeURIComponent(str)));
-  } else if (typeof Buffer !== "undefined") {
-    return Buffer.from(str).toString("base64");
-  }
-  return "";
-}
-function generateBarcodeDataUri(value, format = "CODE128") {
+function generateBarcodeSvgString(value, format = "CODE128") {
   if (!value) return "";
   try {
-    const fakeDocument = {
-      createElementNS: (_, type) => ({
-        type,
-        attribs: {},
-        children: [],
-        textContent: "",
-        setAttribute(k, v) {
-          this.attribs[k] = String(v);
-        },
-        appendChild(c) {
-          this.children.push(c);
-        }
-      })
-    };
-    const rootElement = fakeDocument.createElementNS("", "svg");
-    JsBarcode(rootElement, value, {
+    const svgNode = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    JsBarcode(svgNode, value, {
       format: format || "CODE128",
       displayValue: true,
       fontSize: 14,
       margin: 10,
       height: 50,
       lineColor: "#000000",
-      // Paksa warna garis hitam murni
-      xmlDocument: fakeDocument
+      background: "#ffffff"
     });
-    rootElement.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    const renderNode = (node) => {
-      const attrs = Object.entries(node.attribs || {}).map(([k, v]) => `${k}="${v}"`).join(" ");
-      const childrenHtml = (node.children || []).map(renderNode).join("");
-      if (node.type === "text") {
-        return `<text ${attrs} fill="#000000" style="font-family: monospace;">${node.textContent || ""}</text>`;
-      }
-      return `<${node.type} ${attrs} fill="#000000">${childrenHtml}</${node.type}>`;
-    };
-    const svgContent = renderNode(rootElement);
-    const base64Svg = stringToBase64(svgContent);
-    return `data:image/svg+xml;base64,${base64Svg}`;
+    return svgNode.outerHTML;
   } catch (e) {
     console.error("Error barcode SVG:", e);
     return "";
@@ -3922,7 +3888,6 @@ class HtmlRenderer {
 <head>
 <meta charset="UTF-8" />
 <style>
-  /* STYLING CSS ANDA (Tetap Sama) */
   html, body {
     margin: 0;
     padding: 20px 0;
@@ -4011,9 +3976,9 @@ ${body}
         return `<div class="${this.alignClass(el.align)}"><div class="qr-placeholder" data-qr-value="${escapeHtml(el.value)}">QR: ${escapeHtml(el.value.slice(0, 20))}</div></div>`;
       // === UBAH BAGIAN BARCODE DI SINI ===
       case "barcode": {
-        const barcodeSrc = generateBarcodeDataUri(el.value, el.format || "CODE128");
-        return `<div class="${this.alignClass(el.align)} barcode-container">
-    <img src="${barcodeSrc}" alt="Barcode ${escapeHtml(el.value)}" style="max-width: 100%; height: auto; display: inline-block;" />
+        const svgContent = generateBarcodeSvgString(el.value, el.format || "CODE128");
+        return `<div class="${this.alignClass(el.align)} barcode-container" style="display: flex; justify-content: center; margin: 8px 0;">
+    ${svgContent}
   </div>`;
       }
       case "image":

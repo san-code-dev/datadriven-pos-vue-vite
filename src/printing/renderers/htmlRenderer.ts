@@ -1,18 +1,12 @@
-import type { DocElement } from '../types'
-import type { Renderer, RenderOptions } from './renderer.interface'
-import type { DocumentBlueprint } from '../types'
+import type { DocElement, DocumentBlueprint } from '../types'
+import type { Renderer } from './renderer.interface'
+import { generateBarcodeDataUri } from '../../utils/barcode' // Import helper barcode offline
 
-/**
- * Merender blueprint jadi HTML string.
- * Dipakai untuk: preview di UI, basis konversi ke PDF (via puppeteer/wkhtmltopdf),
- * atau basis konversi ke gambar PNG (untuk share ke WhatsApp).
- */
 export class HtmlRenderer implements Renderer<string> {
   readonly name = 'html'
 
   async render(
     blueprint: DocumentBlueprint,
-    options: RenderOptions = {},
   ): Promise<string> {
     const isThermal =
       blueprint.pageSize === 'thermal58' || blueprint.pageSize === 'thermal80'
@@ -33,20 +27,22 @@ export class HtmlRenderer implements Renderer<string> {
             ? 'A5'
             : 'A4'
 
-    const body = blueprint.elements
-      .map((el) => this.renderElement(el))
-      .join('\n')
+    // Ganti mapping elemen menjadi async agar bisa memproses barcode
+    const bodyElements = await Promise.all(
+      blueprint.elements.map((el) => this.renderElement(el))
+    )
+    const body = bodyElements.join('\n')
 
     return `<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8" />
 <style>
-  /* === STYLING UTAMA (Untuk Preview di iframe / UI) === */
+  /* STYLING CSS ANDA (Tetap Sama) */
   html, body {
     margin: 0;
     padding: 20px 0;
-    background: #333333; /* Background gelap kontras kembali untuk Preview iframe */
+    background: #333333;
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -54,7 +50,6 @@ export class HtmlRenderer implements Renderer<string> {
     box-sizing: border-box;
   }
 
-  /* Kertas Struk / Dokumen */
   .document-sheet {
     font-family: ${isThermal ? "'Courier New', monospace" : "'Helvetica Neue', Arial, sans-serif"};
     width: ${pageWidthCss};
@@ -63,7 +58,7 @@ export class HtmlRenderer implements Renderer<string> {
     font-size: ${isThermal ? '11px' : '13px'};
     color: #111;
     box-sizing: border-box;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); /* Efek bayangan kertas saat di iframe */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
 
   .align-center { text-align: center; }
@@ -75,25 +70,6 @@ export class HtmlRenderer implements Renderer<string> {
   table { width: 100%; border-collapse: collapse; margin: 4px 0; }
   th { text-align: left; border-bottom: 1px solid #333; font-size: 11px; padding: 2px 4px; }
   td { padding: 2px 4px; vertical-align: top; }
-  .signature-block { display: flex; justify-content: space-between; margin-top: 40px; }
-  .signature-box { text-align: center; width: 30%; }
-  .signature-line { border-top: 1px solid #333; margin-top: 48px; padding-top: 4px; }
-  
-  .qr-placeholder { 
-    width: 80px; 
-    height: 80px; 
-    border: 1px solid #ccc; 
-    margin: 8px auto; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    font-size: 9px; 
-  }
-  .qr-placeholder img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-  }
 
   .barcode-container {
     margin: 6px 0;
@@ -104,22 +80,19 @@ export class HtmlRenderer implements Renderer<string> {
     display: inline-block;
   }
 
-  /* === STYLING KHUSUS UNTUK CETAK / PUPPETEER PDF === */
   @media print {
     @page {
       size: ${pageCssSize};
       margin: 0;
     }
-
     html, body {
-      background: #ffffff !important; /* Hapus background gelap saat di-PDF-kan */
+      background: #ffffff !important;
       padding: 0 !important;
       display: block !important;
       min-height: auto !important;
     }
-
     .document-sheet {
-      box-shadow: none !important; /* Hapus bayangan saat di-PDF-kan */
+      box-shadow: none !important;
       margin: 0 auto !important;
     }
   }
@@ -133,7 +106,7 @@ ${body}
 </html>`
   }
 
-  private renderElement(el: DocElement): string {
+  private async renderElement(el: DocElement): Promise<string> {
     switch (el.type) {
       case 'text':
         return `<div class="${this.alignClass(el.align)} ${el.bold ? 'bold' : ''} ${el.italic ? 'italic' : ''}" style="${el.size ? `font-size:${11 + el.size * 3}px` : ''}">${escapeHtml(el.text)}</div>`
@@ -162,10 +135,14 @@ ${body}
       case 'qrcode':
         return `<div class="${this.alignClass(el.align)}"><div class="qr-placeholder" data-qr-value="${escapeHtml(el.value)}">QR: ${escapeHtml(el.value.slice(0, 20))}</div></div>`
 
-      case 'barcode':
+      // === UBAH BAGIAN BARCODE DI SINI ===
+      case 'barcode': {
+        const barcodeSrc = generateBarcodeDataUri(el.value, el.format || 'CODE128')
+
         return `<div class="${this.alignClass(el.align)} barcode-container">
-          <img src="https://barcode.tec-it.com/barcode.ashx?code=${escapeHtml(el.format)}&data=${escapeHtml(el.value)}&dpi=150" alt="Barcode ${escapeHtml(el.value)}" />
-        </div>`
+    <img src="${barcodeSrc}" alt="Barcode ${escapeHtml(el.value)}" style="max-width: 100%; height: auto; display: inline-block;" />
+  </div>`
+      }
 
       case 'image':
         return `<div class="${this.alignClass(el.align)}"><img src="${el.url}" style="max-width:${el.width || 100}%" /></div>`
@@ -201,7 +178,7 @@ function escapeHtml(str: string): string {
     /[&<>"']/g,
     (c) =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[
-        c
+      c
       ]!,
   )
 }

@@ -14,4 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   renderPdf: (data: any) => ipcRenderer.invoke('render-pdf', data),
   renderXlsx: (data: any) => ipcRenderer.invoke('render-xlsx', data),
+
+  showNotification: (payload: { title: string; body: string }) =>
+    ipcRenderer.invoke('show-notification', payload),
 })

@@ -5,6 +5,8 @@
     "src/**/*",
     "src/**/*.vue",
     "src/*",
+    "src/electron.d.ts",
+    "electron/**/*",
     "components.d.ts",
     "auto-imports.d.ts",
     "typed-router.d.ts",
@@ -21,7 +23,10 @@
       "~~/*": ["*"]
     },
     "moduleResolution": "bundler",
-    "types": ["node","vite-plugin-vue-layouts/client"],
+    "types": [
+      "node",
+      "vite-plugin-vue-layouts/client"
+    ],
     "allowJs": true,
     "strict": false
   }

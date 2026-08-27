@@ -17,13 +17,21 @@ export class HtmlRenderer implements Renderer<string> {
     const isThermal =
       blueprint.pageSize === 'thermal58' || blueprint.pageSize === 'thermal80'
 
-    // Tentukan lebar kertas otomatis berdasarkan pageSize dari blueprint
     const pageWidthCss =
       blueprint.pageSize === 'thermal58'
         ? '58mm'
         : blueprint.pageSize === 'thermal80'
           ? '80mm'
-          : '210mm' // default A4 / Invoice
+          : '210mm'
+
+    const pageCssSize =
+      blueprint.pageSize === 'thermal58'
+        ? '58mm auto'
+        : blueprint.pageSize === 'thermal80'
+          ? '80mm auto'
+          : blueprint.pageSize === 'A5'
+            ? 'A5'
+            : 'A4'
 
     const body = blueprint.elements
       .map((el) => this.renderElement(el))
@@ -34,25 +42,30 @@ export class HtmlRenderer implements Renderer<string> {
 <head>
 <meta charset="UTF-8" />
 <style>
+  /* === STYLING UTAMA (Untuk Preview di iframe / UI) === */
   html, body {
     margin: 0;
-    padding: 0;
-    background: #333; /* Background luar otomatis gelap agar kontras dengan kertas */
+    padding: 20px 0;
+    background: #333333; /* Background gelap kontras kembali untuk Preview iframe */
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    box-sizing: border-box;
   }
+
   /* Kertas Struk / Dokumen */
   .document-sheet {
     font-family: ${isThermal ? "'Courier New', monospace" : "'Helvetica Neue', Arial, sans-serif"};
     width: ${pageWidthCss};
-    background: white;
+    background: #ffffff;
     padding: ${isThermal ? '8px' : '24px'};
     font-size: ${isThermal ? '11px' : '13px'};
     color: #111;
     box-sizing: border-box;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); /* Efek bayangan kertas saat di iframe */
   }
+
   .align-center { text-align: center; }
   .align-right { text-align: right; }
   .align-left { text-align: left; }
@@ -66,7 +79,6 @@ export class HtmlRenderer implements Renderer<string> {
   .signature-box { text-align: center; width: 30%; }
   .signature-line { border-top: 1px solid #333; margin-top: 48px; padding-top: 4px; }
   
-  /* Style khusus QR Code (Persegi) */
   .qr-placeholder { 
     width: 80px; 
     height: 80px; 
@@ -83,14 +95,33 @@ export class HtmlRenderer implements Renderer<string> {
     object-fit: contain;
   }
 
-  /* Style khusus Barcode Linear (Memanjang Horizontal) */
   .barcode-container {
     margin: 6px 0;
   }
   .barcode-container img {
-    max-width: 100%;  /* Mencegah barcode melebihi lebar kertas thermal */
-    height: auto;     /* Menjaga rasio proporsional garis barcode */
+    max-width: 100%;
+    height: auto;
     display: inline-block;
+  }
+
+  /* === STYLING KHUSUS UNTUK CETAK / PUPPETEER PDF === */
+  @media print {
+    @page {
+      size: ${pageCssSize};
+      margin: 0;
+    }
+
+    html, body {
+      background: #ffffff !important; /* Hapus background gelap saat di-PDF-kan */
+      padding: 0 !important;
+      display: block !important;
+      min-height: auto !important;
+    }
+
+    .document-sheet {
+      box-shadow: none !important; /* Hapus bayangan saat di-PDF-kan */
+      margin: 0 auto !important;
+    }
   }
 </style>
 </head>

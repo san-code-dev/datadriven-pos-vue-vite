@@ -271,7 +271,7 @@ const loadDocument = (reportId: string, blueprintData: unknown) => {
         <div class="flex-1 flex p-6 gap-6 h-screen overflow-hidden">
 
             <!-- KOLOM KIRI: Daftar Pilihan Dokumen -->
-            <div class="w-1/2 flex flex-col gap-4 overflow-y-auto pr-2 pb-10">
+            <div class="w-1/4 flex flex-col gap-4 overflow-y-auto pr-2 pb-10">
 
                 <div class="grid gap-3 mt-4">
                     <button v-for="report in availableReports" :key="report.id"

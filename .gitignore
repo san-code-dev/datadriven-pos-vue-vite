@@ -7,45 +7,49 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-.DS_Store
-.unlighthouse
-dist
-dist-ssr
-coverage
-*.local
-.env
+# Dependencies
+node_modules/
 
+# OS / System Files
+.DS_Store
+Thumbs.db
+
+# Build & Output Directories (Frontend & Electron)
+dist/
+dist-ssr/
+dist-electron/
+.vite-ssg-temp/
+.unlighthouse/
+coverage/
+stats.html
+
+# Environment Files
+.env
+*.local
+
+# Cypress / Testing
 /cypress/videos/
 /cypress/screenshots/
 
-# Editor directories and files
+# Editor Settings (VS Code, WebStorm/Idea, Visual Studio)
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
-.idea
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
-.vite-ssg-temp
-
 # Pinegrow
-_pgbackup
-_pginfo
+_pgbackup/
+_pginfo/
 
-## optional
-# pinegrow.json
-
-## optional
-## Uncomment the below as per your needs
-## add any d.ts files that are auto-generated, for eg,
+# Auto-Generated Declaration Files (unplugin-auto-import / vue-router)
 auto-imports.d.ts
 components.d.ts
 composables.d.ts
-## rollup visualizer
-stats.html
 typed-router.d.ts
-typed-router.d.ts
+dist-electron/preload.js
+dist-electron/main.js

@@ -1,11 +1,15 @@
 // electron/main.ts
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron' // Tambahkan dialog
+import * as fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import net from 'node:net'
 import { spawn } from 'node:child_process'
+import puppeteer from 'puppeteer'
+import { HtmlRenderer } from '../src/printing/renderers/htmlRenderer'
 import { registerSerialHandlers } from './serialHandler'
 import { registerSaveFileHandler } from './saveFileHandler'
+import { Notification } from 'electron'
 // ==========================================
 // 1. AKTIFKAN EXPERIMENTAL & BLUETOOTH FLAGS
 // ==========================================
@@ -94,6 +98,17 @@ function createWindow() {
 // ==========================================
 // 3. IPC HANDLERS UNTUK HARDWARE POS
 // ==========================================
+
+ipcMain.handle(
+  'show-notification',
+  async (_, { title, body }: { title: string; body: string }) => {
+    if (Notification.isSupported()) {
+      new Notification({ title, body }).show()
+      return { success: true }
+    }
+    return { success: false, error: 'Notifikasi tidak didukung di sistem ini' }
+  },
+)
 
 // 1. Ambil daftar printer OS bawaan Electron
 ipcMain.handle('get-printers', async () => {
@@ -275,33 +290,91 @@ ipcMain.handle(
     })
   },
 ),
-  ipcMain.handle('render-pdf', async (_, { blueprint, options }) => {
-    try {
-      const htmlRenderer = new HtmlRenderer()
-      const html = await htmlRenderer.render(blueprint)
+  ipcMain.handle(
+    'render-pdf',
+    async (_, payload: { blueprint: any; options?: any }) => {
+      try {
+        const { blueprint, options } = payload
+        const htmlRenderer = new HtmlRenderer()
+        const html = await htmlRenderer.render(blueprint, options)
 
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox'],
-      })
+        const browser = await puppeteer.launch({
+          headless: true,
+          args: ['--no-sandbox'],
+        })
 
-      const page = await browser.newPage()
-      await page.setContent(html, { waitUntil: 'networkidle0' })
+        const page = await browser.newPage()
+        await page.setContent(html, { waitUntil: 'networkidle0' })
 
-      const pdfUint8Array = await page.pdf({
-        format: options?.format || (blueprint.pageSize === 'A5' ? 'A5' : 'A4'),
-        printBackground: options?.printBackground ?? true,
-        margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
-      })
+        const pdfOptions: puppeteer.PDFOptions = {
+          printBackground: true,
+          preferCSSPageSize: true,
+        }
 
-      await browser.close()
+        const isThermal =
+          blueprint.pageSize === 'thermal58' ||
+          blueprint.pageSize === 'thermal80'
 
-      // Kembalikan sebagai Array/Buffer yang bisa diterima IPC
-      return { success: true, data: Buffer.from(pdfUint8Array) }
-    } catch (error: any) {
-      return { success: false, error: error.message }
-    }
-  }),
+        if (isThermal) {
+          // Hitung tinggi asli elemen .document-sheet dalam satuan Pixel
+          const bodyHeight = await page.evaluate(() => {
+            const el = document.querySelector('.document-sheet')
+            return el ? el.scrollHeight : document.body.scrollHeight
+          })
+
+          // Tentukan lebar & tinggi persis agar PDF tidak kelebihan ruang kosong
+          pdfOptions.width =
+            blueprint.pageSize === 'thermal58' ? '58mm' : '80mm'
+          // Tambahkan buffer kecil (misal + 4px) agar tidak terpotong di bagian paling bawah
+          pdfOptions.height = `${bodyHeight + 4}px`
+          pdfOptions.margin = {
+            top: '0px',
+            right: '0px',
+            bottom: '0px',
+            left: '0px',
+          }
+        } else if (blueprint.pageSize === 'A5') {
+          pdfOptions.format = 'A5'
+          pdfOptions.margin = {
+            top: '10mm',
+            right: '10mm',
+            bottom: '10mm',
+            left: '10mm',
+          }
+        } else {
+          pdfOptions.format = 'A4'
+          pdfOptions.margin = {
+            top: '10mm',
+            right: '10mm',
+            bottom: '10mm',
+            left: '10mm',
+          }
+        }
+
+        const pdfUint8Array = await page.pdf(pdfOptions)
+
+        await browser.close()
+
+        // --- POPUP DIALOG SAVE FILE ---
+        const { canceled, filePath } = await dialog.showSaveDialog(win!, {
+          title: 'Simpan Dokumen PDF',
+          defaultPath: `${blueprint.title || 'dokumen'}.pdf`,
+          filters: [{ name: 'Dokumen PDF', extensions: ['pdf'] }],
+        })
+
+        if (canceled || !filePath) {
+          return { success: false, canceled: true }
+        }
+
+        await fs.promises.writeFile(filePath, Buffer.from(pdfUint8Array))
+
+        return { success: true, filePath }
+      } catch (error: any) {
+        console.error('[Render-PDF Error]:', error)
+        return { success: false, error: error.message }
+      }
+    },
+  ),
   // ==========================================
   // 4. APP LIFECYCLE
   // ==========================================

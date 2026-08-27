@@ -230,6 +230,28 @@ const confirmAndPrint = async () => {
     }
 }
 
+async function exportPdf() {
+    try {
+        // 1. Bersihkan proxy reaktif Vue
+        const cleanBlueprint = JSON.parse(JSON.stringify(activeBlueprint.value))
+
+        // 2. Panggil IPC Electron
+        const result = await window.electronAPI.renderPdf({
+            blueprint: cleanBlueprint,
+            options: { printBackground: true }
+        })
+
+        if (result.success) {
+            console.log('PDF berhasil disimpan di:', result.filePath)
+        } else if (result.canceled) {
+            console.log('Pengguna membatalkan dialog simpan.')
+        } else {
+            console.error('Gagal mencetak PDF:', result.error)
+        }
+    } catch (err) {
+        console.error('Error IPC:', err)
+    }
+}
 // ==========================================
 // 6. GLOBAL KEYBOARD LISTENERS
 // ==========================================
@@ -305,7 +327,7 @@ onUnmounted(() => {
                     <Icon icon="basil:share-outline" class="w-4 h-4" />
                     <span>Share</span>
                 </button>
-                <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="handlePrintClick">
+                <button type="button" :disabled="!props.blueprint" class="btn-action-slate" @click="exportPdf">
                     <Icon icon="catppuccin:pdf" class="w-4 h-4" />
                     <span>Simpan pdf</span>
                 </button>
@@ -324,7 +346,7 @@ onUnmounted(() => {
         </div>
 
         <!-- 1. LIVE DYNAMIC RECEIPT PREVIEW (IFRAME) -->
-        <iframe v-if="props.blueprint" class="w-full h-full border-0 bg-white" :src="blobPreviewUrl"
+        <iframe v-if="props.blueprint" class="w-full h-full border-0 bg-[#333]" :src="blobPreviewUrl"
             title="Receipt Preview"></iframe>
 
         <div v-else class="w-full h-full flex flex-col items-center justify-center text-slate-500 text-sm gap-2">

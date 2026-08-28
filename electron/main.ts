@@ -384,31 +384,14 @@ ipcMain.handle('render-pdf-from-html', async (event, { html, pageSize, options }
     // 2. Load string HTML langsung via Data URL
     const encodedHtml = encodeURIComponent(html)
     await offscreenWindow.loadURL(`data:text/html;charset=utf-8,${encodedHtml}`)
-    const isThermal58 = pageSize === 'thermal58'
-    const isThermal80 = pageSize === 'thermal80'
+
     const pdfOptions: Electron.PrintToPDFOptions = {
       printBackground: true,
-      preferCSSPageSize: true, // <--- KUNCI UTAMA: Memaksa Electron membaca @page dari CSS
-      pageSize: isThermal58
-        ? { width: 58000, height: 200000 }
-        : isThermal80
-          ? { width: 80000, height: 200000 }
-          : (pageSize || 'A4'),
+      preferCSSPageSize: true,
       ...options
     }
-
-    // if (pageSize === 'thermal58') {
-    //   pdfOptions.pageSize = { width: 58000, height: 200000 } // dalam micron (58mm)
-    // } else if (pageSize === 'thermal80') {
-    //   pdfOptions.pageSize = { width: 80000, height: 200000 } // dalam micron (80mm)
-    // } else {
-    //   pdfOptions.pageSize = pageSize || 'A4'
-    // }
-
-    // 4. Generate PDF buffer
     const pdfData = await offscreenWindow.webContents.printToPDF(pdfOptions)
 
-    // 5. Minta user memilih tempat menyimpan berkas
     const { filePath, canceled } = await dialog.showSaveDialog({
       title: 'Simpan PDF Struk',
       defaultPath: `Struk-${Date.now()}.pdf`,
@@ -419,7 +402,6 @@ ipcMain.handle('render-pdf-from-html', async (event, { html, pageSize, options }
       return { success: false, canceled: true }
     }
 
-    // 6. Tulis file PDF ke disk
     await fs.promises.writeFile(filePath, pdfData)
 
     return { success: true, filePath }

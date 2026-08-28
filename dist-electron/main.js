@@ -375,13 +375,9 @@ ipcMain.handle("render-pdf-from-html", async (event, { html, pageSize, options }
     });
     const encodedHtml = encodeURIComponent(html);
     await offscreenWindow.loadURL(`data:text/html;charset=utf-8,${encodedHtml}`);
-    const isThermal58 = pageSize === "thermal58";
-    const isThermal80 = pageSize === "thermal80";
     const pdfOptions = {
       printBackground: true,
       preferCSSPageSize: true,
-      // <--- KUNCI UTAMA: Memaksa Electron membaca @page dari CSS
-      pageSize: isThermal58 ? { width: 58e3, height: 2e5 } : isThermal80 ? { width: 8e4, height: 2e5 } : pageSize || "A4",
       ...options
     };
     const pdfData = await offscreenWindow.webContents.printToPDF(pdfOptions);

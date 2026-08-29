@@ -84,21 +84,19 @@ async function submitLogout() {
 
 <template>
     <div>
-        <div class="pt-4 border-t border-gray-200 dark:border-gray-800">
-            <button type="button"
-                class="flex items-center w-full h-12 transition-all rounded cursor-pointer text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                :class="sidebarStore.isCollapsed
-                    ? 'justify-center px-0'
-                    : 'justify-between px-5'
-                    " @click="openModal">
-                <div class="flex items-center" :class="sidebarStore.isCollapsed ? 'space-x-0' : 'space-x-3'">
-                    <Icon icon="mdi:logout" class="text-xl opacity-90" />
-                    <span v-show="!sidebarStore.isCollapsed" class="font-semibold text-sm">
-                        Logout
-                    </span>
-                </div>
-            </button>
-        </div>
+        <button type="button"
+            class="flex items-center w-full h-12 transition-all rounded cursor-pointer text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+            :class="sidebarStore.isCollapsed
+                ? 'justify-center px-0'
+                : 'justify-between px-5'
+                " @click="openModal">
+            <div class="flex items-center" :class="sidebarStore.isCollapsed ? 'space-x-0' : 'space-x-3'">
+                <Icon icon="mdi:logout" class="text-xl opacity-90 rotate-180    " />
+                <span v-show="!sidebarStore.isCollapsed" class="font-semibold text-xs">
+                    Logout
+                </span>
+            </div>
+        </button>
 
         <Teleport to="body">
             <dialog v-if="showLogoutModal" ref="dialogRef"

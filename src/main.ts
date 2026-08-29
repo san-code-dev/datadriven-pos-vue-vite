@@ -50,7 +50,7 @@ export const createApp = ViteSSG(
 
       // Kondisi B: Sudah login tapi mencoba balik ke halaman login (/)
       if (requiresGuest && authStore.isAuthenticated) {
-        return next('/dashboard')
+        return next('/dataset')
       }
 
       next()

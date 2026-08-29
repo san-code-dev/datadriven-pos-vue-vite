@@ -4,6 +4,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useSidebarStore } from '@/stores/sideBar'
 import { useAuthStore } from '@/stores/auth'
+import { useTenantStore } from '@/stores/tenant';
+
 
 const router = useRouter()
 const route = useRoute()
@@ -17,6 +19,18 @@ const resultItemsRef = ref([])
 
 const sidebarStore = useSidebarStore()
 const authStore = useAuthStore()
+const tenantStore = useTenantStore()
+
+// Mocking/Fallback data tenant & user
+const tenantInfo = computed(() => ({
+    name: tenantStore.selectedTenant?.name || 'unknown',
+    code: tenantStore.selectedTenant?.code || 'unknown'
+}))
+
+const userInfo = computed(() => ({
+    name: authStore.user?.name || authStore.user?.email || 'unknown',
+    role: authStore.user?.role || 'unknown'
+}))
 
 const menuTree = computed(() => {
     const tree = {}
@@ -130,30 +144,50 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <nav class="relative z-50 flex-shrink-0 font-sans text-slate-900 dark:text-slate-200 select-none flex flex-col min-h-screen border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-all duration-300 shadow-sm"
+    <nav class="relative z-50 flex-shrink-0 font-sans text-slate-900 dark:text-slate-200 select-none flex flex-col h-screen border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-[width] duration-200 ease-in-out shadow-sm"
         :class="sidebarStore.isCollapsed ? 'w-20' : 'w-64'">
 
-        <div class="p-3 flex-1 flex flex-col justify-between relative h-full">
+        <div class="p-3 mt-3 flex-1 flex flex-col justify-center relative h-full min-h-0">
+            <div class="flex" :class="sidebarStore.isCollapsed ? 'justify-center' : 'justify-end'"
+                title="Perkecil menu">
+                <button @click="sidebarStore.toggleCollapse"
+                    class="flex justify-center p-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors duration-150 focus:outline-none flex-shrink-0 items-center">
+                    <Icon icon="mdi:chevron-left" class="text-lg transition-transform duration-200"
+                        :class="{ 'rotate-180': sidebarStore.isCollapsed }" />
+                </button>
+            </div>
+            <!-- UPPER SECTION: Header, Ganti Cabang, Search, Menus -->
+            <div class="mt-9 space-y-1.5 flex-1 no-scrollbar">
+                <!-- Header: Tenant Info & Collapse Toggle -->
+                <div class="flex items-center cursor-pointer mb-6 h-12 justify-center border-b border-slate-100 dark:border-slate-800 py-3 px-1 hover:bg-slate-700/40 rounded-lg"
+                    @click="router.push('/dataset')" title="Ganti cabang">
+                    <div class="flex items-center justify-center gap-2.5 min-w-0 flex-1">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                            <Icon icon="heroicons:building-office-2" class="text-lg" />
+                        </div>
+                        <div class="flex flex-col min-w-0 text-sidebar-label"
+                            :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
+                            <div
+                                class="text-xs font-bold truncate text-slate-800 dark:text-slate-100 uppercase tracking-wider">
+                                {{ tenantInfo.name }}
+                            </div>
+                            <div class="text-[10px] text-slate-400 truncate">
+                                {{ tenantInfo.code }}
+                            </div>
+                        </div>
+                    </div>
 
-            <div class="space-y-1.5">
-
-                <div class="flex items-center mb-6 px-2 h-10 justify-between">
-                    <span
-                        class="text-sm font-bold tracking-wider text-emerald-600 dark:text-emerald-400 uppercase text-sidebar-label"
-                        :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
-                        VUE CORE
-                    </span>
-                    <button @click="sidebarStore.toggleCollapse"
-                        class="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-slate-700 text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 flex-shrink-0">
-                        <Icon icon="mdi:chevron-left" class="text-lg transition-transform duration-300"
-                            :class="{ 'rotate-180': sidebarStore.isCollapsed }" />
-                    </button>
                 </div>
 
-                <div class="px-1 mb-4">
+
+                <!-- Global Search Menu -->
+                <div class="mb-4">
                     <button @click="isSearchMenuOpen = true"
-                        class="w-full flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 rounded-xl transition-all duration-200 text-slate-400 dark:text-slate-500 h-10 px-3 justify-between">
-                        <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                        class="w-full flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 rounded-xl transition-all duration-200 text-slate-400 dark:text-slate-500 h-10 px-3 cursor-text"
+                        :class="sidebarStore.isCollapsed ? 'justify-center px-0' : 'justify-between'">
+                        <div class="flex items-center gap-2.5 min-w-0"
+                            :class="sidebarStore.isCollapsed ? 'justify-center' : 'flex-1'">
                             <Icon icon="mdi:magnify" class="text-lg flex-shrink-0" />
                             <span class="text-xs tracking-wide text-sidebar-label"
                                 :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
@@ -167,10 +201,11 @@ onUnmounted(() => {
                     </button>
                 </div>
 
-                <!-- Dashboard -->
+                <!-- Main Navigation: Dashboard -->
                 <div class="relative group" @click="router.push('/dashboard')">
-                    <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative transition-all duration-200 gap-3"
+                    <div class="flex items-center w-full h-11 rounded-xl cursor-pointer relative transition-all duration-200 gap-3"
                         :class="[
+                            sidebarStore.isCollapsed ? 'justify-center px-0' : 'px-3.5',
                             route.path === '/dashboard'
                                 ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
                                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
@@ -190,13 +225,15 @@ onUnmounted(() => {
                 <div v-for="(menus, category) in menuTree" :key="category" class="relative group"
                     @mouseenter="openCategory = category" @mouseleave="openCategory = null">
 
-                    <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative transition-all duration-200 justify-between gap-3"
+                    <div class="flex items-center w-full h-11 rounded-xl cursor-pointer relative transition-all duration-200 gap-3"
                         :class="[
+                            sidebarStore.isCollapsed ? 'justify-center px-0' : 'justify-between px-3.5',
                             openCategory === category
                                 ? 'bg-slate-50 dark:bg-slate-800/80 text-emerald-600 dark:text-emerald-400'
                                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
                         ]">
-                        <div class="flex items-center min-w-0 flex-1 gap-3">
+                        <div class="flex items-center min-w-0 gap-3"
+                            :class="sidebarStore.isCollapsed ? 'justify-center' : 'flex-1'">
                             <Icon v-if="menus[0]?.icon" :icon="formatIcon(menus[0].icon)"
                                 class="text-xl flex-shrink-0" />
                             <span class="font-medium capitalize text-sm text-sidebar-label"
@@ -211,6 +248,7 @@ onUnmounted(() => {
                             ]" />
                     </div>
 
+                    <!-- Flyout Submenu -->
                     <div v-show="openCategory === category" class="absolute z-50 top-0 w-64 flyout-container"
                         :class="sidebarStore.isCollapsed ? 'left-[72px]' : 'left-[244px]'">
                         <ul
@@ -235,8 +273,9 @@ onUnmounted(() => {
 
                 <!-- POS Print -->
                 <div class="relative group" @click="router.push('/print')">
-                    <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative transition-all duration-200 gap-3"
+                    <div class="flex items-center w-full h-11 rounded-xl cursor-pointer relative transition-all duration-200 gap-3"
                         :class="[
+                            sidebarStore.isCollapsed ? 'justify-center px-0' : 'px-3.5',
                             route.path === '/print'
                                 ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
                                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
@@ -251,34 +290,70 @@ onUnmounted(() => {
                         </span>
                     </div>
                 </div>
+            </div>
 
-                <!-- Settings -->
-                <div class="relative group" @click="router.push('/setting')">
-                    <div class="flex items-center w-full h-11 px-3.5 rounded-xl cursor-pointer relative transition-all duration-200 gap-3"
-                        :class="[
-                            route.path === '/setting'
-                                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
-                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
-                        ]">
-                        <div v-if="route.path === '/setting'"
-                            class="absolute left-0 top-2.5 bottom-2.5 w-1 bg-emerald-500 dark:bg-emerald-400 rounded-r">
+
+
+            <!-- LOWER SECTION: User Info & Actions Footer -->
+            <div class="pt-3 border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
+
+                <!-- Quick Action Bar (Collapsed Support) -->
+                <div class="flex items-center p-1 bg-slate-100/70 dark:bg-slate-800/70 rounded-xl transition-all duration-300"
+                    :class="sidebarStore.isCollapsed ? 'flex-col space-y-1 bg-transparent p-0' : 'justify-around'">
+
+                    <!-- Notification Button -->
+                    <button
+                        class="p-2 rounded-lg text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-700 transition-all relative flex items-center justify-center"
+                        title="Notifikasi">
+                        <Icon icon="heroicons:bell-20-solid" class="text-lg" />
+                        <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500"></span>
+                    </button>
+
+                    <!-- Message Button -->
+                    <button
+                        class="p-2 rounded-lg text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-700 transition-all relative flex items-center justify-center"
+                        title="Pesan">
+                        <Icon icon="heroicons:chat-bubble-left-right-20-solid" class="text-lg" />
+                    </button>
+
+                    <!-- Settings Button -->
+                    <button @click="router.push('/setting')"
+                        class="p-2 rounded-lg text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white dark:hover:bg-slate-700 transition-all flex items-center justify-center"
+                        :class="{ 'text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-700': route.path === '/setting' }"
+                        title="Settings">
+                        <Icon icon="heroicons:cog-6-tooth-20-solid" class="text-lg" />
+                    </button>
+                </div>
+
+
+                <!-- User Profile Bar -->
+                <div class="py-2  border-b border-gray-200 dark:border-gray-800">
+                    <div class="flex items-center rounded-xl bg-slate-50 dark:bg-slate-800/50 transition-all duration-200 p-1.5"
+                        :class="sidebarStore.isCollapsed ? 'justify-center' : 'justify-between gap-2.5'">
+                        <div class="flex items-center gap-2.5 min-w-0"
+                            :class="sidebarStore.isCollapsed ? 'justify-center' : ''">
+                            <div
+                                class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-semibold text-xs flex-shrink-0 shadow-sm">
+                                {{ userInfo.name.charAt(0) }}
+                            </div>
+                            <div class="flex flex-col min-w-0 text-sidebar-label"
+                                :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
+                                <div class="text-xs font-semibold truncate text-slate-800 dark:text-slate-200">
+                                    {{ userInfo.name }}
+                                </div>
+                                <div class="text-[10px] text-slate-400 truncate">
+                                    {{ userInfo.role }}
+                                </div>
+                            </div>
                         </div>
-                        <Icon icon="heroicons:cog-6-tooth" class="text-xl flex-shrink-0" />
-                        <span class="text-sm capitalize text-sidebar-label"
-                            :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
-                            Settings
-                        </span>
                     </div>
                 </div>
+                <ButtonLogout />
             </div>
-
-            <div class="pt-4 border-t border-slate-100 dark:border-slate-800">
-                <ButtonLogout :is-collapsed="sidebarStore.isCollapsed" />
-            </div>
-
         </div>
     </nav>
 
+    <!-- Global Search Modal Dialog -->
     <Teleport to="body">
         <div v-if="isSearchMenuOpen"
             class="fixed inset-0 z-[999] flex items-start justify-center pt-[12vh] p-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm"
@@ -348,7 +423,6 @@ onUnmounted(() => {
         </div>
     </Teleport>
 </template>
-
 <style scoped>
 .flyout-container::before {
     content: '';
@@ -384,33 +458,23 @@ onUnmounted(() => {
     scrollbar-width: none;
 }
 
+/* OPTIMASI PERFORMA LABEL */
 .text-sidebar-label {
-    display: inline-block;
     white-space: nowrap;
     overflow: hidden;
-    transition: max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-        opacity 0.2s ease-in-out,
-        transform 0.25s ease-out;
+    will-change: opacity;
+    transition: opacity 0.15s ease-in-out;
 }
 
 .text-sidebar-label.expanded {
-    max-width: 180px;
     opacity: 1;
-    transform: translateX(0);
-    transition-delay: 120ms, 120ms, 120ms;
+    display: inline-block;
 }
 
-.text-sidebar-label.collapsed {
-    max-width: 0px;
-    opacity: 0;
-    transform: translateX(-10px);
-    transition-delay: 0ms;
-}
-
+.text-sidebar-label.collapsed,
 .text-sidebar-label.collapsed-instant {
     opacity: 0;
-    max-width: 0px;
-    pointer-events: none;
-    transition: opacity 0.08s ease-in, max-width 0.08s ease-in;
+    display: none;
+    /* Langsung hilangkan dari render tree agar tidak reflow */
 }
 </style>

@@ -45,7 +45,7 @@ async function login() {
             authStore.setUser(response.data.user)
         }
 
-        await router.push('/dashboard')
+        await router.push('/dataset')
     } catch (err: any) {
         const errorMessage = err.response?.data?.message || err.message || "Terjadi kesalahan sistem";
         error.value = errorMessage

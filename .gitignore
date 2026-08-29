@@ -53,3 +53,4 @@ composables.d.ts
 typed-router.d.ts
 dist-electron/preload.js
 dist-electron/main.js
+typed-router.d.ts

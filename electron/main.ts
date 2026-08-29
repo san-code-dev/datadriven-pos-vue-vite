@@ -78,6 +78,12 @@ function createWindow() {
     show: false,      // Disembunyikan dulu sampai sinyal 'app-ready' dari Vue diterima
     frame: true,      // Menampilkan titlebar bawaan OS beserta tombol Close, Minimize, dan Maximize
     backgroundColor: '#1e293b',
+    titleBarStyle: 'hidden', // Mengintegrasikan titlebar dengan body window
+    titleBarOverlay: {
+      color: '#1e293b',       // Warna latar belakang frame/titlebar
+      symbolColor: '#f8fafc', // Warna ikon tombol (Minimize, Maximize, Close)
+      height: 35,             // Tinggi area titlebar
+    },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -85,6 +91,8 @@ function createWindow() {
       experimentalFeatures: false,
     },
   })
+
+  win.setMenu(null)
 
   // Menangani dialog pemindaian Bluetooth dari Web Bluetooth API
   win.webContents.on(

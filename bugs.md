@@ -15,3 +15,4 @@
 - standarisasi dynamic filter,form,input,data, dll untuk tipe data datetime diserver di ubah ke date tapi memastikan jam tetap ada
 - tab header grab error reorder array rtl cant redifined on revogrid mouse pointer grab
 - alt + arrow shortcut revogrid error
+- add reset tab for active tabs

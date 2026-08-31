@@ -54,3 +54,6 @@ typed-router.d.ts
 dist-electron/preload.js
 dist-electron/main.js
 typed-router.d.ts
+
+# Electron Builder output
+/release

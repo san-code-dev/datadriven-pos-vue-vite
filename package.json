@@ -1,6 +1,8 @@
 {
   "name": "pg-vue-tailwindcss",
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Aplikasi Desktop POS Vue Electron",
+  "author": "M Hasanuddin",
   "type": "module",
   "main": "dist-electron/main.js",
   "homepage": "https://pg-vue-tailwindcss.netlify.app",
@@ -14,11 +16,37 @@
     "lighthouse": "npx unlighthouse --no-cache --site https://pg-vue-tailwindcss.netlify.app",
     "build": "run-p type-check build-only",
     "preview": "vite preview",
-    "build-only": "vite-ssg build",
+    "build-only": "vite build",
+    "app:build": "npm run build && electron-builder",
     "type-check": "vue-tsc --noEmit",
     "lint": "npm run lint:fix && npm run format",
     "lint:fix": "eslint --fix ./",
     "format": "prettier --write \"**/*.{html,vue,svelte,astro,js,jsx,cjs,mjs,ts,tsx,cts,mts,css,md,mdx,json}\" !public --ignore-path .gitignore"
+  },
+  "build": {
+    "appId": "com.pinegrow.pgvuetailwindcss",
+    "productName": "PG Vue Application",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "asarUnpack": [
+      "**/node_modules/serialport/**/*"
+    ]
   },
   "dependencies": {
     "@point-of-sale/receipt-printer-encoder": "^3.0.3",
@@ -70,6 +98,7 @@
     "autoprefixer": "^10.4.20",
     "beasties": "^0.2.0",
     "electron": "^43.4.0",
+    "electron-builder": "^25.1.8",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^9.1.0",
     "markdown-it-link-attributes": "^4.0.1",
@@ -91,7 +120,6 @@
     "vite-plugin-git-revision-info": "^1.1.0",
     "vite-plugin-vue-devtools": "8.0.5",
     "vite-plugin-vue-layouts": "^0.11.0",
-    "vite-ssg": "^25.0.0",
     "vue-tsc": "^2.2.0"
   },
   "web-types": "web-types.json"

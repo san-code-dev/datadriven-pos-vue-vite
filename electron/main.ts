@@ -94,6 +94,13 @@ function createWindow() {
 
   win.setMenu(null)
 
+  win.webContents.on('before-input-event', (event, input) => {
+    // Buka DevTools jika menekan F12
+    if (input.key === 'F12' && input.type === 'keyDown') {
+      win?.webContents.toggleDevTools()
+    }
+  })
+
   // Menangani dialog pemindaian Bluetooth dari Web Bluetooth API
   win.webContents.on(
     'select-bluetooth-device',

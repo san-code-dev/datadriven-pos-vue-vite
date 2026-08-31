@@ -105,10 +105,14 @@ async function login() {
                         error }}</span>
                 </div>
                 <button type="submit" :disabled="loading"
-                    class="grid place-items-center w-full h-11 rounded-lg font-semibold text-sm text-white transition-all shadow-md shadow-emerald-600/10 active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none
-                           bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 dark:from-emerald-600 dark:to-emerald-700 dark:hover:from-emerald-500 dark:hover:to-emerald-600">
-                    <Icon v-if="loading" icon="line-md:loading-twotone-loop" class="w-5 h-5" /><span>{{ loading ? '' :
-                        'Masuk Aplikasi' }}</span>
+                    class="relative flex items-center justify-center w-full h-11 rounded-lg font-semibold text-sm text-white transition-all shadow-md shadow-emerald-600/10 active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none
+           bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 dark:from-emerald-600 dark:to-emerald-700 dark:hover:from-emerald-500 dark:hover:to-emerald-600">
+
+                    <div v-if="loading" class="absolute inset-0 flex items-center justify-center">
+                        <Icon icon="line-md:loading-twotone-loop" class="w-5 h-5" />
+                    </div>
+
+                    <span :class="{ 'opacity-0': loading }">Masuk Aplikasi</span>
                 </button>
             </form>
         </div>

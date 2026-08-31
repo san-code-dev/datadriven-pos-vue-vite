@@ -135,13 +135,17 @@ async function submitLogout() {
                         </button>
 
                         <button type="button" :disabled="isLoggingOut"
-                            class="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 transition-all disabled:opacity-50 outline-none"
-                            :class="activeButton === 'confirm'
-                                ? 'ring-2 ring-red-400 dark:ring-red-300 bg-red-700 dark:bg-red-600'
-                                : ''
-                                " @click="submitLogout">
-                            <Icon v-if="isLoggingOut" icon="line-md:loading-twotone-loop" class="w-4 h-4" />
-                            <span>{{ isLoggingOut ? '' : 'Ya, Keluar' }}</span>
+                            class="relative flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 transition-all disabled:opacity-50 outline-none"
+                            :class="activeButton === 'confirm' ? 'ring-2 ring-red-400 dark:ring-red-300 bg-red-700 dark:bg-red-600' : ''"
+                            @click="submitLogout">
+
+                            <!-- Container spinner terikat penuh di dalam button -->
+                            <div v-if="isLoggingOut" class="absolute inset-0 flex items-center justify-center">
+                                <Icon icon="line-md:loading-twotone-loop" class="w-4 h-4" />
+                            </div>
+
+                            <!-- Teks menjaga lebar tombol tetap stabil -->
+                            <span :class="{ 'opacity-0': isLoggingOut }">Ya, Keluar</span>
                         </button>
                     </div>
                 </div>

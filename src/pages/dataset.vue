@@ -24,6 +24,7 @@ const tenantStore = useTenantStore();
 const searchQuery = ref('');
 const isModalOpen = ref(false);
 const isLoading = ref(false);
+const navigatingTenantId = ref<string | null>(null); // Track tenant ID yang sedang di-navigate
 const editingTenant = ref<Tenant | null>(null);
 
 const form = ref({
@@ -46,7 +47,7 @@ const getRemainingStoragePercent = (tenant: Tenant) => {
     if (remaining <= 0) return 0;
 
     const percentage = (remaining / max) * 100;
-    return Math.round(percentage); // Pembulatan ke angka bulat
+    return Math.round(percentage);
 };
 
 const userAvatarLetter = computed(() => {
@@ -61,9 +62,19 @@ const filteredTenants = computed(() => {
     );
 });
 
-const selectAndNavigate = (tenant: Tenant) => {
-    tenantStore.setSelectTenant(tenant);
-    router.push('/dashboard');
+const selectAndNavigate = async (tenant: Tenant) => {
+    // Mencegah klik berulang saat sedang memproses
+    if (navigatingTenantId.value) return;
+
+    navigatingTenantId.value = tenant.id;
+    try {
+        tenantStore.setSelectTenant(tenant);
+        await router.push('/dashboard');
+    } catch (error) {
+        console.error('Gagal melakukan navigasi:', error);
+    } finally {
+        navigatingTenantId.value = null;
+    }
 };
 
 const openModal = (tenant?: Tenant) => {
@@ -125,7 +136,7 @@ const handleSubmit = async () => {
                 maxDbSizeMB: 1024
             };
             tenants.value.push(newTenant);
-            selectAndNavigate(newTenant);
+            await selectAndNavigate(newTenant);
         }
     } catch (error) {
         console.error('Gagal menyimpan dataset:', error);
@@ -144,6 +155,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
 onMounted(() => window.addEventListener('keydown', handleKeyDown));
 onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
 </script>
+
 <template>
     <div
         class="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col justify-between py-12 px-4 sm:px-6 lg:px-8">
@@ -151,9 +163,8 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
         <!-- Main Content Wrapper -->
         <div class="max-w-6xl mx-auto w-full">
 
-            <!-- Top Bar Navigation (Greeting Only) -->
+            <!-- Top Bar Navigation -->
             <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-200/80 dark:border-slate-800">
-                <!-- Greeting User -->
                 <div class="flex items-center gap-3">
                     <div
                         class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center font-bold text-sm">
@@ -172,7 +183,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
                 </div>
             </div>
 
-            <!-- Top Action Bar (Tanpa background & border panel) -->
+            <!-- Top Action Bar -->
             <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mb-6">
                 <div class="relative w-full sm:w-80">
                     <Icon icon="lucide:search"
@@ -190,8 +201,20 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
             <!-- GRID WRAP LAYOUT CARD CABANG -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 <div v-for="tenant in filteredTenants" :key="tenant.id"
-                    class="group relative flex flex-col justify-between p-5 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-200 cursor-pointer"
-                    @click="selectAndNavigate(tenant)">
+                    class="group relative flex flex-col justify-between p-5 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-200 cursor-pointer overflow-hidden"
+                    :class="{
+                        'pointer-events-none opacity-80 border-emerald-500 ring-2 ring-emerald-500/20': navigatingTenantId === tenant.id,
+                        'pointer-events-none opacity-50': navigatingTenantId && navigatingTenantId !== tenant.id
+                    }" @click="selectAndNavigate(tenant)">
+
+                    <!-- Overlay Loading Spesifik Tenant -->
+                    <div v-if="navigatingTenantId === tenant.id"
+                        class="absolute inset-0 z-10 bg-white/70 dark:bg-slate-800/70 backdrop-blur-[1px] flex flex-col items-center justify-center gap-2">
+                        <Icon icon="lucide:loader-2"
+                            class="w-6 h-6 text-emerald-600 dark:text-emerald-400 animate-spin" />
+                        <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Memuat...</span>
+                    </div>
+
                     <div>
                         <div class="flex items-start justify-between gap-3 mb-4">
                             <div
@@ -247,14 +270,11 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
 
         </div>
 
-        <!-- Bottom Page Footer (Logout Section) -->
+        <!-- Bottom Page Footer -->
         <footer
             class="max-w-6xl mx-auto w-full mt-12 pt-6 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400">
-
-            <!-- Button Logout Component di Footer -->
             <ButtonLogout />
             <span>&copy; {{ new Date().getFullYear() }} System Dataset. All rights reserved.</span>
-
         </footer>
 
         <!-- Modal Buat / Edit Dataset -->

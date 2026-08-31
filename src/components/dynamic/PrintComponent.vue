@@ -40,7 +40,7 @@ const printMode = ref<'driver' | 'network' | 'bluetooth'>('driver')
 const printerList = ref<Array<{ name: string; isDefault: boolean }>>([])
 const selectedPrinter = ref('')
 const networkHost = ref('192.168.1.200')
-const networkPort = ref(9100)
+const networkPort = ref<number>(9100)
 const isPrinting = ref(false)
 const isLoadingPrinters = ref(false)
 const statusMessage = ref('')
@@ -58,8 +58,8 @@ const activeBlueprint = computed<DocumentBlueprint | null>(() => {
     if (!props.blueprint) return null
     return {
         ...props.blueprint,
-        pageSize: selectedPageSize.value as unknown as DocumentBlueprint['pageSize'],
-    } as DocumentBlueprint
+        pageSize: selectedPageSize.value as DocumentBlueprint['pageSize'],
+    }
 })
 
 watch(
@@ -75,16 +75,20 @@ watch(
 // ==========================================
 // 3. RENDER PREVIEW (Real-time ke iframe)
 // ==========================================
+const cleanupBlobUrl = () => {
+    if (blobPreviewUrl.value) {
+        URL.revokeObjectURL(blobPreviewUrl.value)
+        blobPreviewUrl.value = ''
+    }
+}
+
 const updatePreview = async () => {
     if (!activeBlueprint.value) return
     try {
         const htmlContent = await printService.renderToHtml(activeBlueprint.value)
         previewHtml.value = htmlContent
 
-        // Cleanup Blob lama sebelum membuat yang baru
-        if (blobPreviewUrl.value) {
-            URL.revokeObjectURL(blobPreviewUrl.value)
-        }
+        cleanupBlobUrl()
 
         const blob = new Blob([htmlContent], { type: 'text/html' })
         blobPreviewUrl.value = URL.createObjectURL(blob)
@@ -93,9 +97,9 @@ const updatePreview = async () => {
     }
 }
 
-// Watch perubahan spesifik tanpa deep: true berlebih
+// Watch perubahan blueprint secara efisien
 watch(
-    [activeBlueprint, selectedPageSize],
+    activeBlueprint,
     () => {
         updatePreview()
     },
@@ -106,8 +110,8 @@ watch(
 // 4. VALIDATION HELPERS
 // ==========================================
 const isNetworkIpValid = computed(() => {
-    const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/
-    return ipPattern.test(networkHost.value) && networkPort.value > 0
+    const ipPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
+    return ipPattern.test(networkHost.value) && Number.isInteger(networkPort.value) && networkPort.value > 0 && networkPort.value <= 65535
 })
 
 const isPrintDisabled = computed(() => {
@@ -242,14 +246,12 @@ async function exportPdf(e: MouseEvent) {
     try {
         if (!(window as any).electronAPI) {
             alert('Fitur ini hanya tersedia di aplikasi desktop Electron.')
-            btn.disabled = false
             return
         }
 
-        // Kirim langsung string HTML yang sudah jadi!
         const result = await (window as any).electronAPI.renderPdfFromHtml({
             html: previewHtml.value,
-            pageSize: selectedPageSize.value, // Kirim opsi ukuran jika diperlukan
+            pageSize: selectedPageSize.value,
             options: { printBackground: true }
         })
 
@@ -302,9 +304,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-    if (blobPreviewUrl.value) {
-        URL.revokeObjectURL(blobPreviewUrl.value)
-    }
+    cleanupBlobUrl()
     window.removeEventListener('keydown', handleGlobalKeyDown)
 })
 </script>

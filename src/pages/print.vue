@@ -8,7 +8,7 @@ const printBlueprint = ref<DocumentBlueprint | null>(null)
 const activeReportId = ref<string | null>(null)
 
 // --- DATA DUMMY: Kumpulan Blueprint dari "API Server" ---
-const availableReports = [
+const availableReports = markRaw([
     {
         id: 'receipt_58',
         title: 'Struk Kasir (Pelanggan)',
@@ -253,7 +253,7 @@ const availableReports = [
         }
     }
 
-]
+])
 
 // Fungsi untuk melempar blueprint ke komponen cetak
 const loadDocument = (reportId: string, blueprintData: unknown) => {

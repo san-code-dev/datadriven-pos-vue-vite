@@ -1,4 +1,3 @@
-// src/stores/auth.ts
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
@@ -20,31 +19,39 @@ export interface UserInfo {
 export const useAuthStore = defineStore('auth', () => {
     // --- STATE ---
     const menus = ref<MenuItem[]>([])
-    const user = ref<UserInfo | null>(null) // 🔥 TAMBAHKAN STATE USER
+    const user = ref<UserInfo | null>(null)
+    const token = ref<string | null>(null)
 
     // --- GETTERS ---
-    const isAuthenticated = computed(() => menus.value.length > 0 && user.value !== null)
+    const isAuthenticated = computed(() => !!token.value && user.value !== null)
 
     // --- ACTIONS ---
     const setMenus = (newMenus: MenuItem[]) => {
         menus.value = newMenus
     }
 
-    const setUser = (newUser: UserInfo) => { // 🔥 TAMBAHKAN ACTION SET USER
+    const setUser = (newUser: UserInfo) => {
         user.value = newUser
+    }
+
+    const setToken = (newToken: string) => { // 🔥 2. Tambahkan action setToken
+        token.value = newToken
     }
 
     const clearAuth = () => {
         menus.value = []
-        user.value = null // 🔥 BERSIHKAN USER SAAT LOGOUT
+        user.value = null
+        token.value = null // 🔥 3. Hapus token saat logout
     }
 
     return {
         menus,
         user,
+        token,
         isAuthenticated,
         setMenus,
         setUser,
+        setToken,
         clearAuth
     }
 }, {

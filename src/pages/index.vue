@@ -39,6 +39,11 @@ async function login() {
     try {
         const response = await api.post('auth/login', form)
 
+        // 🔥 Simpan token ke authStore
+        if (response.data.token) {
+            authStore.setToken(response.data.token)
+        }
+
         authStore.setMenus(response.data.menu)
 
         if (response.data.user) {

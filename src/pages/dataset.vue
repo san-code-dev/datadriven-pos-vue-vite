@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { Icon } from '@iconify/vue'; // <-- Memperbaiki Vue Warn: Failed to resolve component: Icon
 import { useAuthStore } from '@/stores/auth';
 import { useTenantStore } from '@/stores/tenant';
-import { Icon } from '@iconify/vue';
-import ButtonLogout from '@/components/ButtonLogout.vue';
+import api from '@/lib/axios';
 
 interface Tenant {
     id: string;
     name: string;
     code: string;
-    dbName: string;
+    dbName?: string;
     logo?: string;
     address?: string;
     dbSizeMB?: number;
@@ -24,8 +24,13 @@ const tenantStore = useTenantStore();
 const searchQuery = ref('');
 const isModalOpen = ref(false);
 const isLoading = ref(false);
-const navigatingTenantId = ref<string | null>(null); // Track tenant ID yang sedang di-navigate
+const isFetching = ref(false);
+const navigatingTenantId = ref<string | null>(null);
 const editingTenant = ref<Tenant | null>(null);
+const selectedIndex = ref<number>(0);
+const cardRefs = ref<HTMLElement[]>([]);
+
+const tenants = ref<Tenant[]>([]);
 
 const form = ref({
     name: '',
@@ -34,10 +39,35 @@ const form = ref({
     address: ''
 });
 
-const tenants = ref<Tenant[]>([
-    { id: '1', name: 'Bengkel Print Pusat', code: 'HQ-PST', dbName: 'tenant_pusat', logo: '', address: 'Surabaya, Jawa Timur', dbSizeMB: 120, maxDbSizeMB: 1024 },
-    { id: '2', name: 'Bengkel Print Jakarta', code: 'JKT-01', dbName: 'tenant_jkt', logo: '', address: 'Mangga Dua, Jakarta Pusat', dbSizeMB: 450, maxDbSizeMB: 1024 },
-]);
+const SERVICE_ENDPOINT = '/tenant';
+
+const parseResponseData = (resData: any): Tenant[] => {
+    if (resData?.data && Array.isArray(resData.data)) {
+        return resData.data;
+    }
+    if (Array.isArray(resData)) {
+        return resData;
+    }
+    return [];
+};
+
+const fetchTenants = async () => {
+    isFetching.value = true;
+    try {
+        const response = await api.get(`${SERVICE_ENDPOINT}/get-all`, {
+            headers: {
+                Authorization: `Bearer ${authStore.token}`
+            }
+        });
+
+        tenants.value = parseResponseData(response.data);
+        focusSelectedCard();
+    } catch (error) {
+        console.error('Gagal mengambil data tenant:', error);
+    } finally {
+        isFetching.value = false;
+    }
+};
 
 const getRemainingStoragePercent = (tenant: Tenant) => {
     const max = tenant.maxDbSizeMB || 1024;
@@ -45,9 +75,7 @@ const getRemainingStoragePercent = (tenant: Tenant) => {
     const remaining = max - used;
 
     if (remaining <= 0) return 0;
-
-    const percentage = (remaining / max) * 100;
-    return Math.round(percentage);
+    return Math.round((remaining / max) * 100);
 };
 
 const userAvatarLetter = computed(() => {
@@ -58,12 +86,28 @@ const filteredTenants = computed(() => {
     if (!searchQuery.value) return tenants.value;
     const q = searchQuery.value.toLowerCase();
     return tenants.value.filter(t =>
-        t.name.toLowerCase().includes(q) || t.code.toLowerCase().includes(q)
+        t.name?.toLowerCase().includes(q) || t.code?.toLowerCase().includes(q)
     );
 });
 
+const focusSelectedCard = () => {
+    nextTick(() => {
+        if (cardRefs.value[selectedIndex.value]) {
+            cardRefs.value[selectedIndex.value].focus();
+        }
+    });
+};
+
+watch(filteredTenants, () => {
+    selectedIndex.value = 0;
+    focusSelectedCard();
+});
+
+onMounted(() => {
+    fetchTenants();
+});
+
 const selectAndNavigate = async (tenant: Tenant) => {
-    // Mencegah klik berulang saat sedang memproses
     if (navigatingTenantId.value) return;
 
     navigatingTenantId.value = tenant.id;
@@ -74,6 +118,53 @@ const selectAndNavigate = async (tenant: Tenant) => {
         console.error('Gagal melakukan navigasi:', error);
     } finally {
         navigatingTenantId.value = null;
+    }
+};
+
+const handleContainerKeyDown = (e: KeyboardEvent) => {
+    const total = filteredTenants.value.length;
+    if (total === 0 || isModalOpen.value) return;
+
+    let columns = 1;
+    if (window.innerWidth >= 1280) columns = 4;
+    else if (window.innerWidth >= 1024) columns = 3;
+    else if (window.innerWidth >= 640) columns = 2;
+
+    switch (e.key) {
+        case 'ArrowRight':
+            e.preventDefault();
+            selectedIndex.value = (selectedIndex.value + 1) % total;
+            focusSelectedCard();
+            break;
+        case 'ArrowLeft':
+            e.preventDefault();
+            selectedIndex.value = (selectedIndex.value - 1 + total) % total;
+            focusSelectedCard();
+            break;
+        case 'ArrowDown':
+            e.preventDefault();
+            if (selectedIndex.value + columns < total) {
+                selectedIndex.value += columns;
+            } else {
+                selectedIndex.value = total - 1;
+            }
+            focusSelectedCard();
+            break;
+        case 'ArrowUp':
+            e.preventDefault();
+            if (selectedIndex.value - columns >= 0) {
+                selectedIndex.value -= columns;
+            } else {
+                selectedIndex.value = 0;
+            }
+            focusSelectedCard();
+            break;
+        case 'Enter':
+            e.preventDefault();
+            if (filteredTenants.value[selectedIndex.value]) {
+                selectAndNavigate(filteredTenants.value[selectedIndex.value]);
+            }
+            break;
     }
 };
 
@@ -96,69 +187,104 @@ const openModal = (tenant?: Tenant) => {
 const closeModal = () => {
     isModalOpen.value = false;
     editingTenant.value = null;
+    focusSelectedCard();
 };
 
+// Resize & Kompresi Logo ke PNG Base64 Ringkas (Resolusi Max 150px)
 const handleFileUpload = (e: Event) => {
     const file = (e.target as HTMLInputElement).files?.[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            form.value.logo = event.target?.result as string;
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxDimension = 150; // Batas maksimum resolusi logo (thumbnail)
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+                if (width > maxDimension) {
+                    height = Math.round((height * maxDimension) / width);
+                    width = maxDimension;
+                }
+            } else {
+                if (height > maxDimension) {
+                    width = Math.round((width * maxDimension) / height);
+                    height = maxDimension;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, width, height);
+
+            // Menghasilkan data URI terkompresi
+            form.value.logo = canvas.toDataURL('image/png', 0.8);
         };
-        reader.readAsDataURL(file);
-    }
+        img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
 };
 
 const handleSubmit = async () => {
     isLoading.value = true;
     try {
-        if (editingTenant.value) {
-            const index = tenants.value.findIndex(t => t.id === editingTenant.value?.id);
-            if (index !== -1) {
-                tenants.value[index] = {
-                    ...tenants.value[index],
-                    name: form.value.name,
-                    code: form.value.code.toUpperCase(),
-                    logo: form.value.logo,
-                    address: form.value.address
-                };
-            }
-            closeModal();
-        } else {
-            const newTenant: Tenant = {
-                id: Date.now().toString(),
+        const config = {
+            headers: { Authorization: `Bearer ${authStore.token}` }
+        };
+
+        if (editingTenant.value && editingTenant.value.id) {
+            const tenantId = editingTenant.value.id;
+
+            const payload = {
+                id: tenantId,
                 name: form.value.name,
                 code: form.value.code.toUpperCase(),
-                dbName: `tenant_${form.value.code.toLowerCase()}`,
                 logo: form.value.logo,
-                address: form.value.address,
-                dbSizeMB: 0,
-                maxDbSizeMB: 1024
+                address: form.value.address
             };
-            tenants.value.push(newTenant);
-            await selectAndNavigate(newTenant);
+
+            // Kirim id via Query String (?id=...) DAN via Body Payload
+            const response = await api.put(
+                `${SERVICE_ENDPOINT}/update?id=${tenantId}`,
+                payload,
+                config
+            );
+
+            tenants.value = parseResponseData(response.data);
+            closeModal();
+        } else {
+            const payload = {
+                name: form.value.name,
+                code: form.value.code.toUpperCase(),
+                logo: form.value.logo,
+                address: form.value.address
+            };
+
+            const response = await api.post(
+                `${SERVICE_ENDPOINT}/create`,
+                payload,
+                config
+            );
+            tenants.value = parseResponseData(response.data);
+            closeModal();
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Gagal menyimpan dataset:', error);
+        if (error.response?.data) {
+            console.error('Detail Error dari Backend:', error.response.data);
+        }
     } finally {
         isLoading.value = false;
     }
 };
-
-const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.altKey && e.key.toLowerCase() === 'n') {
-        e.preventDefault();
-        openModal();
-    }
-};
-
-onMounted(() => window.addEventListener('keydown', handleKeyDown));
-onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
 </script>
-
 <template>
-    <div
-        class="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col justify-between py-12 px-4 sm:px-6 lg:px-8">
+    <div tabindex="-1" @keydown="handleContainerKeyDown"
+        class="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col justify-between py-12 px-4 sm:px-6 lg:px-8 outline-none">
 
         <!-- Main Content Wrapper -->
         <div class="max-w-6xl mx-auto w-full">
@@ -194,18 +320,30 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
                 <button @click="openModal()" class="btn-action-emerald-600 w-full sm:w-auto justify-center">
                     <Icon icon="lucide:plus" class="w-4 h-4" />
                     <span>Dataset Baru</span>
-                    <kbd class="btn-kbd">Alt+N</kbd>
                 </button>
             </div>
 
+            <!-- Loading State Pertama Kali Ambil Data API -->
+            <div v-if="isFetching" class="py-20 text-center flex flex-col items-center justify-center gap-3">
+                <Icon icon="lucide:loader-2" class="w-8 h-8 text-emerald-500 animate-spin" />
+                <p class="text-xs text-slate-400">Memuat daftar cabang...</p>
+            </div>
+
             <!-- GRID WRAP LAYOUT CARD CABANG -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                <div v-for="tenant in filteredTenants" :key="tenant.id"
-                    class="group relative flex flex-col justify-between p-5 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/5 transition-all duration-200 cursor-pointer overflow-hidden"
-                    :class="{
-                        'pointer-events-none opacity-80 border-emerald-500 ring-2 ring-emerald-500/20': navigatingTenantId === tenant.id,
-                        'pointer-events-none opacity-50': navigatingTenantId && navigatingTenantId !== tenant.id
-                    }" @click="selectAndNavigate(tenant)">
+            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div v-for="(tenant, index) in filteredTenants" :key="tenant.id" ref="cardRefs" tabindex="0"
+                    @mouseenter="selectedIndex = index" @focus="selectedIndex = index"
+                    @click="selectAndNavigate(tenant)"
+                    class="group relative flex flex-col justify-between p-5 rounded-2xl border bg-white dark:bg-slate-800 transition-all duration-200 cursor-pointer overflow-hidden outline-none focus:outline-none"
+                    :class="[
+                        selectedIndex === index
+                            ? 'border-emerald-500 dark:border-emerald-500 ring-2 ring-emerald-500/30 shadow-lg shadow-emerald-500/10'
+                            : 'border-slate-200/80 dark:border-slate-700/60 hover:border-emerald-500 dark:hover:border-emerald-500',
+                        {
+                            'pointer-events-none opacity-80 border-emerald-500': navigatingTenantId === tenant.id,
+                            'pointer-events-none opacity-50': navigatingTenantId && navigatingTenantId !== tenant.id
+                        }
+                    ]">
 
                     <!-- Overlay Loading Spesifik Tenant -->
                     <div v-if="navigatingTenantId === tenant.id"
@@ -232,7 +370,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
                                 </span>
 
                                 <button @click.stop="openModal(tenant)" title="Edit Logo / Cabang"
-                                    class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                    class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors focus:outline-none">
                                     <Icon icon="lucide:square-pen" class="w-4 h-4" />
                                 </button>
                             </div>
@@ -262,7 +400,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
             </div>
 
             <!-- Empty State -->
-            <div v-if="filteredTenants.length === 0"
+            <div v-if="!isFetching && filteredTenants.length === 0"
                 class="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/60">
                 <Icon icon="lucide:folder-open" class="w-12 h-12 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
                 <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Dataset tidak ditemukan.</p>

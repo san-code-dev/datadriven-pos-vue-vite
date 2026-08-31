@@ -298,7 +298,7 @@ onUnmounted(() => {
             <div class="pt-3 border-t border-slate-200 dark:border-slate-800 flex-shrink-0">
 
                 <!-- Quick Action Bar (Collapsed Support) -->
-                <div class="flex items-center p-1 bg-slate-100/70 dark:bg-slate-800/70 rounded-xl transition-all duration-300"
+                <div class="hidden flex items-center p-1 bg-slate-100/70 dark:bg-slate-800/70 rounded-xl transition-all duration-300"
                     :class="sidebarStore.isCollapsed ? 'flex-col space-y-1 bg-transparent p-0' : 'justify-around'">
 
                     <!-- Notification Button -->

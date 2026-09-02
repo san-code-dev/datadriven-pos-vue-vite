@@ -37,7 +37,7 @@ async function login() {
     error.value = ''
 
     try {
-        const response = await api.post('auth/login', form)
+        const response = await api.post('auth/login', form, { includeTenant: false })
 
         // 🔥 Simpan token ke authStore
         if (response.data.token) {

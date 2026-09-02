@@ -3,23 +3,16 @@ import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue'; // <-- Memperbaiki Vue Warn: Failed to resolve component: Icon
 import { useAuthStore } from '@/stores/auth';
-import { useTenantStore } from '@/stores/tenant';
+import { useTenantStore, type Tenant } from '@/stores/tenant';
+import { useTabStore } from '@/stores/tabs';
 import api from '@/lib/axios';
 
-interface Tenant {
-    id: string;
-    name: string;
-    code: string;
-    dbName?: string;
-    logo?: string;
-    address?: string;
-    dbSizeMB?: number;
-    maxDbSizeMB?: number;
-}
+
 
 const router = useRouter();
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
+const tabStore = useTabStore();
 
 const searchQuery = ref('');
 const isModalOpen = ref(false);
@@ -41,26 +34,16 @@ const form = ref({
 
 const SERVICE_ENDPOINT = '/tenant';
 
-const parseResponseData = (resData: any): Tenant[] => {
-    if (resData?.data && Array.isArray(resData.data)) {
-        return resData.data;
-    }
-    if (Array.isArray(resData)) {
-        return resData;
-    }
-    return [];
-};
-
 const fetchTenants = async () => {
     isFetching.value = true;
     try {
-        const response = await api.get(`${SERVICE_ENDPOINT}/get-all`, {
-            headers: {
-                Authorization: `Bearer ${authStore.token}`
-            }
-        });
+        const response = await api.get(SERVICE_ENDPOINT + '/get-all', { includeTenant: false });
 
-        tenants.value = parseResponseData(response.data);
+        // Jika backend membungkus array di dalam properti 'data' (misal: response.data.data)
+        tenants.value = Array.isArray(response.data)
+            ? response.data
+            : response.data?.data || [];
+
         focusSelectedCard();
     } catch (error) {
         console.error('Gagal mengambil data tenant:', error);
@@ -107,13 +90,23 @@ onMounted(() => {
     fetchTenants();
 });
 
+
 const selectAndNavigate = async (tenant: Tenant) => {
     if (navigatingTenantId.value) return;
 
+    const isSameTenant = tenantStore.selectedTenant?.id === tenant.id;
+
     navigatingTenantId.value = tenant.id;
     try {
-        tenantStore.setSelectTenant(tenant);
-        await router.push('/dashboard');
+        tenantStore.setSelectTenant(tenant as Parameters<typeof tenantStore.setSelectTenant>[0]);
+
+        if (!isSameTenant) {
+            useTabStore().clearTabs();
+        }
+
+        if (router.currentRoute.value.path !== '/dashboard') {
+            await router.push('/dashboard');
+        }
     } catch (error) {
         console.error('Gagal melakukan navigasi:', error);
     } finally {
@@ -232,10 +225,6 @@ const handleFileUpload = (e: Event) => {
 const handleSubmit = async () => {
     isLoading.value = true;
     try {
-        const config = {
-            headers: { Authorization: `Bearer ${authStore.token}` }
-        };
-
         if (editingTenant.value && editingTenant.value.id) {
             const tenantId = editingTenant.value.id;
 
@@ -247,14 +236,10 @@ const handleSubmit = async () => {
                 address: form.value.address
             };
 
-            // Kirim id via Query String (?id=...) DAN via Body Payload
-            const response = await api.put(
-                `${SERVICE_ENDPOINT}/update?id=${tenantId}`,
-                payload,
-                config
-            );
+            // Menggunakan PUT /tenant/:id
+            await api.put(`${SERVICE_ENDPOINT}/update`, payload, { includeTenant: false });
 
-            tenants.value = parseResponseData(response.data);
+            fetchTenants();
             closeModal();
         } else {
             const payload = {
@@ -264,12 +249,8 @@ const handleSubmit = async () => {
                 address: form.value.address
             };
 
-            const response = await api.post(
-                `${SERVICE_ENDPOINT}/create`,
-                payload,
-                config
-            );
-            tenants.value = parseResponseData(response.data);
+            await api.post(SERVICE_ENDPOINT + '/create', payload, { includeTenant: false });
+            fetchTenants();
             closeModal();
         }
     } catch (error: any) {
@@ -281,6 +262,10 @@ const handleSubmit = async () => {
         isLoading.value = false;
     }
 };
+
+watch(tenants, () => {
+    console.log(tenants.value.length)
+})
 </script>
 <template>
     <div tabindex="-1" @keydown="handleContainerKeyDown"
@@ -469,7 +454,8 @@ const handleSubmit = async () => {
                             <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                                 Kode Singkatan Cabang *
                             </label>
-                            <input v-model="form.code" type="text" required placeholder="Contoh: SBY-01"
+                            <input v-model="form.code" :disabled="(editingTenant ? true : false)" type="text" required
+                                placeholder="Contoh: SBY-01"
                                 class="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase" />
                         </div>
 

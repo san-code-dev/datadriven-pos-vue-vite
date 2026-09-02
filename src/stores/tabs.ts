@@ -15,10 +15,11 @@ export const useTabStore = defineStore('tabs', {
           label: 'Dashboard',
           route: '/dashboard',
         },
-        gridsConfig: [], // Struktur: [{ gridKey, coordinate: {x, y}, column: [{ key, size }] }]
         refreshKey: 0,
       },
     ],
+    // 🟢 Simpan konfigurasi grid secara permanen berdasarkan tab ID / route
+    savedGridConfigs: {},
   }),
 
   actions: {
@@ -32,13 +33,11 @@ export const useTabStore = defineStore('tabs', {
           route,
           apiResponse,
           currentMenu,
-          gridsConfig: [],
           refreshKey: 0,
         })
       } else {
         if (apiResponse) existingTab.apiResponse = apiResponse
         if (currentMenu) existingTab.currentMenu = currentMenu
-        if (!existingTab.gridsConfig) existingTab.gridsConfig = []
       }
       this.activeTabId = id
     },
@@ -69,33 +68,40 @@ export const useTabStore = defineStore('tabs', {
       }
     },
 
-    // Action untuk memperbarui/menyimpan konfigurasi grid (koordinat & ukuran kolom)
+    // 🟢 Simpan config ke savedGridConfigs
     updateGridConfig(tabId, gridKey, config) {
-      const tab = this.openedTabs.find((t) => t.id === tabId)
-      if (!tab) return
-
-      if (!tab.gridsConfig) {
-        tab.gridsConfig = []
+      if (!this.savedGridConfigs[tabId]) {
+        this.savedGridConfigs[tabId] = []
       }
 
-      const existingIndex = tab.gridsConfig.findIndex(
-        (g) => g.gridKey === gridKey,
-      )
+      const gridList = this.savedGridConfigs[tabId]
+      const existingIndex = gridList.findIndex((g) => g.gridKey === gridKey)
 
       if (existingIndex !== -1) {
-        tab.gridsConfig[existingIndex] = {
-          ...tab.gridsConfig[existingIndex],
+        gridList[existingIndex] = {
+          ...gridList[existingIndex],
           ...config,
           gridKey,
         }
       } else {
-        tab.gridsConfig.push({
+        gridList.push({
           gridKey,
           coordinate: { x: 0, y: 0 },
           column: [],
           ...config,
         })
       }
+    },
+
+    // 🟢 Getter/Helper untuk mengambil config grid berdasarkan tabId & gridKey
+    getGridConfig(tabId, gridKey) {
+      return this.savedGridConfigs[tabId]?.find((g) => g.gridKey === gridKey) || null
+    },
+
+    // 🟢 `clearTabs` menghapus daftar tab yang terbuka tanpa menyentuh `savedGridConfigs`
+    clearTabs() {
+      this.openedTabs = []
+      this.activeTabId = null
     },
   },
 

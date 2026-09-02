@@ -207,11 +207,7 @@ const closeOtherTabs = () => {
 }
 
 const closeAllTabs = () => {
-    if (typeof tabStore.closeAll === 'function') {
-        tabStore.closeAll()
-    } else {
-        tabStore.openedTabs = tabStore.openedTabs.filter(t => t.id === '/dashboard')
-    }
+    tabStore.clearTabs()
     router.push('/dashboard')
     closeContextMenu()
 }

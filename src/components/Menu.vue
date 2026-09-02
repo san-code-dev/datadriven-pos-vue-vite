@@ -1,10 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useSidebarStore } from '@/stores/sideBar'
-import { useAuthStore } from '@/stores/auth'
-import { useTenantStore } from '@/stores/tenant';
+import { useAuthStore, type UserInfo } from '@/stores/auth'
+import { useTenantStore, type Tenant } from '@/stores/tenant';
 
 
 const router = useRouter()
@@ -22,13 +22,16 @@ const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 
 // Mocking/Fallback data tenant & user
-const tenantInfo = computed(() => ({
+const tenantInfo = computed<Tenant>(() => ({
+    id: tenantStore.selectedTenant?.id || 'unknown',
+    logo: tenantStore.selectedTenant?.logo || '',
     name: tenantStore.selectedTenant?.name || 'unknown',
     code: tenantStore.selectedTenant?.code || 'unknown'
 }))
 
-const userInfo = computed(() => ({
-    name: authStore.user?.name || authStore.user?.email || 'unknown',
+const userInfo = computed<UserInfo>(() => ({
+    id: authStore.user?.id,
+    email: authStore.user?.email || 'unknown',
     role: authStore.user?.role || 'unknown'
 }))
 
@@ -161,10 +164,11 @@ onUnmounted(() => {
                 <!-- Header: Tenant Info & Collapse Toggle -->
                 <div class="flex items-center cursor-pointer mb-6 h-12 justify-center border-b border-slate-100 dark:border-slate-800 py-3 px-1 hover:bg-slate-700/40 rounded-lg"
                     @click="router.push('/dataset')" title="Ganti cabang">
-                    <div class="flex items-center justify-center gap-2.5 min-w-0 flex-1">
+                    <div class="flex items-center gap-2.5 min-w-0 flex-1">
                         <div
-                            class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-sm flex-shrink-0">
-                            <Icon icon="heroicons:building-office-2" class="text-lg" />
+                            class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                            <img v-if="tenantInfo.logo" :src="tenantInfo.logo" class="w-full h-full object-cover" />
+                            <Icon v-else icon="lucide:building-2" class="w-6 h-6 text-slate-400" />
                         </div>
                         <div class="flex flex-col min-w-0 text-sidebar-label"
                             :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
@@ -334,12 +338,12 @@ onUnmounted(() => {
                             :class="sidebarStore.isCollapsed ? 'justify-center' : ''">
                             <div
                                 class="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-semibold text-xs flex-shrink-0 shadow-sm">
-                                {{ userInfo.name.charAt(0) }}
+                                {{ userInfo.email.charAt(0) }}
                             </div>
                             <div class="flex flex-col min-w-0 text-sidebar-label"
                                 :class="sidebarStore.isCollapsed ? 'collapsed' : 'expanded'">
                                 <div class="text-xs font-semibold truncate text-slate-800 dark:text-slate-200">
-                                    {{ userInfo.name }}
+                                    {{ userInfo.email }}
                                 </div>
                                 <div class="text-[10px] text-slate-400 truncate">
                                     {{ userInfo.role }}

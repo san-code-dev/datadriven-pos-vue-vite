@@ -1,5 +1,14 @@
 import axios from 'axios'
+import type { InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/stores/auth'
+import { useTenantStore } from '@/stores/tenant'
+
+// 1. Extend AxiosRequestConfig agar TypeScript mengenali opsi includeTenant
+declare module 'axios' {
+    export interface AxiosRequestConfig {
+        includeTenant?: boolean
+    }
+}
 
 let routerInstance: any = null
 
@@ -13,15 +22,24 @@ const api = axios.create({
 })
 
 // ==========================================
-// 1. REQUEST INTERCEPTOR (Kirim Token ke Backend)
+// 2. REQUEST INTERCEPTOR (Token & Tenant Header)
 // ==========================================
 api.interceptors.request.use(
-    (config) => {
+    (config: InternalAxiosRequestConfig) => {
         const authStore = useAuthStore()
+        const tenantStore = useTenantStore()
 
-        // Kirim Authorization Bearer Token jika token tersedia di Pinia/LocalStorage
+        // Kirim Authorization Bearer Token
         if (authStore.token) {
             config.headers.Authorization = `Bearer ${authStore.token}`
+        }
+
+        // Default value set ke true jika tidak didefinisikan secara eksplisit
+        const shouldIncludeTenant = config.includeTenant ?? true
+
+        // Sisipkan x-tenant-code HANYA jika includeTenant bernilai true dan tenant tersedia
+        if (shouldIncludeTenant && tenantStore.selectedTenant?.code) {
+            config.headers['x-tenant-code'] = tenantStore.selectedTenant.code
         }
 
         return config
@@ -32,18 +50,18 @@ api.interceptors.request.use(
 )
 
 // ==========================================
-// 2. RESPONSE INTERCEPTOR (Penanganan Error 401)
+// 3. RESPONSE INTERCEPTOR (Penanganan Error 401)
 // ==========================================
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         if (error.response && error.response.status === 401) {
             const authStore = useAuthStore()
+            const tenantStore = useTenantStore()
 
-            // 1. Bersihkan data auth (menus, user, token)
             authStore.clearAuth()
+            tenantStore.clearTenant()
 
-            // 2. Redirect ke halaman Login jika tidak sedang di halaman Login
             if (routerInstance && routerInstance.currentRoute.value.path !== '/') {
                 await routerInstance.push('/')
             }

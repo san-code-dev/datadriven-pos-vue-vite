@@ -452,13 +452,12 @@ const handleExport = () => { console.log("[Action] Ekspor data ke CSV/Excel...",
 
 
 // --- STATE & CONFIG STORAGE PINIA ---
-const currentGridKey = computed(() => `${formKey.value}-master_grid`)
+const currentGridKey = computed(() => `${useTenantStore().selectedTenant?.code}-${formKey.value}-master_grid`)
 
 const currentGridConfig = computed(() => {
-	const activeTab = tabStore.openedTabs.find(tab => tab.id === tabStore.activeTabId)
-	if (!activeTab || !activeTab.gridsConfig) return null
-
-	return activeTab.gridsConfig.find((g: any) => g.gridKey === currentGridKey.value)
+	const activeTabId = tabStore.activeTabId
+	if (!activeTabId) return null
+	return tabStore.getGridConfig(activeTabId, currentGridKey.value)
 })
 
 const saveCurrentStateToStore = async (event: any) => {

@@ -40,7 +40,7 @@ const syncStatusRef = ref<InstanceType<typeof SyncStatus> | null>(null)
 const searchInputRef = ref<HTMLInputElement | null>(null)
 
 const schema = ref<TransactionSchemaState>(props.schemaData)
-const currentGridKey = computed(() => `${formKey.value}-details_transaction_grid`)
+const currentGridKey = computed(() => `${useTenantStore().selectedTenant?.code}-${formKey.value}-details_transaction_grid`)
 
 const searchDataSchema = ref<any>(null)
 const searchDataFieldKey = ref<string | null>(null)
@@ -79,12 +79,11 @@ const primaryKeyFieldName = computed(
 
 
 const currentGridConfig = computed(() => {
-  const activeTab = tabStore.openedTabs.find(tab => tab.id === tabStore.activeTabId)
-  if (!activeTab || !activeTab.gridsConfig) return null
+  const activeTabId = tabStore.activeTabId
+  if (!activeTabId) return null
 
-  return activeTab.gridsConfig.find((g: any) => g.gridKey === currentGridKey.value)
+  return tabStore.getGridConfig(activeTabId, currentGridKey.value)
 })
-
 
 const saveCurrentStateToStore = async (event: any) => {
   const detail = event?.detail

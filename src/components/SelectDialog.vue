@@ -25,15 +25,12 @@ const tabStore = useTabStore()
 const columns = ref<any[]>([])
 const rows = ref<any[]>([])
 
-// Kunci unik untuk identifier grid di Pinia
-const currentGridKey = computed(() => `${props.context}-${props.fieldKey}-select_data_grid`)
+const currentGridKey = computed(() => `${useTenantStore().selectedTenant?.code}-${formKey.value}-master_grid`)
 
-// Mengambil konfigurasi grid aktif dari tab yang sedang aktif di Pinia
 const currentGridConfig = computed(() => {
-    const activeTab = tabStore.openedTabs.find(tab => tab.id === tabStore.activeTabId)
-    if (!activeTab || !activeTab.gridsConfig) return null
-
-    return activeTab.gridsConfig.find((g: any) => g.gridKey === currentGridKey.value)
+    const activeTabId = tabStore.activeTabId
+    if (!activeTabId) return null
+    return tabStore.getGridConfig(activeTabId, currentGridKey.value)
 })
 
 const computedModalWidth = computed(() => {

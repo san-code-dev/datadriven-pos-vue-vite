@@ -1,18 +1,20 @@
 import { defineStore } from 'pinia';
 
-interface Tenant {
+export interface Tenant {
     id: string;
     name: string;
-    dbName: string;
     code: string;
+    dbName?: string;
+    logo?: string;
     address?: string;
-    createdAt?: string;
+    dbSizeMB?: number;
+    maxDbSizeMB?: number;
 }
+
 
 export const useTenantStore = defineStore('tenant', {
     state: () => ({
         selectedTenant: JSON.parse(localStorage.getItem('selectedTenant') || 'null') as Tenant | null,
-        tenants: [] as Tenant[],
     }),
     actions: {
         setSelectTenant(tenant: Tenant) {

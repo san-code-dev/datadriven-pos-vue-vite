@@ -262,10 +262,6 @@ const handleSubmit = async () => {
         isLoading.value = false;
     }
 };
-
-watch(tenants, () => {
-    console.log(tenants.value.length)
-})
 </script>
 <template>
     <div tabindex="-1" @keydown="handleContainerKeyDown"

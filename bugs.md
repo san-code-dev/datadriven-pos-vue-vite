@@ -16,3 +16,4 @@
 - tab header grab error reorder array rtl cant redifined on revogrid mouse pointer grab
 - alt + arrow shortcut revogrid error
 - add reset tab for active tabs
+- belum ada .env

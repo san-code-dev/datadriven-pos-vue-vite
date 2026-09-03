@@ -56,8 +56,6 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 // Eksekusi Logout API
-
-// Di dalam fungsi submitLogout():
 async function submitLogout() {
     if (isLoggingOut.value) return
     isLoggingOut.value = true
@@ -67,16 +65,19 @@ async function submitLogout() {
     } catch (err) {
         console.error('Logout API failed:', err)
     } finally {
-        // 1. Putus koneksi socket secara instan
         disconnectSocket()
         console.log('socket diputus karena user logout')
-        // 2. Bersihkan data di Pinia & Local Storage secara total
+
         authStore.clearAuth()
+
+        // 📢 Kirim sinyal broadcast logout ke tab lain (Gunakan Objek)
+        const logoutChannel = new BroadcastChannel('auth_channel')
+        logoutChannel.postMessage({ type: 'LOGOUT' })
+        logoutChannel.close()
 
         closeModal()
         isLoggingOut.value = false
 
-        // 3. Tendang user kembali ke halaman Login awal
         await router.push('/')
     }
 }

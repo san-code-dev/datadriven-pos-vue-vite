@@ -50,6 +50,15 @@ async function login() {
             authStore.setUser(response.data.user)
         }
 
+        const authChannel = new BroadcastChannel('auth_channel')
+
+        authChannel.postMessage({
+            type: 'LOGIN_SUCCESS',
+            senderId: window.TAB_ID // Pakai ID yang sama dari window
+        })
+        authChannel.close()
+
+        // Tab 1 pindah halaman secara mulus
         await router.push('/dataset')
     } catch (err: any) {
         const errorMessage = err.response?.data?.message || err.message || "Terjadi kesalahan sistem";

@@ -11,19 +11,21 @@ export interface Tenant {
     maxDbSizeMB?: number;
 }
 
-
 export const useTenantStore = defineStore('tenant', {
     state: () => ({
-        selectedTenant: JSON.parse(localStorage.getItem('selectedTenant') || 'null') as Tenant | null,
+        // Ubah localStorage menjadi sessionStorage
+        selectedTenant: JSON.parse(sessionStorage.getItem('selectedTenant') || 'null') as Tenant | null,
     }),
     actions: {
         setSelectTenant(tenant: Tenant) {
             this.selectedTenant = tenant;
-            localStorage.setItem('selectedTenant', JSON.stringify(tenant));
+            // Ubah localStorage menjadi sessionStorage
+            sessionStorage.setItem('selectedTenant', JSON.stringify(tenant));
         },
         clearTenant() {
             this.selectedTenant = null;
-            localStorage.removeItem('selectedTenant');
+            // Ubah localStorage menjadi sessionStorage
+            sessionStorage.removeItem('selectedTenant');
         }
     }
 });

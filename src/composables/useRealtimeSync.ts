@@ -1,6 +1,9 @@
 // src/composables/useRealtimeSync.ts
 import { onMounted, onBeforeUnmount, watch, type Ref, nextTick } from 'vue'
 import { getSocket } from '@/lib/socket'
+import { useTenantStore } from '@/stores/tenant'
+
+const tenantStore = useTenantStore()
 
 export function useRealtimeSync(
   formKey: Ref<string> | string,
@@ -14,7 +17,7 @@ export function useRealtimeSync(
     const key = typeof formKey === 'string' ? formKey : formKey.value
     if (!key) return
 
-    const eventName = `realtime_update:${key}`
+    const eventName = `realtime_update:${key}-${tenantStore.selectedTenant.code}`
 
     // Fungsi internal untuk mendaftarkan listener
     const register = () => {

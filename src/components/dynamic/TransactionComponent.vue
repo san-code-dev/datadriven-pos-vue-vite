@@ -170,14 +170,26 @@ const setSyncStatus = (state: any, message: string) => {
   syncStatusRef.value?.setStatus(state, message)
 }
 
-const applyResponseData = (socketIoData: Partial<TransactionSchemaState> | any) => {
+const applyResponseData = (socketIoData: any) => {
   if (!socketIoData || !schema.value) return
 
-  if (socketIoData.queue?.data) schema.value.queue.data = socketIoData.queue.data
-  if (socketIoData.header) schema.value.header = socketIoData.header
-  if (socketIoData.details) schema.value.details = socketIoData.details
-}
+  // Ambil objek 'data' utama dari payload Socket.IO
+  const payload = socketIoData.data || socketIoData
+  console.log('[Realtime Sync] Processing payload:', payload)
 
+  // Update data ke schema
+  if (payload.queue?.data) {
+    schema.value.queue.data = payload.queue.data
+  }
+
+  if (payload.header) {
+    schema.value.header = payload.header
+  }
+
+  if (payload.details) {
+    schema.value.details = payload.details
+  }
+}
 const loadComponentData = () => {
   if (!props.schemaData) return
   schema.value = props.schemaData

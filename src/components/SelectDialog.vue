@@ -25,7 +25,7 @@ const tabStore = useTabStore()
 const columns = ref<any[]>([])
 const rows = ref<any[]>([])
 
-const currentGridKey = computed(() => `${useTenantStore().selectedTenant?.code}-${formKey.value}-master_grid`)
+const currentGridKey = computed(() => `${useTenantStore().selectedTenant?.code}-${props.context}-${props.fieldKey}-select_data_grid`)
 
 const currentGridConfig = computed(() => {
     const activeTabId = tabStore.activeTabId

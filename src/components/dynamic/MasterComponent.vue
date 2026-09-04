@@ -87,7 +87,6 @@
 
 	</div>
 </template>
-
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -100,6 +99,7 @@ import api from '@/lib/axios'
 
 import { useTabStore } from '@/stores/tabs'
 import { useFilterStore } from '@/stores/filter'
+import { useTenantStore } from '@/stores/tenant'
 import { useRoute } from 'vue-router'
 
 import NumberColumnType from '@revolist/revogrid-column-numeral'
@@ -116,6 +116,7 @@ const props = defineProps({
 const route = useRoute()
 const tabStore = useTabStore()
 const filterStore = useFilterStore()
+const tenantStore = useTenantStore()
 
 const gridRef = ref<any>(null)
 const navigatorRef = ref(null)
@@ -143,7 +144,6 @@ const formKey = computed(() => {
 	return props.menu.key.toLowerCase()
 })
 
-
 const columnTypes = {
 	numeric: new NumberColumnType('0,0'),
 	decimal: new NumberColumnType('0,0.00'),
@@ -151,7 +151,7 @@ const columnTypes = {
 	date: new DateTypePlugin()
 }
 
-const relationCellRenderer = (createElement, cellProps, displayField, fieldKey, optionsList) => {
+const relationCellRenderer = (createElement: any, cellProps: any, displayField: string, fieldKey: string, optionsList: any[]) => {
 	const rawValue = cellProps.model[fieldKey]
 	if (!rawValue) return createElement('span', {}, '')
 
@@ -163,13 +163,29 @@ const relationCellRenderer = (createElement, cellProps, displayField, fieldKey, 
 	return createElement('span', {}, matchedOption ? matchedOption.label : rawValue)
 }
 
-
-// 🟢 APPLY RESPONSE DATA: Handler utama sinkronisasi realtime socket
-const applyResponseData = (serverData: any) => {
+// 🟢 APPLY RESPONSE DATA: Khusus untuk initial load atau query get-all
+const applyResponseData = async (serverData: any) => {
 	if (!serverData) return
-	const incomingRows = Array.isArray(serverData)
-		? serverData
-		: (serverData.schema?.data || serverData.data || [serverData])
+
+	// 1. Jika payload berasal dari Socket realtime event: { action: 'UPDATE', id: 10 }
+	if (serverData.action && serverData.id) {
+		console.log(`[Realtime] Menerima event ${serverData.action} untuk ID ${serverData.id}`)
+		await handleRealtimeMutation(serverData.action, serverData.id)
+		return
+	}
+
+	// 2. Jika payload dari GET/Fetch schema biasa (Array / Object Schema)
+	let incomingRows: any[] = []
+
+	if (Array.isArray(serverData)) {
+		incomingRows = serverData
+	} else if (Array.isArray(serverData.data)) {
+		incomingRows = serverData.data
+	} else if (serverData.schema && Array.isArray(serverData.schema.data)) {
+		incomingRows = serverData.schema.data
+	} else if (typeof serverData === 'object' && !serverData.success) {
+		incomingRows = [serverData]
+	}
 
 	rows.value = [...incomingRows]
 
@@ -181,16 +197,90 @@ const applyResponseData = (serverData: any) => {
 	}
 }
 
-// 🟢 FETCH GRID DATA: Mengambil data tabel dari backend
+/**
+ * 🟢 REALTIME MUTATION HANDLER
+ * Menangani penambahan, pembaruan (fetchById), dan penghapusan data secara presisi
+ */
+const handleRealtimeMutation = async (action: 'CREATE' | 'UPDATE' | 'DELETE', id: number) => {
+	// A. Kasus Hapus Data: Hapus row dari memori lokal
+	if (action === 'DELETE') {
+		rows.value = rows.value.filter((row: any) => row[primaryKey.value] !== id)
+		setSyncStatus('success', 'Data diperbarui secara realtime')
+		return
+	}
+	// B. Kasus Tambah / Ubah Data: Fetch data spesifik via getById dari Redis/DB
+	try {
+		const response = await api.get(`/${formKey.value}/get-by-id`, {
+			params: { id }
+		})
+
+		const updatedRecord = response.data
+		if (!updatedRecord) return
+
+		let index = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
+
+		if (index !== -1) {
+			// 1. Update data di state
+			rows.value[index] = { ...rows.value[index], ...updatedRecord }
+			rows.value = [...rows.value]
+		} else {
+			// 2. Tambah data baru ke state
+			rows.value = [...rows.value, updatedRecord]
+			index = rows.value.length - 1
+		}
+
+		setSyncStatus('success', 'Data diperbarui secara realtime')
+
+		// 3. Langsung Manipulasi DOM RevoGrid
+		nextTick(() => {
+			flashRowDirectly(index)
+		})
+	} catch (err) {
+		console.warn(`[Realtime] Gagal mengambil detail ID ${id}, melakukan fallback fetch grid.`, err)
+		await fetchGridData()
+	}
+}
+
+
+function flashRowDirectly(rowIndex: number) {
+	if (!gridRef.value?.$el) return
+
+	const gridEl = gridRef.value.$el
+
+	// 1. Dapatkan Shadow Root dari RevoGrid
+	const shadowRoot = gridEl.shadowRoot || gridEl
+
+	// 2. Cari sel-sel pada baris (rgRow) berdasarkan index
+	// RevoGrid memberi atribut data-rgrow pada sel/barisnya
+	const cells = shadowRoot.querySelectorAll(`[data-rgrow="${rowIndex}"]`)
+
+	if (cells && cells.length > 0) {
+		cells.forEach((cell: Element) => {
+			const htmlCell = cell as HTMLElement
+
+			// Terapkan animasi/style langsung ke style elemen
+			htmlCell.style.transition = 'background-color 0.2s ease-in-out'
+			htmlCell.style.backgroundColor = 'rgba(59, 130, 246, 0.45)' // Warna Biru Highlight
+
+			// Kembalikan ke warna awal setelah 1.2 detik
+			setTimeout(() => {
+				htmlCell.style.backgroundColor = ''
+			}, 1200)
+		})
+	}
+}
+
+// 🟢 FETCH GRID DATA (Panggil getAll saat load awal/filter)
 const fetchGridData = async () => {
 	setSyncStatus('loading', 'Mengambil data..')
 	try {
-		await api.get(`/${formKey.value}/get-all`, {
+		const response = await api.get(`/${formKey.value}/get-all`, {
 			params: {
 				filter: JSON.stringify(activeFilters.value)
 			}
 		})
 
+		applyResponseData(response.data)
 		setSyncStatus('success', 'Selesai sinkronisasi')
 	} catch (err: any) {
 		console.error("[Api] Gagal sinkronisasi data dengan server:", err)
@@ -198,7 +288,7 @@ const fetchGridData = async () => {
 	}
 }
 
-// 🟢 LOAD COMPONENT DATA: Dipicu saat props schemaData masuk / berubah
+// 🟢 LOAD COMPONENT DATA
 const loadComponentData = async () => {
 	const res = props.schemaData
 	if (!res) return
@@ -206,13 +296,13 @@ const loadComponentData = async () => {
 
 	const savedColumnsConfig = currentGridConfig.value?.column || []
 
-	columns.value = (res.schema || []).map(field => {
+	columns.value = (res.schema || []).map((field: any) => {
 		const savedCol = savedColumnsConfig.find((c: any) => c.key === field.key)
 
 		const columnConfig: Record<string, any> = {
 			prop: field.key,
 			name: field.label,
-			size: savedCol ? savedCol.size : field.size, // Mengambil ukuran dari Pinia jika ada
+			size: savedCol ? savedCol.size : field.size,
 			readonly: field.readonly || false,
 			required: field.required || false,
 			_type: field.type || 'text',
@@ -223,24 +313,19 @@ const loadComponentData = async () => {
 		if (['number', 'integer'].includes(field.type)) {
 			columnConfig.columnType = 'numeric'
 			columnConfig.editor = 'number'
-		}
-		else if (['decimal', 'currency'].includes(field.type)) {
+		} else if (['decimal', 'currency'].includes(field.type)) {
 			columnConfig.editor = 'number'
 			columnConfig.columnType = 'decimal'
-		}
-		else if (field.type === 'date') {
+		} else if (field.type === 'date') {
 			columnConfig.columnType = 'date'
-
-		}
-		else if (field.type === 'select') {
+		} else if (field.type === 'select') {
 			columnConfig.columnType = 'select'
 			columnConfig.labelKey = 'label'
 			columnConfig.valueKey = 'value'
 			columnConfig.appendTo = 'body'
 			columnConfig.source = field.options || []
 			columnConfig.editorProperties = { appendToBody: true }
-		}
-		else if (field.type === 'relation' && field.relation) {
+		} else if (field.type === 'relation' && field.relation) {
 			const entity = field.relation.entity
 			columnConfig.columnType = 'select'
 			columnConfig.labelKey = 'label'
@@ -248,7 +333,7 @@ const loadComponentData = async () => {
 			columnConfig.source = relationOptions.value[entity] || []
 			columnConfig.appendTo = 'body'
 			columnConfig.editorProperties = { appendToBody: true }
-			columnConfig.cellTemplate = (createElement, linkProps) =>
+			columnConfig.cellTemplate = (createElement: any, linkProps: any) =>
 				relationCellRenderer(
 					createElement,
 					linkProps,
@@ -260,7 +345,7 @@ const loadComponentData = async () => {
 		return columnConfig
 	})
 
-	primaryKey.value = (res.schema || []).find(f => f.primary)?.key || 'id'
+	primaryKey.value = (res.schema || []).find((f: any) => f.primary)?.key || 'id'
 	permission.value = res.permissions || {}
 	await nextTick(() => {
 		focusBackToGrid()
@@ -269,9 +354,9 @@ const loadComponentData = async () => {
 
 const beforeEditStart = () => { console.log('mencari relasi data..') }
 
-const beforeEdit = (event) => {
+const beforeEdit = (event: any) => {
 	const { val, prop } = event.detail;
-	const originalField = props.schemaData?.schema?.find(f => f.key === prop);
+	const originalField = props.schemaData?.schema?.find((f: any) => f.key === prop);
 	if (!originalField) return;
 
 	const columnLabel = originalField.label || prop;
@@ -313,8 +398,8 @@ const beforeEdit = (event) => {
 	}
 }
 
-
-const afterEdit = async (event) => {
+// 🟢 4. AFTER EDIT (Kirim Update Tanpa Mengharapkan Master Schema)
+const afterEdit = async (event: any) => {
 	if (event.detail.oldValue === event.detail.value) return
 	const updatedModel = event.detail.model
 	const recordId = updatedModel[primaryKey.value]
@@ -322,11 +407,14 @@ const afterEdit = async (event) => {
 
 	setSyncStatus('loading', 'Memperbarui..')
 	try {
+		// Response backend: { success: true, id: X }
 		await api.put(`/${formKey.value}/update`, updatedModel, {
 			params: { id: recordId }
 		})
 
 		setSyncStatus('success', 'Perubahan disimpan')
+		// Jika Socket mati, panggil manual handleRealtimeMutation
+		// handleRealtimeMutation('UPDATE', recordId)
 
 	} catch (err: any) {
 		console.error('[Api] Gagal auto-save:', err)
@@ -334,7 +422,7 @@ const afterEdit = async (event) => {
 	}
 }
 
-const handleKeyDown = async (e) => {
+const handleKeyDown = async (e: KeyboardEvent) => {
 	if (e.repeat) return
 
 	if (e.key === 'Delete') {
@@ -358,7 +446,7 @@ const handleKeyDown = async (e) => {
 	}
 }
 
-
+// 🟢 5. CREATE BARIS BARU (Menerima { success: true, id: X })
 const handleAddNewRow = async () => {
 	if (!permission.value.create) {
 		alert('Anda tidak memiliki akses untuk menambah data!')
@@ -369,22 +457,20 @@ const handleAddNewRow = async () => {
 	try {
 		await api.post(`/${formKey.value}/create`, {})
 		setSyncStatus('success', 'Baris baru ditambahkan')
-		//scroll to last data row
 	} catch (err: any) {
 		console.error("[Api] Gagal menambahkan baris baru:", err)
 		setSyncStatus('error', `Gagal menambah baris: ${err.message}`)
 	}
 }
+
+// 🟢 6. DELETE BARIS (Menerima { success: true, id: X })
 const handleDeleteKey = async () => {
 	if (!permission.value.delete) return
 
 	const { model } = await getActiveCellState(gridRef)
 	const recordId = model?.[primaryKey.value]
 
-	if (!recordId) {
-		console.log('[handleDeleteKey] No record selected for deletion')
-		return
-	}
+	if (!recordId) return
 
 	if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
 		setSyncStatus('loading', 'Menghapus..')
@@ -392,7 +478,6 @@ const handleDeleteKey = async () => {
 			await api.delete(`/${formKey.value}/delete`, {
 				params: { id: recordId }
 			})
-
 			setSyncStatus('success', 'Data berhasil dihapus')
 		} catch (err: any) {
 			console.error("[Api] Gagal menghapus data:", err)
@@ -401,7 +486,7 @@ const handleDeleteKey = async () => {
 	}
 }
 
-const handleFilterChanged = (filter) => {
+const handleFilterChanged = (filter: any) => {
 	activeFilters.value = filter
 	fetchGridData()
 }
@@ -416,7 +501,7 @@ const focusBackToGrid = async () => {
 	grid?.setCellsFocus(startCoord, startCoord)
 }
 
-const cariDataDenganKarakter = async (char) => {
+const cariDataDenganKarakter = async (char: string) => {
 	searchQuery.value = char
 	showSearchModal.value = true
 	await nextTick()
@@ -428,15 +513,12 @@ const handleSearchSubmit = () => {
 	if (!value) return
 
 	const quickFilterRow = {
-		field: primaryKey.value || 'id',
-		operator: 'contains' as const,
-		value: value,
-		valueTo: ''
+		name: value
 	}
 
 	const currentRoute = props.menu?.route || route.path
-	filterStore.setFilters(currentRoute, [quickFilterRow])
-	handleFilterChanged([quickFilterRow])
+	filterStore.setFilters(currentRoute, quickFilterRow)
+	handleFilterChanged(quickFilterRow)
 	closeSearchModal()
 }
 
@@ -449,10 +531,8 @@ const closeSearchModal = () => {
 const handlePrint = () => { window.print() }
 const handleExport = () => { console.log("[Action] Ekspor data ke CSV/Excel...", rows.value) }
 
-
-
 // --- STATE & CONFIG STORAGE PINIA ---
-const currentGridKey = computed(() => `${useTenantStore().selectedTenant?.code}-${formKey.value}-master_grid`)
+const currentGridKey = computed(() => `${tenantStore.selectedTenant?.code}-${formKey.value}-master_grid`)
 
 const currentGridConfig = computed(() => {
 	const activeTabId = tabStore.activeTabId
@@ -472,7 +552,6 @@ const saveCurrentStateToStore = async (event: any) => {
 	let updatedCoordinate = { ...existingConfig.coordinate }
 	let updatedColumns = [...columns.value]
 
-	// 1. Tangani event 'afterfocus'
 	if ('rowIndex' in detail && 'colIndex' in detail) {
 		updatedCoordinate = {
 			x: detail.colIndex,
@@ -480,7 +559,6 @@ const saveCurrentStateToStore = async (event: any) => {
 		}
 	}
 
-	// 2. Tangani event 'aftercolumnresize'
 	const resizedKeys = Object.keys(detail)
 	const isResizeEvent = resizedKeys.some(key => !isNaN(Number(key)) && detail[key]?.prop)
 
@@ -496,7 +574,6 @@ const saveCurrentStateToStore = async (event: any) => {
 		})
 	}
 
-	// Simpan otomatis ke Pinia Store
 	tabStore.updateGridConfig(tabStore.activeTabId, currentGridKey.value, {
 		coordinate: updatedCoordinate,
 		column: updatedColumns.map((col: any) => ({ key: col.prop, size: col.size }))
@@ -511,7 +588,6 @@ watch(() => props.schemaData, async () => {
 
 watch(() => tabStore.activeTabId, async (activeTabId) => {
 	if (activeTabId === props.menu?.route) {
-
 		const currentRoute = props.menu?.route || route.path
 		activeFilters.value = filterStore.getFiltersByTab(currentRoute) || {}
 		await nextTick()
@@ -519,7 +595,7 @@ watch(() => tabStore.activeTabId, async (activeTabId) => {
 	}
 }, { immediate: false })
 
-// 🟢 Hook Realtime Sync menggunakan formKey & applyResponseData
+// Hook Realtime Sync
 useRealtimeSync(formKey, applyResponseData, gridRef)
 
 onMounted(async () => {
@@ -530,12 +606,10 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
 	if (activeTimeoutId) clearTimeout(activeTimeoutId)
-
 	rows.value = []
 	columns.value = []
 })
 </script>
-
 <style scoped>
 :deep(revo-grid) {
 	z-index: 10 !important;

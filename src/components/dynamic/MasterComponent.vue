@@ -201,14 +201,52 @@ const applyResponseData = async (serverData: any) => {
  * 🟢 REALTIME MUTATION HANDLER
  * Menangani penambahan, pembaruan (fetchById), dan penghapusan data secara presisi
  */
+// --- FUNGSI FLASH DINAMIS UNTUK REVO-GRID (SHADOW DOM) ---
+function flashRowDirectly(rowIndex: number, color: string = 'rgba(59, 130, 246, 0.45)', duration: number = 300) {
+	if (!gridRef.value?.$el) return
+
+	const gridEl = gridRef.value.$el
+	const shadowRoot = gridEl.shadowRoot || gridEl
+
+	// Cari seluruh sel pada baris target di dalam Shadow DOM
+	const cells = shadowRoot.querySelectorAll(`[data-rgrow="${rowIndex}"]`)
+
+	if (cells && cells.length > 0) {
+		cells.forEach((cell: Element) => {
+			const htmlCell = cell as HTMLElement
+
+			// Transisi dipercepat (0.05s) agar flash langsung terasa instan
+			htmlCell.style.transition = 'background-color 0.05s ease-in-out'
+			htmlCell.style.backgroundColor = color
+
+			// Kembalikan ke warna awal setelah durasi (1/4 durasi sebelumnya)
+			setTimeout(() => {
+				htmlCell.style.backgroundColor = ''
+			}, duration)
+		})
+	}
+}
+
+// --- MAIN REALTIME MUTATION HANDLER ---
 const handleRealtimeMutation = async (action: 'CREATE' | 'UPDATE' | 'DELETE', id: number) => {
-	// A. Kasus Hapus Data: Hapus row dari memori lokal
+	const COLOR_UPDATE = 'rgba(59, 130, 246, 0.45)' // Biru
+	const COLOR_CREATE = 'rgba(34, 197, 94, 0.45)'  // Hijau
+	const COLOR_DELETE = 'rgba(239, 68, 68, 0.45)'  // Merah
+
+	// A. KASUS DELETE
 	if (action === 'DELETE') {
-		rows.value = rows.value.filter((row: any) => row[primaryKey.value] !== id)
-		setSyncStatus('success', 'Data diperbarui secara realtime')
+		const index = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
+		if (index !== -1) {
+			flashRowDirectly(index, COLOR_DELETE, 150)
+			setTimeout(() => {
+				rows.value = rows.value.filter((row: any) => row[primaryKey.value] !== id)
+				setSyncStatus('success', 'Data diperbarui secara realtime')
+			}, 125)
+		}
 		return
 	}
-	// B. Kasus Tambah / Ubah Data: Fetch data spesifik via getById dari Redis/DB
+
+	// B. KASUS CREATE / UPDATE
 	try {
 		const response = await api.get(`/${formKey.value}/get-by-id`, {
 			params: { id }
@@ -217,59 +255,39 @@ const handleRealtimeMutation = async (action: 'CREATE' | 'UPDATE' | 'DELETE', id
 		const updatedRecord = response.data
 		if (!updatedRecord) return
 
-		let index = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
+		const index = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
 
 		if (index !== -1) {
-			// 1. Update data di state
+			// 1. UPDATE DATA
 			rows.value[index] = { ...rows.value[index], ...updatedRecord }
 			rows.value = [...rows.value]
+
+			nextTick(() => {
+				flashRowDirectly(index, COLOR_UPDATE, 300)
+			})
 		} else {
-			// 2. Tambah data baru ke state
+			// 2. CREATE DATA (Tambah Baru)
+			// Tambahkan ke array state Vue
 			rows.value = [...rows.value, updatedRecord]
-			index = rows.value.length - 1
+
+			// Beri waktu 50ms-100ms agar RevoGrid selesai menyisipkan sel baru ke Shadow DOM
+			setTimeout(() => {
+				// Cari ulang indeks riil posisi data baru di array
+				const newIndex = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
+
+				if (newIndex !== -1) {
+					flashRowDirectly(newIndex, COLOR_CREATE, 300)
+				}
+			}, 60) // Naikkan sedikit dari 25ms ke 60ms agar Virtual DOM RevoGrid sempat merender
 		}
 
 		setSyncStatus('success', 'Data diperbarui secara realtime')
 
-		// 3. Langsung Manipulasi DOM RevoGrid
-		nextTick(() => {
-			flashRowDirectly(index)
-		})
 	} catch (err) {
 		console.warn(`[Realtime] Gagal mengambil detail ID ${id}, melakukan fallback fetch grid.`, err)
 		await fetchGridData()
 	}
 }
-
-
-function flashRowDirectly(rowIndex: number) {
-	if (!gridRef.value?.$el) return
-
-	const gridEl = gridRef.value.$el
-
-	// 1. Dapatkan Shadow Root dari RevoGrid
-	const shadowRoot = gridEl.shadowRoot || gridEl
-
-	// 2. Cari sel-sel pada baris (rgRow) berdasarkan index
-	// RevoGrid memberi atribut data-rgrow pada sel/barisnya
-	const cells = shadowRoot.querySelectorAll(`[data-rgrow="${rowIndex}"]`)
-
-	if (cells && cells.length > 0) {
-		cells.forEach((cell: Element) => {
-			const htmlCell = cell as HTMLElement
-
-			// Terapkan animasi/style langsung ke style elemen
-			htmlCell.style.transition = 'background-color 0.2s ease-in-out'
-			htmlCell.style.backgroundColor = 'rgba(59, 130, 246, 0.45)' // Warna Biru Highlight
-
-			// Kembalikan ke warna awal setelah 1.2 detik
-			setTimeout(() => {
-				htmlCell.style.backgroundColor = ''
-			}, 1200)
-		})
-	}
-}
-
 // 🟢 FETCH GRID DATA (Panggil getAll saat load awal/filter)
 const fetchGridData = async () => {
 	setSyncStatus('loading', 'Mengambil data..')

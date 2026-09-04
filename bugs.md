@@ -17,3 +17,4 @@
 - alt + arrow shortcut revogrid error
 - add reset tab for active tabs
 - belum ada .env
+- memory leaks electron heap v8 4GB

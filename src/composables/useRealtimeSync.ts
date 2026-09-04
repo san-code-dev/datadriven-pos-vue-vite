@@ -28,6 +28,7 @@ export function useRealtimeSync(
 
       // Pasang listener baru
       socket.on(eventName, (response) => {
+        // console.log(`[Socket]⚡ Received event on ${eventName}:`, response)
         // Ambil data payload dari response
         onUpdate(response.data || response)
 

@@ -65,6 +65,10 @@ onUnmounted(() => {
 </template>
 
 <style>
+revogr-data .arrow-down {
+    top: 15px !important;
+}
+
 duet-date-picker {
     --duet-color-primary: #059669;
     --duet-color-primary-text: #ffffff;

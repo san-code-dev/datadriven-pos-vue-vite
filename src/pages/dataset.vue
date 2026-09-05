@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Icon } from '@iconify/vue'; // <-- Memperbaiki Vue Warn: Failed to resolve component: Icon
+import { Icon } from '@iconify/vue';
 import { useAuthStore } from '@/stores/auth';
 import { useTenantStore, type Tenant } from '@/stores/tenant';
 import { useTabStore } from '@/stores/tabs';
 import api from '@/lib/axios';
 import { reconnectSocket } from '@/lib/socket';
-
-
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -38,9 +36,7 @@ const SERVICE_ENDPOINT = '/tenant';
 const fetchTenants = async () => {
     isFetching.value = true;
     try {
-        const response = await api.get(SERVICE_ENDPOINT + '/get-all', { includeTenant: false });
-
-        // Jika backend membungkus array di dalam properti 'data' (misal: response.data.data)
+        const response = await api.get(`${SERVICE_ENDPOINT}/get-all`, { includeTenant: false });
         tenants.value = Array.isArray(response.data)
             ? response.data
             : response.data?.data || [];
@@ -68,7 +64,7 @@ const userAvatarLetter = computed(() => {
 
 const filteredTenants = computed(() => {
     if (!searchQuery.value) return tenants.value;
-    const q = searchQuery.value.toLowerCase();
+    const q = searchQuery.value.toLowerCase().trim();
     return tenants.value.filter(t =>
         t.name?.toLowerCase().includes(q) || t.code?.toLowerCase().includes(q)
     );
@@ -77,7 +73,7 @@ const filteredTenants = computed(() => {
 const focusSelectedCard = () => {
     nextTick(() => {
         if (cardRefs.value[selectedIndex.value]) {
-            cardRefs.value[selectedIndex.value].focus();
+            cardRefs.value[selectedIndex.value]?.focus();
         }
     });
 };
@@ -91,18 +87,17 @@ onMounted(() => {
     fetchTenants();
 });
 
-
 const selectAndNavigate = async (tenant: Tenant) => {
     if (navigatingTenantId.value) return;
 
     const isSameTenant = tenantStore.selectedTenant?.id === tenant.id;
-
     navigatingTenantId.value = tenant.id;
+
     try {
         tenantStore.setSelectTenant(tenant as Parameters<typeof tenantStore.setSelectTenant>[0]);
 
         if (!isSameTenant) {
-            useTabStore().clearTabs();
+            tabStore.clearTabs();
             reconnectSocket();
         }
 
@@ -138,20 +133,12 @@ const handleContainerKeyDown = (e: KeyboardEvent) => {
             break;
         case 'ArrowDown':
             e.preventDefault();
-            if (selectedIndex.value + columns < total) {
-                selectedIndex.value += columns;
-            } else {
-                selectedIndex.value = total - 1;
-            }
+            selectedIndex.value = Math.min(selectedIndex.value + columns, total - 1);
             focusSelectedCard();
             break;
         case 'ArrowUp':
             e.preventDefault();
-            if (selectedIndex.value - columns >= 0) {
-                selectedIndex.value -= columns;
-            } else {
-                selectedIndex.value = 0;
-            }
+            selectedIndex.value = Math.max(selectedIndex.value - columns, 0);
             focusSelectedCard();
             break;
         case 'Enter':
@@ -185,17 +172,23 @@ const closeModal = () => {
     focusSelectedCard();
 };
 
-// Resize & Kompresi Logo ke PNG Base64 Ringkas (Resolusi Max 150px)
 const handleFileUpload = (e: Event) => {
-    const file = (e.target as HTMLInputElement).files?.[0];
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
     if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Ukuran file terlalu besar. Maksimal 5MB.');
+        target.value = '';
+        return;
+    }
 
     const reader = new FileReader();
     reader.onload = (event) => {
         const img = new Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            const maxDimension = 150; // Batas maksimum resolusi logo (thumbnail)
+            const maxDimension = 150;
             let width = img.width;
             let height = img.height;
 
@@ -216,8 +209,8 @@ const handleFileUpload = (e: Event) => {
             const ctx = canvas.getContext('2d');
             ctx?.drawImage(img, 0, 0, width, height);
 
-            // Menghasilkan data URI terkompresi
             form.value.logo = canvas.toDataURL('image/png', 0.8);
+            target.value = '';
         };
         img.src = event.target?.result as string;
     };
@@ -227,39 +220,23 @@ const handleFileUpload = (e: Event) => {
 const handleSubmit = async () => {
     isLoading.value = true;
     try {
-        if (editingTenant.value && editingTenant.value.id) {
-            const tenantId = editingTenant.value.id;
+        const payload = {
+            name: form.value.name,
+            code: form.value.code.toUpperCase(),
+            logo: form.value.logo,
+            address: form.value.address
+        };
 
-            const payload = {
-                id: tenantId,
-                name: form.value.name,
-                code: form.value.code.toUpperCase(),
-                logo: form.value.logo,
-                address: form.value.address
-            };
-
-            // Menggunakan PUT /tenant/:id
-            await api.put(`${SERVICE_ENDPOINT}/update`, payload, { includeTenant: false });
-
-            fetchTenants();
-            closeModal();
+        if (editingTenant.value?.id) {
+            await api.put(`${SERVICE_ENDPOINT}/update`, { id: editingTenant.value.id, ...payload }, { includeTenant: false });
         } else {
-            const payload = {
-                name: form.value.name,
-                code: form.value.code.toUpperCase(),
-                logo: form.value.logo,
-                address: form.value.address
-            };
-
-            await api.post(SERVICE_ENDPOINT + '/create', payload, { includeTenant: false });
-            fetchTenants();
-            closeModal();
+            await api.post(`${SERVICE_ENDPOINT}/create`, payload, { includeTenant: false });
         }
+
+        await fetchTenants();
+        closeModal();
     } catch (error: any) {
         console.error('Gagal menyimpan dataset:', error);
-        if (error.response?.data) {
-            console.error('Detail Error dari Backend:', error.response.data);
-        }
     } finally {
         isLoading.value = false;
     }

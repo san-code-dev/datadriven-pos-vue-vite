@@ -1,17 +1,19 @@
 // src/lib/socket.ts
 import { io, Socket } from 'socket.io-client'
 import { useAuthStore } from '@/stores/auth'
+import { useTenantStore } from '@/stores/tenant' // 👈 Import tenant store
 
 let socket: Socket | null = null
 
 export const initGlobalSocket = () => {
   const authStore = useAuthStore()
-  const userId = authStore.user?.id
+  const tenantStore = useTenantStore()
 
-  if (!userId) {
-    console.warn(
-      '[Socket]⚠️ Gagal menginisialisasi socket: User belum login / userId tidak ditemukan.',
-    )
+  const userId = authStore.user?.id
+  const tenantCode = tenantStore.selectedTenant?.code // 👈 Ambil kode tenant
+
+  if (!userId || !tenantCode) {
+    console.warn('[Socket]⚠️ Gagal inisialisasi: User / Tenant belum siap.')
     return null
   }
 
@@ -19,25 +21,17 @@ export const initGlobalSocket = () => {
     socket = io('http://localhost:3000', {
       withCredentials: true,
       auth: {
-        userId: userId, // Dikirim ke backend saat handshake
+        userId: userId,
+        tenantCode: tenantCode, // 👈 Kirim tenantCode ke backend saat handshake
       },
     })
 
     socket.on('connect', () => {
-      // console.log(`[Socket]⚡ Socket terhubung. User ID: ${userId}, Socket ID: ${socket?.id}`)
+      console.log(`[Socket]⚡ Terhubung ke Tenant: ${tenantCode}`)
     })
 
     socket.on('connect_error', (err) => {
       console.error('[Socket]❌ Koneksi socket gagal:', err.message)
-    })
-
-    socket.on('joined_rooms', (data) => {
-      //   console.log(
-      //     '[Socket]⚡ Anda Socket ID:',
-      //     data.socketId,
-      //     'Sedang join ke room:',
-      //     data.rooms,
-      //   )
     })
   }
 
@@ -50,6 +44,12 @@ export const disconnectSocket = () => {
   if (socket) {
     socket.disconnect()
     socket = null
-    console.log('[Socket]⚡ Socket diputus secara manual.')
+    console.log('[Socket]⚡ Socket diputus.')
   }
+}
+
+
+export const reconnectSocket = () => {
+  disconnectSocket(); // Putus socket lama jika ada
+  return initGlobalSocket(); // Buat koneksi baru dengan tenantCode dari store yang baru
 }

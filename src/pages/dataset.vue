@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useTenantStore, type Tenant } from '@/stores/tenant';
 import { useTabStore } from '@/stores/tabs';
 import api from '@/lib/axios';
+import { reconnectSocket } from '@/lib/socket';
 
 
 
@@ -102,6 +103,7 @@ const selectAndNavigate = async (tenant: Tenant) => {
 
         if (!isSameTenant) {
             useTabStore().clearTabs();
+            reconnectSocket();
         }
 
         if (router.currentRoute.value.path !== '/dashboard') {

@@ -222,7 +222,7 @@ const handleSubmit = async () => {
     try {
         const payload = {
             name: form.value.name,
-            code: form.value.code.toUpperCase(),
+            code: form.value.code.toUpperCase().trim(),
             logo: form.value.logo,
             address: form.value.address
         };
@@ -236,6 +236,8 @@ const handleSubmit = async () => {
         await fetchTenants();
         closeModal();
     } catch (error: any) {
+        const msg = error.response?.data?.message || 'Gagal menyimpan dataset.';
+        alert(msg); // Tampilkan pesan error jika kode terduplikasi
         console.error('Gagal menyimpan dataset:', error);
     } finally {
         isLoading.value = false;

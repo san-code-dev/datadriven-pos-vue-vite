@@ -451,7 +451,25 @@ const afterEdit = async (event: any) => {
 }
 
 const handleKeyDown = async (e: KeyboardEvent) => {
-	if (e.repeat) return
+	// 1. CEGAT EVENT REPEAT (Tombol Ditahan/Hold)
+	if (e.repeat) {
+		// Hentikan Enter beruntun agar RevoGrid tidak terus-menerus membuka/menutup editor
+		if (e.key === 'Enter') {
+			e.preventDefault()
+			e.stopPropagation()
+		}
+		return
+	}
+
+	// 2. Abaikan jika fokus sedang berada di dalam elemen Input/Editor aktif
+	const target = e.target as HTMLElement
+	if (
+		target.tagName === 'INPUT' ||
+		target.tagName === 'TEXTAREA' ||
+		target.isContentEditable
+	) {
+		return
+	}
 
 	if (e.key === 'Delete') {
 		handleDeleteKey()
@@ -459,6 +477,7 @@ const handleKeyDown = async (e: KeyboardEvent) => {
 		return
 	}
 
+	// Shortcut Navigasi
 	if (e.altKey && e.key === 'ArrowLeft') { navigatorRef.value?.scrollToFirstCol(); e.preventDefault(); return; }
 	if (e.altKey && e.key === 'ArrowRight') { navigatorRef.value?.scrollToLastCol(); e.preventDefault(); return; }
 	if (e.altKey && e.key === 'ArrowDown') { navigatorRef.value?.scrollToLastRow(); e.preventDefault(); return; }
@@ -473,7 +492,6 @@ const handleKeyDown = async (e: KeyboardEvent) => {
 		e.preventDefault()
 	}
 }
-
 // 🟢 5. CREATE BARIS BARU (Menerima { success: true, id: X })
 const handleAddNewRow = async () => {
 	if (!permission.value.create) {

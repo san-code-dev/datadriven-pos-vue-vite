@@ -449,6 +449,21 @@ async function cariDataRef(keyword, context, entity, fieldKey, relationKey) {
   }
 }
 
+
+async function getTransactionHistory(keyword, context, entity, fieldKey, relationKey) {
+  try {
+    const response = await api.get(`/${entity}/get-history`, { params: { keyword } })
+    searchDataFieldKey.value = fieldKey
+    searchDataRelationKey.value = relationKey
+    searchDataContext.value = context
+    searchDataSchema.value = response.data
+    isSelectDialogOpen.value = true
+    // console.log('[Api] Response for:', response.config.url, response.data)
+  } catch (err) {
+    console.error('[Api][getTransactionHistory] Gagal mengambil riwayat transaksi:', err)
+  }
+}
+
 const selectDialogSelectData = async (selectedRow: any, context: string, fieldKey: string, relationKey) => {
   if (!selectedRow || !relationKey || !context) {
     console.error('[selectDialogSelectData] Tidak ada data yang dipilih atau relation tidak ditentukan.', selectedRow, relationKey, fieldKey)
@@ -562,7 +577,7 @@ onBeforeUnmount(() => {
         <div class="flex items-center gap-1 dark:border-slate-800 shrink-0 overflow-hidden px-2 flex-wrap">
           <button
             class="flex text-xs font-extralight px-2 gap-1 py-1 rounded-md items-center text-slate-500 dark:hover:bg-slate-800 hover:bg-slate-200"
-            @click="cariDataRef(schema.prefix, 'history', schema.key, '', 'id')">
+            @click="getTransactionHistory(schema.prefix, 'history', schema.key, '', 'id')">
             <Icon icon="mdi:view-grid-outline" class="w-3.5 h-3.5" /> history
           </button>
 

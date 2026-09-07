@@ -49,8 +49,8 @@
 
 					<RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
 						:columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
-						:auto-size-column="true" @beforeeditstart="beforeEditStart" @afteredit="afterEdit"
-						@beforeedit="beforeEdit" @keydown="handleKeyDown" @afterfocus="saveCurrentStateToStore"
+						:auto-size-column="true" @afteredit="afterEdit" @beforeedit="beforeEdit"
+						@keydown="handleKeyDown" @afterfocus="saveCurrentStateToStore"
 						@aftercolumnresize="saveCurrentStateToStore" :column-types="columnTypes" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
@@ -173,7 +173,6 @@ const applyResponseData = async (serverData: any) => {
 
 	// 1. Jika payload berasal dari Socket realtime event: { action: 'UPDATE', id: 10 }
 	if (serverData.action && serverData.id) {
-		console.log(`[Realtime] Menerima event ${serverData.action} untuk ID ${serverData.id}`)
 		await handleRealtimeMutation(serverData.action, serverData.id)
 		return
 	}
@@ -309,7 +308,11 @@ const fetchGridData = async () => {
 		})
 
 		applyResponseData(response.data)
-		setSyncStatus('success', 'Selesai sinkronisasi')
+		if (activeFilters.value && Object.keys(activeFilters.value).length > 0) {
+			setSyncStatus('success', 'Menampilkan hasil filter')
+		} else {
+			setSyncStatus('success', 'Semua data ditampilkan')
+		}
 	} catch (err: any) {
 		console.error("[Api] Gagal sinkronisasi data dengan server:", err)
 		setSyncStatus('error', `Gagal memuat: ${err.message || 'Server Error'}`)
@@ -379,8 +382,6 @@ const loadComponentData = async () => {
 		focusBackToGrid()
 	})
 }
-
-const beforeEditStart = () => { console.log('mencari relasi data..') }
 
 const beforeEdit = (event: any) => {
 	const { val, prop } = event.detail;

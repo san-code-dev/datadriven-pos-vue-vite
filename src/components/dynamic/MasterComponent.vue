@@ -197,11 +197,24 @@ const applyResponseData = async (serverData: any) => {
 	}
 }
 
-/**
- * 🟢 REALTIME MUTATION HANDLER
- * Menangani penambahan, pembaruan (fetchById), dan penghapusan data secara presisi
- */
-// --- FUNGSI FLASH DINAMIS UNTUK REVO-GRID (SHADOW DOM) ---
+
+
+// Helper untuk menunggu RevoGrid selesai melakukan kalkulasi & render Shadow DOM
+const waitForGridRender = (): Promise<void> => {
+	return new Promise((resolve) => {
+		const gridEl = gridRef.value?.$el
+		if (!gridEl) return resolve()
+
+		const handleRender = () => {
+			gridEl.removeEventListener('afterrender', handleRender)
+			resolve()
+		}
+
+		// Event resmi RevoGrid saat render VDOM selesai
+		gridEl.addEventListener('afterrender', handleRender)
+	})
+}
+
 function flashRowDirectly(rowIndex: number, color: string = 'rgba(59, 130, 246, 0.45)', duration: number = 300) {
 	if (!gridRef.value?.$el) return
 

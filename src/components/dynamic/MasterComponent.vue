@@ -538,13 +538,16 @@ const handleFilterChanged = (filter: any) => {
 }
 
 const focusBackToGrid = async () => {
-	await nextTick()
-	const grid = gridRef?.value?.$el
-	await grid?.focus()
+	if (!gridRef.value?.$el) return
+
+	await waitForGridRender()
+
+	const grid = gridRef.value.$el
+	grid.focus?.()
 
 	const startCoord = currentGridConfig.value?.coordinate || { x: 0, y: 0 }
-	await grid?.scrollToCoordinate(startCoord)
-	grid?.setCellsFocus(startCoord, startCoord)
+	await grid.scrollToCoordinate?.(startCoord)
+	grid.setCellsFocus?.(startCoord, startCoord)
 }
 
 const cariDataDenganKarakter = async (char: string) => {
@@ -568,10 +571,10 @@ const handleSearchSubmit = () => {
 	closeSearchModal()
 }
 
-const closeSearchModal = () => {
+const closeSearchModal = async () => {
 	showSearchModal.value = false
 	searchQuery.value = ''
-	focusBackToGrid()
+	await focusBackToGrid()
 }
 
 const handlePrint = () => { window.print() }
@@ -636,8 +639,7 @@ watch(() => tabStore.activeTabId, async (activeTabId) => {
 	if (activeTabId === props.menu?.route) {
 		const currentRoute = props.menu?.route || route.path
 		activeFilters.value = filterStore.getFiltersByTab(currentRoute) || {}
-		await nextTick()
-		focusBackToGrid()
+		await focusBackToGrid()
 	}
 }, { immediate: false })
 
@@ -646,8 +648,7 @@ useRealtimeSync(formKey, applyResponseData, gridRef)
 
 onMounted(async () => {
 	loadComponentData()
-	await nextTick()
-	focusBackToGrid()
+	await focusBackToGrid()
 })
 
 onBeforeUnmount(() => {

@@ -150,7 +150,7 @@ const formKey = computed(() => {
 
 const columnTypes = {
 	numeric: new NumberColumnType('0,0'),
-	decimal: new NumberColumnType('0,0.00'),
+	decimal: new NumberColumnType('0,0'),
 	select: new SelectTypePlugin(),
 	date: new DateTypePlugin()
 }

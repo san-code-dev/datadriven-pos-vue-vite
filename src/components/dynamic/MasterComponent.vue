@@ -113,6 +113,10 @@ const props = defineProps({
 	schemaData: { type: Object, required: true }
 })
 
+const COLOR_UPDATE = 'rgba(59, 130, 246, 0.45)' // Biru
+const COLOR_CREATE = 'rgba(34, 197, 94, 0.45)'  // Hijau
+const COLOR_DELETE = 'rgba(239, 68, 68, 0.45)'  // Merah
+
 const route = useRoute()
 const tabStore = useTabStore()
 const filterStore = useFilterStore()
@@ -228,11 +232,9 @@ function flashRowDirectly(rowIndex: number, color: string = 'rgba(59, 130, 246, 
 		cells.forEach((cell: Element) => {
 			const htmlCell = cell as HTMLElement
 
-			// Transisi dipercepat (0.05s) agar flash langsung terasa instan
 			htmlCell.style.transition = 'background-color 0.05s ease-in-out'
 			htmlCell.style.backgroundColor = color
 
-			// Kembalikan ke warna awal setelah durasi (1/4 durasi sebelumnya)
 			setTimeout(() => {
 				htmlCell.style.backgroundColor = ''
 			}, duration)
@@ -240,20 +242,16 @@ function flashRowDirectly(rowIndex: number, color: string = 'rgba(59, 130, 246, 
 	}
 }
 
-// --- MAIN REALTIME MUTATION HANDLER ---
 const handleRealtimeMutation = async (action: 'CREATE' | 'UPDATE' | 'DELETE', id: number) => {
-	const COLOR_UPDATE = 'rgba(59, 130, 246, 0.45)' // Biru
-	const COLOR_CREATE = 'rgba(34, 197, 94, 0.45)'  // Hijau
-	const COLOR_DELETE = 'rgba(239, 68, 68, 0.45)'  // Merah
+
 
 	// A. KASUS DELETE
 	if (action === 'DELETE') {
 		const index = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
 		if (index !== -1) {
-			flashRowDirectly(index, COLOR_DELETE, 150)
+			flashRowDirectly(index, COLOR_DELETE, 100)
 			setTimeout(() => {
 				rows.value = rows.value.filter((row: any) => row[primaryKey.value] !== id)
-				setSyncStatus('success', 'Data diperbarui secara realtime')
 			}, 125)
 		}
 		return
@@ -272,35 +270,34 @@ const handleRealtimeMutation = async (action: 'CREATE' | 'UPDATE' | 'DELETE', id
 
 		if (index !== -1) {
 			// 1. UPDATE DATA
+			const renderPromise = waitForGridRender()
 			rows.value[index] = { ...rows.value[index], ...updatedRecord }
 			rows.value = [...rows.value]
-
-			nextTick(() => {
-				flashRowDirectly(index, COLOR_UPDATE, 300)
-			})
+			await renderPromise
+			flashRowDirectly(index, COLOR_UPDATE, 100)
 		} else {
-			// 2. CREATE DATA (Tambah Baru)
-			// Tambahkan ke array state Vue
-			rows.value = [...rows.value, updatedRecord]
+			// 2. CREATE DATA (Event-Driven: Bebas Race Condition)
+			const renderPromise = waitForGridRender() // Listen event sebelum state berubah
 
-			// Beri waktu 50ms-100ms agar RevoGrid selesai menyisipkan sel baru ke Shadow DOM
-			setTimeout(() => {
-				// Cari ulang indeks riil posisi data baru di array
-				const newIndex = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
+			rows.value = [...rows.value, updatedRecord] // Trigger re-render
 
-				if (newIndex !== -1) {
-					flashRowDirectly(newIndex, COLOR_CREATE, 300)
-				}
-			}, 60) // Naikkan sedikit dari 25ms ke 60ms agar Virtual DOM RevoGrid sempat merender
+			await renderPromise // Tunggu RevoGrid memproses node baru di Shadow DOM
+
+			// Cari indeks baru setelah array diperbarui
+			const newIndex = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
+			if (newIndex !== -1) {
+				flashRowDirectly(newIndex, COLOR_CREATE, 100)
+			}
 		}
-
-		setSyncStatus('success', 'Data diperbarui secara realtime')
-
 	} catch (err) {
 		console.warn(`[Realtime] Gagal mengambil detail ID ${id}, melakukan fallback fetch grid.`, err)
 		await fetchGridData()
 	}
 }
+
+
+
+
 // 🟢 FETCH GRID DATA (Panggil getAll saat load awal/filter)
 const fetchGridData = async () => {
 	setSyncStatus('loading', 'Mengambil data..')

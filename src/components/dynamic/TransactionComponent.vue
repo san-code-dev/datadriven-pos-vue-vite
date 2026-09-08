@@ -3,6 +3,7 @@ import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import { Icon } from '@iconify/vue'
 import { isDark } from '@/composables/dark'
 import RevoGrid from '@revolist/vue3-datagrid'
+import type { ColumnRegular } from '@revolist/revogrid'
 import GridNavigator from '@/components/GridNavigator.vue'
 import SyncStatus from '../SyncStatus.vue'
 import api from '@/lib/axios'
@@ -134,7 +135,7 @@ const columns = computed(() => {
   return detailsSchema.value.map((field) => {
     const savedCol = savedColumnsConfig.find((c: any) => c.key === field.key)
 
-    const columnConfig: Record<string, any> = {
+    const columnConfig: ColumnRegular & Record<string, any> = {
       prop: field.key,
       name: field.label,
       size: savedCol ? savedCol.size : (field.size || 150), // Memuat ukuran dari Pinia jika ada

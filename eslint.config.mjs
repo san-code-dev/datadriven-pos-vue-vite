@@ -53,5 +53,6 @@ export default createConfigForNuxt(
     rules: {
       'vue/multi-word-component-names': 'off',
       'vue/html-self-closing': 'off',
+      'dotenv/no-undefined': 'error'
     },
   })

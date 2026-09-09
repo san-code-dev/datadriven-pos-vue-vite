@@ -18,3 +18,4 @@
 - add reset tab for active tabs
 - belum ada .env
 - memory leaks electron heap v8 4GB
+- dynamics filter relation field must display reference data list for selector instead of manual typing

@@ -21,7 +21,6 @@ const sidebarStore = useSidebarStore()
 const authStore = useAuthStore()
 const tenantStore = useTenantStore()
 
-// Mocking/Fallback data tenant & user
 const tenantInfo = computed<Tenant>(() => ({
     id: tenantStore.selectedTenant?.id || 'unknown',
     logo: tenantStore.selectedTenant?.logo || '',

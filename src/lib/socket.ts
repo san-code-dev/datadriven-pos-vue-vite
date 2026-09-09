@@ -13,7 +13,6 @@ export const initGlobalSocket = () => {
   const tenantCode = tenantStore.selectedTenant?.code // 👈 Ambil kode tenant
 
   if (!userId || !tenantCode) {
-    console.warn('[Socket]⚠️ Gagal inisialisasi: User / Tenant belum siap.')
     return null
   }
 

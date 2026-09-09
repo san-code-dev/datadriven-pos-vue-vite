@@ -7,7 +7,7 @@
 			<div class="w-full">
 				<DynamicFilter v-if="props.schemaData?.schema" :schema="props.schemaData.schema"
 					:tabId="props.menu?.route || 'master'" @filter-changed="handleFilterChanged"
-					@escape-filter="focusBackToGrid" />
+					@escape-filter="focusBackToGrid" @open-select-dialog="handleOpenSelectDialogFilter" />
 			</div>
 
 			<div
@@ -83,6 +83,9 @@
 
 				</div>
 			</div>
+			<SelectDialog :schema-data="searchDataSchema" :field-key="searchDataFieldKey"
+				:relation-key="searchDataRelationKey" :context="searchDataContext" :is-open="isSelectDialogOpen"
+				@close="closeSelectDialog" @select="selectDialogSelectData" />
 		</div>
 
 	</div>
@@ -107,6 +110,13 @@ import SelectTypePlugin from '@revolist/revogrid-column-select'
 import DateTypePlugin from '@revolist/revogrid-column-date'
 import { useRealtimeSync } from '@/composables/useRealtimeSync'
 import { getActiveCellState } from '@/composables/grid'
+
+const searchDataSchema = ref<any>(null)
+const searchDataFieldKey = ref<string | null>(null)
+const searchDataRelationKey = ref<string | null>(null)
+const searchDataContext = ref<'filter' | 'data' | null>(null)
+
+const isSelectDialogOpen = ref(false)
 
 const props = defineProps({
 	menu: { type: Object, required: true },
@@ -533,6 +543,89 @@ const handleDeleteKey = async () => {
 	}
 }
 
+
+
+async function handleOpenSelectDialogFilter({
+	keyword,
+	context,
+	entity,
+	key,
+	relationKey
+}: {
+	keyword?: string,
+	context?: 'filter' | 'data',
+	entity?: string,
+	key?: string,
+	relationKey?: string
+}) {
+	try {
+		const targetEntity = entity || 'user'
+		const response = await api.get(`/${targetEntity}/search-data`, {
+			params: { keyword }
+		})
+
+		// Simpan nilai ke ref state induk
+		searchDataFieldKey.value = key || null           // Dulu fieldKey (sebab null)
+		searchDataRelationKey.value = relationKey || null
+		searchDataContext.value = context || 'filter'   // Fallback ke 'filter' jika undefined
+		searchDataSchema.value = response.data
+		isSelectDialogOpen.value = true
+
+	} catch (err) {
+		console.error('[Api][handleOpenSelectDialogFilter] Gagal mencari data:', err)
+	}
+}
+
+
+const selectDialogSelectData = async (payload: any) => {
+	const selectedRow = payload?.selectedRow || payload
+
+	const context = payload?.context || searchDataContext.value || 'filter'
+	const fieldKey = payload?.fieldKey || payload?.key || searchDataFieldKey.value
+	const relationKey = payload?.relationKey || searchDataRelationKey.value || 'id'
+
+	if (!selectedRow || !relationKey || !context || !fieldKey) {
+		console.error('[selectDialogSelectData] Data tidak lengkap:', {
+			selectedRow,
+			context,
+			fieldKey,
+			relationKey
+		})
+		return
+	}
+
+	if (context === 'filter') {
+		const selectedValue = selectedRow[relationKey]
+		const currentRoute = props.menu?.route || route.path
+
+		// 1. Ambil filter yang sudah ada di store
+		const currentFilters = filterStore.getFiltersByTab(currentRoute)
+
+		// 2. Buat objek FilterItem baru sesuai antarmuka FilterStore
+		const newFilterItem: FilterItem = {
+			field: fieldKey,
+			operator: 'equals', // Relasi ID umumnya menggunakan operator 'equals'
+			value: selectedValue
+		}
+
+		// 3. Update atau tambahkan filter baru ke dalam array
+		const updatedFilters = currentFilters.filter(item => item.field !== fieldKey)
+		updatedFilters.push(newFilterItem)
+
+		// 4. Simpan ke store dan jalankan pencarian
+		filterStore.setFilters(currentRoute, updatedFilters)
+		handleFilterChanged(updatedFilters)
+	}
+
+	closeSelectDialog()
+}
+
+const closeSelectDialog = () => {
+	isSelectDialogOpen.value = false
+	focusBackToGrid()
+}
+
+
 const handleFilterChanged = (filter: any) => {
 	activeFilters.value = filter
 	fetchGridData()
@@ -557,18 +650,23 @@ const cariDataDenganKarakter = async (char: string) => {
 	await nextTick()
 	searchInputRef.value?.focus()
 }
-
 const handleSearchSubmit = () => {
 	const value = searchQuery.value.trim()
 	if (!value) return
 
-	const quickFilterRow = {
-		name: value
-	}
-
 	const currentRoute = props.menu?.route || route.path
-	filterStore.setFilters(currentRoute, quickFilterRow)
-	handleFilterChanged(quickFilterRow)
+
+	// Buat FilterItem sesuai kriteria pencarian nama/kata kunci
+	const quickFilterItems: FilterItem[] = [
+		{
+			field: 'name',
+			operator: 'contains',
+			value: value
+		}
+	]
+
+	filterStore.setFilters(currentRoute, quickFilterItems)
+	handleFilterChanged(quickFilterItems)
 	closeSearchModal()
 }
 

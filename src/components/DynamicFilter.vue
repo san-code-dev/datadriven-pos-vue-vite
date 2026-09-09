@@ -108,6 +108,37 @@
                         </select>
                     </div>
 
+                    <!-- Nilai Relation -->
+                    <div v-else-if="getFieldConfig(item.field)?.type === 'relation'" class="relative flex items-center">
+
+                        <!-- Ambil config skema field relasi -->
+                        <template v-if="getFieldConfig(item.field)">
+                            <input type="text" :value="item.value" placeholder="Pilih..." readonly @change="e => {
+                                const target = e.target;
+                                emit('open-select-dialog', {
+                                    value: target.value,
+                                    type: 'relation',
+                                    entity: getFieldConfig(item.field)?.entity,
+                                    key: item.field,
+                                    relationKey: getFieldConfig(item.field)?.relationKey
+                                });
+                            }"
+                                class="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all pr-8" />
+
+                            <Icon icon="mdi:magnify"
+                                class="w-5 h-5 absolute right-1 rounded-md top-[3px] p-1 bg-emerald-200 dark:bg-slate-800 text-emerald-500 cursor-pointer hover:text-emerald-500"
+                                @click="emit('open-select-dialog', {
+                                    value: item.value || '',
+                                    type: 'relation',
+                                    entity: getFieldConfig(item.field)?.entity,
+                                    key: item.field,
+                                    relationKey: getFieldConfig(item.field)?.relationKey
+                                })" />
+                        </template>
+
+                    </div>
+
+
                     <!-- Nilai default (string / number / date) -->
                     <div v-else class="flex items-center">
                         <input v-model="item.value" :type="getInputType(item.field)" placeholder="Ketik nilai..."
@@ -136,7 +167,7 @@ const props = defineProps({
     tabId: { type: String, required: true }
 })
 
-const emit = defineEmits(['filter-changed', 'escape-filter'])
+const emit = defineEmits(['filter-changed', 'escape-filter', 'open-select-dialog'])
 
 const filterStore = useFilterStore()
 const localFilters = ref([])
@@ -198,6 +229,15 @@ const getAvailableOperators = (fieldKey) => {
             { value: 'after', label: 'Setelah (>)' },
             { value: 'before', label: 'Sebelum (<)' },
             { value: 'between', label: 'Rentang Tanggal' },
+            { value: 'is_empty', label: 'Kosong' },
+            { value: 'is_not_empty', label: 'Tidak Kosong' },
+        ]
+    }
+
+    if (type === 'relation') {
+        return [
+            { value: 'equals', label: 'Sama dengan' },
+            { value: 'not_equals', label: 'Tidak Sama dengan' },
             { value: 'is_empty', label: 'Kosong' },
             { value: 'is_not_empty', label: 'Tidak Kosong' },
         ]

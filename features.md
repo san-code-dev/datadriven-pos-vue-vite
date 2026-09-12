@@ -20,3 +20,11 @@ jadi keduanya terisolasi secara company tapi masih bisa bergabung dilingkup tena
 fitur core (laporan keuangan, perpajakan, dll not customable) on/off
 logic standar business sistem default (customable)
 fitur modular seperti (payment,dll)
+
+aplikasi jalan bisa online bisa offline
+
+saat online load master data
+saat offline semua perangkat masih bisa berjalan lewat websocket saat saling berinteraksi
+
+Meta driven UI berdasarkan role
+Buat Bisnis logic builder yang paling mudah digunakan oleh bisnis konsultan

@@ -58,6 +58,7 @@
     "@unhead/schema": "^1.11.15",
     "@unhead/schema-org": "^1.11.15",
     "@unhead/vue": "^1.11.15",
+    "@vue-flow/core": "^1.48.2",
     "@vueuse/core": "^12.4.0",
     "axios": "^1.17.0",
     "exceljs": "^4.4.0",

@@ -25,5 +25,6 @@ declare module 'vue-router/auto-routes' {
     '/dataset': RouteRecordInfo<'/dataset', '/dataset', Record<never, never>, Record<never, never>>,
     '/print': RouteRecordInfo<'/print', '/print', Record<never, never>, Record<never, never>>,
     '/setting': RouteRecordInfo<'/setting', '/setting', Record<never, never>, Record<never, never>>,
+    '/workflow': RouteRecordInfo<'/workflow', '/workflow', Record<never, never>, Record<never, never>>,
   }
 }

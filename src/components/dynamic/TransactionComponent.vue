@@ -17,7 +17,7 @@ import NumberColumnType from '@revolist/revogrid-column-numeral'
 import DateTypePlugin from '@revolist/revogrid-column-date'
 import SelectDialog from '../SelectDialog.vue'
 
-import type { TransactionSchemaState } from '@/types/transaction'
+import type { TransactionSchemaState } from '@/types/workflow/transaction.ts'
 
 // ==========================================
 // 1. PROPS

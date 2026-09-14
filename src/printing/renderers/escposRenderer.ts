@@ -1,10 +1,10 @@
 import ReceiptPrinterEncoder from '@point-of-sale/receipt-printer-encoder'
-import type { 
-  DocumentBlueprint, 
-  DocElement, 
-  TableCell, 
-  TableCellContent 
-} from '@/types/print'
+import type {
+  DocumentBlueprint,
+  DocElement,
+  TableCell,
+  TableCellContent
+} from '@/types/print-service/print'
 import type { Renderer, RenderOptions } from './renderer.interface'
 
 export interface EscPosOptions extends RenderOptions {
@@ -20,7 +20,7 @@ export class EscPosRenderer implements Renderer<Uint8Array> {
    */
   private flattenCellToString(cell: string | TableCellContent | TableCell): string {
     if (typeof cell === 'string') return cell
-    
+
     // Jika berbentuk objek TableCell
     if ('content' in cell) {
       if (typeof cell.content === 'string') return cell.content
@@ -76,7 +76,7 @@ export class EscPosRenderer implements Renderer<Uint8Array> {
           if (el.bold) encoder = encoder.bold(true)
           if (el.italic) encoder = encoder.italic(true)
           if (el.underline) encoder = encoder.underline(true)
-          
+
           const fontSize = this.mapFontSize(el.size)
           if (fontSize > 1) encoder = encoder.size(fontSize)
 

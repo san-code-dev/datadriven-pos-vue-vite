@@ -1,4 +1,4 @@
-// src/types/schema.type.ts
+// src/types/workflow/schema.type.ts
 import type { Options, BaseQueueItem } from './common.type';
 
 // =========================================================================

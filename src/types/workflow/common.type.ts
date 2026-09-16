@@ -1,4 +1,4 @@
-// src/types/common.type.ts
+// src/types/workflow/common.type.ts
 
 export interface Options {
     label: string;

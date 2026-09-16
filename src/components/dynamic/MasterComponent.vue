@@ -47,8 +47,9 @@
 			<div class="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
 				<div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
 
-					<RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
-						:columns="columns" :source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
+					<RevoGrid hide-attribution ref="gridRef"
+						class="cell-border w-full h-full max-h-full focus:outline-none" :columns="columns"
+						:source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
 						:auto-size-column="true" @afteredit="afterEdit" @beforeedit="beforeEdit"
 						@keydown="handleKeyDown" @afterfocus="saveCurrentStateToStore"
 						@aftercolumnresize="saveCurrentStateToStore" :column-types="columnTypes" />
@@ -159,7 +160,7 @@ const formKey = computed(() => {
 })
 
 const columnTypes = {
-	numeric: new NumberColumnType('0,0'),
+	numeric: new NumberColumnType('0'),
 	decimal: new NumberColumnType('0,0'),
 	select: new SelectTypePlugin(),
 	date: new DateTypePlugin()

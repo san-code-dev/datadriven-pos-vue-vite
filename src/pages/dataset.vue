@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import { useAuthStore } from '@/stores/auth';
 import { useTenantStore, type Tenant } from '@/stores/tenant';
+import { useCompanyStore } from '@/stores/company';
 import { useTabStore } from '@/stores/tabs';
 import api from '@/lib/axios';
 import { reconnectSocket } from '@/lib/socket';
@@ -12,6 +13,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 const tenantStore = useTenantStore();
 const tabStore = useTabStore();
+const companyStore = useCompanyStore();
 
 const searchQuery = ref('');
 const isModalOpen = ref(false);
@@ -33,10 +35,14 @@ const form = ref({
 
 const SERVICE_ENDPOINT = '/tenant';
 
+const goToCompany = () => {
+    router.push('/company');
+};
+
 const fetchTenants = async () => {
     isFetching.value = true;
     try {
-        const response = await api.get(`${SERVICE_ENDPOINT}/get-all`, { includeTenant: false });
+        const response = await api.get(`${SERVICE_ENDPOINT}/get-all`);
         tenants.value = Array.isArray(response.data)
             ? response.data
             : response.data?.data || [];
@@ -47,15 +53,6 @@ const fetchTenants = async () => {
     } finally {
         isFetching.value = false;
     }
-};
-
-const getRemainingStoragePercent = (tenant: Tenant) => {
-    const max = tenant.maxDbSizeMB || 1024;
-    const used = tenant.dbSizeMB || 0;
-    const remaining = max - used;
-
-    if (remaining <= 0) return 0;
-    return Math.round((remaining / max) * 100);
 };
 
 const userAvatarLetter = computed(() => {
@@ -228,9 +225,9 @@ const handleSubmit = async () => {
         };
 
         if (editingTenant.value?.id) {
-            await api.put(`${SERVICE_ENDPOINT}/update`, { id: editingTenant.value.id, ...payload }, { includeTenant: false });
+            await api.put(`${SERVICE_ENDPOINT}/update`, { id: editingTenant.value.id, ...payload });
         } else {
-            await api.post(`${SERVICE_ENDPOINT}/create`, payload, { includeTenant: false });
+            await api.post(`${SERVICE_ENDPOINT}/create`, payload);
         }
 
         await fetchTenants();
@@ -250,9 +247,9 @@ const handleSubmit = async () => {
 
         <!-- Main Content Wrapper -->
         <div class="max-w-6xl mx-auto w-full">
-
             <!-- Top Bar Navigation -->
             <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+                <!-- Sebelah Kiri: User Info -->
                 <div class="flex items-center gap-3">
                     <div
                         class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center font-bold text-sm">
@@ -269,6 +266,22 @@ const handleSubmit = async () => {
                         </h1>
                     </div>
                 </div>
+
+                <!-- Sebelah Kanan: Company Terpilih (Klik untuk ke /company) -->
+                <button @click="goToCompany"
+                    class="flex items-center gap-2.5 px-3 py-1.5 transition-all text-left focus:outline-none group">
+
+                    <div class="hidden sm:block">
+                        <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium leading-tight">Perusahaan
+                        </p>
+                        <p
+                            class="text-[26px] font-bold text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-1">
+                            {{ companyStore.selectedCompany?.name || 'Pilih Perusahaan' }}
+                        </p>
+                    </div>
+                    <Icon icon="lucide:chevron-right"
+                        class="w-4 h-4 text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all ml-1" />
+                </button>
             </div>
 
             <!-- Top Action Bar -->
@@ -354,9 +367,6 @@ const handleSubmit = async () => {
                             <Icon icon="lucide:hard-drive" class="w-3.5 h-3.5 text-slate-400" />
                             <span>Size</span>
                         </div>
-                        <span class="font-semibold text-slate-700 dark:text-slate-200">
-                            {{ getRemainingStoragePercent(tenant) }} %
-                        </span>
                     </div>
                 </div>
             </div>

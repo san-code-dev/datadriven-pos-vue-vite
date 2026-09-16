@@ -7,8 +7,6 @@ export interface Tenant {
     dbName?: string;
     logo?: string;
     address?: string;
-    dbSizeMB?: number;
-    maxDbSizeMB?: number;
 }
 
 export const useTenantStore = defineStore('tenant', {

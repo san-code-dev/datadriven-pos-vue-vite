@@ -6,11 +6,12 @@ import { useSidebarStore } from '@/stores/sideBar'
 import { useAuthStore } from '@/stores/auth' // 1. Import Auth Store Pinia
 import api from '@/lib/axios'
 import { disconnectSocket } from '@/lib/socket'
+import { useCompanyStore } from '@/stores/company'
 
 const router = useRouter()
 const sidebarStore = useSidebarStore()
 const authStore = useAuthStore() // 2. Inisialisasi Auth Store
-
+const compaynStore = useCompanyStore()
 // State kontrol Modal & Loading
 const showLogoutModal = ref(false)
 const isLoggingOut = ref(false)
@@ -67,8 +68,6 @@ async function submitLogout() {
     } finally {
         disconnectSocket()
         console.log('socket diputus karena user logout')
-
-        authStore.clearAuth()
 
         // 📢 Kirim sinyal broadcast logout ke tab lain (Gunakan Objek)
         const logoutChannel = new BroadcastChannel('auth_channel')

@@ -2,11 +2,13 @@ import axios from 'axios'
 import type { InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useTenantStore } from '@/stores/tenant'
+import { useCompanyStore } from '@/stores/company'
 
-// 1. Extend AxiosRequestConfig agar TypeScript mengenali opsi includeTenant
+// 1. Extend AxiosRequestConfig agar TypeScript mengenali opsi includeTenant & includeCompany
 declare module 'axios' {
     export interface AxiosRequestConfig {
         includeTenant?: boolean
+        includeCompany?: boolean
     }
 }
 
@@ -28,18 +30,28 @@ api.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
         const authStore = useAuthStore()
         const tenantStore = useTenantStore()
+        const companyStore = useCompanyStore()
 
-        // Kirim Authorization Bearer Token
+        // Kirim Authorization Bearer Token jika ada
         if (authStore.token) {
             config.headers.Authorization = `Bearer ${authStore.token}`
         }
 
-        // Default value set ke true jika tidak didefinisikan secara eksplisit
         const shouldIncludeTenant = config.includeTenant ?? true
+        const shouldIncludeCompany = config.includeCompany ?? true
 
-        // Sisipkan x-tenant-code HANYA jika includeTenant bernilai true dan tenant tersedia
+        // Sisipkan x-tenant-code HANYA jika includeTenant = true dan tenant tersedia
         if (shouldIncludeTenant && tenantStore.selectedTenant?.code) {
             config.headers['x-tenant-code'] = tenantStore.selectedTenant.code
+        } else {
+            delete config.headers['x-tenant-code']
+        }
+
+        // Sisipkan x-company-code HANYA jika includeCompany = true dan company tersedia
+        if (shouldIncludeCompany && companyStore.selectedCompany?.code) {
+            config.headers['x-company-code'] = companyStore.selectedCompany.code
+        } else {
+            delete config.headers['x-company-code']
         }
 
         return config

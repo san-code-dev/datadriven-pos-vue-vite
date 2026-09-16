@@ -37,7 +37,7 @@ async function login() {
     error.value = ''
 
     try {
-        const response = await api.post('auth/login', form, { includeTenant: false })
+        const response = await api.post('auth/login', form, { includeTenant: false, includeCompany: false })
 
         // 🔥 Simpan token ke authStore
         if (response.data.token) {
@@ -63,6 +63,7 @@ async function login() {
     } catch (err: any) {
         const errorMessage = err.response?.data?.message || err.message || "Terjadi kesalahan sistem";
         error.value = errorMessage
+        console.log(err)
     } finally {
         loading.value = false
     }

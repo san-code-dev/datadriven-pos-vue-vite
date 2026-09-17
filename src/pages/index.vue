@@ -38,7 +38,7 @@ async function login() {
 
     try {
         const response = await api.post('auth/login', form, { includeTenant: false, includeCompany: false })
-
+        console.log(response)
         // 🔥 Simpan token ke authStore
         if (response.data.token) {
             authStore.setToken(response.data.token)

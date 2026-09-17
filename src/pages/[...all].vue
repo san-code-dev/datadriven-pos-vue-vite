@@ -97,7 +97,6 @@ const fetchSchemaFromApi = async () => {
         }
 
         const response = await api.get(requestUrl, { params })
-
         const responseData = response.data
 
         if (responseData) {

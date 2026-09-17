@@ -28,3 +28,6 @@ saat offline semua perangkat masih bisa berjalan lewat websocket saat saling ber
 
 Meta driven UI berdasarkan role
 Buat Bisnis logic builder yang paling mudah digunakan oleh bisnis konsultan
+
+ctrl+C ID
+Quick search bisa di perform dengan ctrl+v id (transaction only)

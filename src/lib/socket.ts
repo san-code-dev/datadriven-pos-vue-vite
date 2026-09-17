@@ -10,8 +10,8 @@ export const initGlobalSocket = () => {
   const tenantStore = useTenantStore()
 
   const userId = authStore.user?.id
-  const tenantCode = tenantStore.selectedTenant?.code // 👈 Ambil kode tenant
-
+  const tenantId = tenantStore.selectedTenant?.id // 👈 Ambil kode tenant
+  const tenantCode = tenantStore.selectedTenant?.code
   if (!userId || !tenantCode) {
     return null
   }
@@ -21,16 +21,16 @@ export const initGlobalSocket = () => {
       withCredentials: true,
       auth: {
         userId: userId,
-        tenantCode: tenantCode, // 👈 Kirim tenantCode ke backend saat handshake
+        tenantCode: tenantId, // 👈 Kirim tenantCode ke backend saat handshake
       },
     })
 
     socket.on('connect', () => {
-      console.log(`[Socket]⚡ Terhubung ke Tenant: ${tenantCode}`)
+      console.log(`[Socket]⚡ Terhubung ke Tenant: ${tenantId} [${tenantCode}]`)
     })
 
     socket.on('connect_error', (err) => {
-      console.error('[Socket]❌ Koneksi socket gagal:', err.message)
+      console.error(`[Socket]❌ Koneksi ke ${tenantId} [${tenantCode}] gagal:`, err.message)
     })
   }
 

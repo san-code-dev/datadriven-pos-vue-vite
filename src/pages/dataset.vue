@@ -42,7 +42,7 @@ const goToCompany = () => {
 const fetchTenants = async () => {
     isFetching.value = true;
     try {
-        const response = await api.get(`${SERVICE_ENDPOINT}/get-all`);
+        const response = await api.get(`${SERVICE_ENDPOINT}/get-all`, { includeCompany: true });
         tenants.value = Array.isArray(response.data)
             ? response.data
             : response.data?.data || [];
@@ -225,9 +225,9 @@ const handleSubmit = async () => {
         };
 
         if (editingTenant.value?.id) {
-            await api.put(`${SERVICE_ENDPOINT}/update`, { id: editingTenant.value.id, ...payload });
+            await api.put(`${SERVICE_ENDPOINT}/update`, { id: editingTenant.value.id, ...payload }, { includeCompany: true });
         } else {
-            await api.post(`${SERVICE_ENDPOINT}/create`, payload);
+            await api.post(`${SERVICE_ENDPOINT}/create`, payload, { includeCompany: true });
         }
 
         await fetchTenants();

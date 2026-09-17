@@ -41,17 +41,17 @@ api.interceptors.request.use(
         const shouldIncludeCompany = config.includeCompany ?? true
 
         // Sisipkan x-tenant-code HANYA jika includeTenant = true dan tenant tersedia
-        if (shouldIncludeTenant && tenantStore.selectedTenant?.code) {
-            config.headers['x-tenant-code'] = tenantStore.selectedTenant.code
+        if (shouldIncludeTenant && tenantStore.selectedTenant?.id) {
+            config.headers['x-tenant-id'] = tenantStore.selectedTenant.id
         } else {
-            delete config.headers['x-tenant-code']
+            delete config.headers['x-tenant-id']
         }
 
         // Sisipkan x-company-code HANYA jika includeCompany = true dan company tersedia
-        if (shouldIncludeCompany && companyStore.selectedCompany?.code) {
-            config.headers['x-company-code'] = companyStore.selectedCompany.code
+        if (shouldIncludeCompany && companyStore.selectedCompany?.id) {
+            config.headers['x-company-id'] = companyStore.selectedCompany.id
         } else {
-            delete config.headers['x-company-code']
+            delete config.headers['x-company-id']
         }
 
         return config

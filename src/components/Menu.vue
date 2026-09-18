@@ -263,36 +263,30 @@ onUnmounted(() => {
                             <div
                                 class="px-1 pb-2.5 mb-2.5 border-b border-slate-100 dark:border-slate-700/80 flex items-center justify-between">
                                 <span
-                                    class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                                    class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
                                     {{ category }}
-                                </span>
-                                <span
-                                    class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
-                                    {{ menus.length }} Menu
                                 </span>
                             </div>
 
                             <!-- Grid 3 Kolom untuk Sub Category / Item Menu -->
                             <div class="grid grid-cols-3 gap-2">
                                 <button v-for="menu in menus" :key="menu.key" @click="handleMenuClick(menu)"
-                                    :title="menu.label" :style="getMenuStyles(menu, route.path === menu.route)" :class="[
+                                    :title="menu.label" :class="[
                                         route.path === menu.route
-                                            ? 'bg-slate-100 dark:bg-slate-700/80 border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 font-semibold'
-                                            : 'font-medium hover:brightness-95 dark:hover:brightness-110',
+                                            ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-semibold'
+                                            : 'bg-slate-50/60 dark:bg-slate-700/30 border-slate-200/50 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600',
                                         'flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all duration-150 aspect-square group/item text-center relative overflow-hidden'
                                     ]">
 
-                                    <!-- Indikator Aktif (Menggunakan warna dari menu.color) -->
+                                    <!-- Indicator Aktif -->
                                     <div v-if="route.path === menu.route"
-                                        class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-                                        :style="{ backgroundColor: getTailwindColor(menu.color) }">
+                                        class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-emerald-500">
                                     </div>
 
                                     <!-- Icon Menu -->
                                     <Icon :icon="formatIcon(menu.icon)"
-                                        class="text-xl mb-1.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-110"
-                                        :class="route.path === menu.route ? 'text-slate-400 dark:text-slate-500' : ''"
-                                        :style="route.path !== menu.route ? { color: getTailwindColor(menu.color) } : {}" />
+                                        class="text-xl mb-1.5 flex-shrink-0 transition-transform duration-200"
+                                        :class="route.path === menu.route ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'" />
 
                                     <!-- Label Menu -->
                                     <span class="text-[11px] leading-tight line-clamp-2 w-full break-words capitalize">

@@ -253,7 +253,7 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Flyout Submenu -->
-                    <div v-show="openCategory === category" class="absolute z-50 top-0 w-80 flyout-container"
+                    <div v-show="openCategory === category" class="absolute z-50 top-0 w-[500px] flyout-container"
                         :class="sidebarStore.isCollapsed ? 'left-[72px]' : 'left-[244px]'">
 
                         <div
@@ -285,7 +285,7 @@ onUnmounted(() => {
 
                                     <!-- Icon Menu -->
                                     <Icon :icon="formatIcon(menu.icon)"
-                                        class="text-xl mb-1.5 flex-shrink-0 transition-transform duration-200"
+                                        class="text-4xl mb-1.5 flex-shrink-0 transition-transform duration-200"
                                         :class="route.path === menu.route ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'" />
 
                                     <!-- Label Menu -->

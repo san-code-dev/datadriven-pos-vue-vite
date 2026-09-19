@@ -490,9 +490,12 @@ const afterEdit = async (event: any) => {
 		// handleRealtimeMutation('UPDATE', recordId)
 
 	} catch (err: any) {
-		console.error('[Api] Gagal auto-save:', err)
-		setSyncStatus('error', `Gagal memperbarui: ${err.response?.data?.message || err.message}`)
+		const errorMessage = err.customMessage || err.message || 'Gagal memperbarui'
+		await fetchGridData()
+		setSyncStatus('error', errorMessage)
 	}
+
+
 }
 
 const handleKeyDown = async (e: KeyboardEvent) => {

@@ -62,7 +62,7 @@ api.interceptors.request.use(
 )
 
 // ==========================================
-// 3. RESPONSE INTERCEPTOR (Penanganan Error 401)
+// 3. RESPONSE INTERCEPTOR
 // ==========================================
 api.interceptors.response.use(
     (response) => response,
@@ -78,8 +78,14 @@ api.interceptors.response.use(
                 await routerInstance.push('/')
             }
         }
+
+        // Normalisasi pesan error dari backend ke properti custom 'customMessage'
+        const backendMessage = error.response?.data?.error || error.response?.data?.message
+        if (backendMessage) {
+            error.customMessage = backendMessage
+        }
+
         return Promise.reject(error)
     }
 )
-
 export default api

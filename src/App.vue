@@ -62,6 +62,7 @@ onUnmounted(() => {
 
 <template>
     <router-view />
+    <ErrorModal />
 </template>
 
 <style>

@@ -3,12 +3,13 @@ import type { InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useTenantStore } from '@/stores/tenant'
 import { useCompanyStore } from '@/stores/company'
+import { useErrorModal } from '@/composables/useErrorModal'
 
-// 1. Extend AxiosRequestConfig agar TypeScript mengenali opsi includeTenant & includeCompany
 declare module 'axios' {
     export interface AxiosRequestConfig {
         includeTenant?: boolean
         includeCompany?: boolean
+        showErrorDialog?: boolean // Set false jika ingin me-bypass modal otomatis
     }
 }
 
@@ -32,7 +33,6 @@ api.interceptors.request.use(
         const tenantStore = useTenantStore()
         const companyStore = useCompanyStore()
 
-        // Kirim Authorization Bearer Token jika ada
         if (authStore.token) {
             config.headers.Authorization = `Bearer ${authStore.token}`
         }
@@ -40,14 +40,12 @@ api.interceptors.request.use(
         const shouldIncludeTenant = config.includeTenant ?? true
         const shouldIncludeCompany = config.includeCompany ?? true
 
-        // Sisipkan x-tenant-code HANYA jika includeTenant = true dan tenant tersedia
         if (shouldIncludeTenant && tenantStore.selectedTenant?.id) {
             config.headers['x-tenant-id'] = tenantStore.selectedTenant.id
         } else {
             delete config.headers['x-tenant-id']
         }
 
-        // Sisipkan x-company-code HANYA jika includeCompany = true dan company tersedia
         if (shouldIncludeCompany && companyStore.selectedCompany?.id) {
             config.headers['x-company-id'] = companyStore.selectedCompany.id
         } else {
@@ -67,7 +65,24 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
-        if (error.response && error.response.status === 401) {
+        const status = error.response?.status
+        const backendMessage = error.response?.data?.error || error.response?.data?.message
+
+        if (backendMessage) {
+            error.customMessage = backendMessage
+        }
+
+        // --- HANDLER HTTP 400 BAD REQUEST ---
+        if (status === 400 && error.config?.showErrorDialog !== false) {
+            const { showError } = useErrorModal()
+            showError(
+                backendMessage || 'Permintaan tidak dapat diproses. Periksa kembali input Anda.',
+                'Peringatan salah input'
+            )
+        }
+
+        // --- HANDLER HTTP 401 UNAUTHORIZED ---
+        if (status === 401) {
             const authStore = useAuthStore()
             const tenantStore = useTenantStore()
 
@@ -79,13 +94,8 @@ api.interceptors.response.use(
             }
         }
 
-        // Normalisasi pesan error dari backend ke properti custom 'customMessage'
-        const backendMessage = error.response?.data?.error || error.response?.data?.message
-        if (backendMessage) {
-            error.customMessage = backendMessage
-        }
-
         return Promise.reject(error)
     }
 )
+
 export default api

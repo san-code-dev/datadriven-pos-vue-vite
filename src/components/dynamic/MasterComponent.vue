@@ -194,7 +194,7 @@ const relationCellRenderer = (createElement: any, cellProps: any, displayField: 
 // 🟢 APPLY RESPONSE DATA: Khusus untuk initial load atau query get-all
 const applyResponseData = async (serverData: any) => {
 	if (!serverData) return
-	console.log(serverData)
+
 	// 1. Jika payload berasal dari Socket realtime event: { action: 'UPDATE', id: 10 }
 	if (serverData.action && serverData.id) {
 		await handleRealtimeMutation(serverData.action, serverData.id)

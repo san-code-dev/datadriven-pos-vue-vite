@@ -7,13 +7,29 @@
 			<div class="w-full">
 				<DynamicFilter v-if="props.schemaData?.schema" :schema="props.schemaData.schema"
 					:tabId="props.menu?.route || 'master'" @filter-changed="handleFilterChanged"
-					@escape-filter="focusBackToGrid" @open-select-dialog="handleOpenSelectDialogFilter" />
+					@escape-filter="focusBackToGrid" @open-select-dialog="handleOpenSelectDialog" />
 			</div>
 
 			<div
 				class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800/60">
 
 				<div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 select-none">
+
+
+					<div>
+						<button @click="fetchGridData" type="button" class="btn-action-slate"
+							:disabled="syncStatusRef?.syncStatus.state === 'loading'">
+							<span class="flex justify-center items-center gap-1">
+								<Icon icon="cuida:refresh-outline" /> Refresh
+							</span>
+						</button>
+					</div>
+
+					<div>
+						<input
+							class="filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+							placeholder="Cari...">
+					</div>
 					<div class="flex items-center gap-1">
 						<span class="font-medium text-slate-700 dark:text-slate-300">{{ rows.length }}</span>
 						<span>items</span>
@@ -28,10 +44,6 @@
 						<kbd class="btn-kbd">[F2]</kbd>
 					</button>
 
-					<button v-else disabled type="button" class="btn-action-disabled">
-						<Icon icon="heroicons:lock-closed-20-solid" class="w-4 h-4" />
-						<span>Akses Terkunci</span>
-					</button>
 					<button @click="handlePrint" type="button" class="btn-action-slate">
 						<span>Cetak</span>
 						<kbd class="btn-kbd">[Ctrl+P]</kbd>
@@ -51,8 +63,9 @@
 						class="cell-border w-full h-full max-h-full focus:outline-none" :columns="columns"
 						:source="rows" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
 						:auto-size-column="true" @afteredit="afterEdit" @beforeedit="beforeEdit"
-						@keydown="handleKeyDown" @afterfocus="saveCurrentStateToStore"
-						@aftercolumnresize="saveCurrentStateToStore" :column-types="columnTypes" />
+						@keydown="handleKeyDown" @beforeeditstart="beforeEditStart"
+						@afterfocus="saveCurrentStateToStore" @aftercolumnresize="saveCurrentStateToStore"
+						:column-types="columnTypes" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
 
@@ -115,7 +128,7 @@ import { getActiveCellState } from '@/composables/grid'
 const searchDataSchema = ref<any>(null)
 const searchDataFieldKey = ref<string | null>(null)
 const searchDataRelationKey = ref<string | null>(null)
-const searchDataContext = ref<'filter' | 'data' | null>(null)
+const searchDataContext = ref<'filter' | 'data' | 'relation' | 'form' | null>(null)
 
 const isSelectDialogOpen = ref(false)
 
@@ -181,7 +194,7 @@ const relationCellRenderer = (createElement: any, cellProps: any, displayField: 
 // 🟢 APPLY RESPONSE DATA: Khusus untuk initial load atau query get-all
 const applyResponseData = async (serverData: any) => {
 	if (!serverData) return
-
+	console.log(serverData)
 	// 1. Jika payload berasal dari Socket realtime event: { action: 'UPDATE', id: 10 }
 	if (serverData.action && serverData.id) {
 		await handleRealtimeMutation(serverData.action, serverData.id)
@@ -383,6 +396,8 @@ const loadComponentData = async () => {
 					field.key,
 					relationOptions.value[entity] || []
 				)
+		} else if (field.type == 'form') {
+
 		}
 		return columnConfig
 	})
@@ -435,6 +450,24 @@ const beforeEdit = (event: any) => {
 			event.preventDefault();
 			return;
 		}
+	}
+}
+
+const beforeEditStart = async (event: any) => {
+	const { prop, rowIndex, colIndex } = event.detail;
+	const originalField = props.schemaData?.schema?.find((f: any) => f.key === prop);
+	if (!originalField) return;
+
+	const fieldType = originalField.type;
+
+	if (fieldType === 'relation') {
+		handleOpenSelectDialog({
+			keyword: '',
+			context: 'relation',
+			entity: originalField.entity,
+			key: { prop, rowIndex, colIndex },
+			relationKey: originalField.relationKey
+		})
 	}
 }
 
@@ -546,7 +579,7 @@ const handleDeleteKey = async () => {
 
 
 
-async function handleOpenSelectDialogFilter({
+async function handleOpenSelectDialog({
 	keyword,
 	context,
 	entity,
@@ -554,13 +587,13 @@ async function handleOpenSelectDialogFilter({
 	relationKey
 }: {
 	keyword?: string,
-	context?: 'filter' | 'data',
+	context?: 'filter' | 'data' | 'relation',
 	entity?: string,
-	key?: string,
+	key?: string | any,
 	relationKey?: string
 }) {
 	try {
-		const targetEntity = entity || 'user'
+		const targetEntity = entity
 		const response = await api.get(`/${targetEntity}/search-data`, {
 			params: { keyword }
 		})
@@ -568,7 +601,7 @@ async function handleOpenSelectDialogFilter({
 		// Simpan nilai ke ref state induk
 		searchDataFieldKey.value = key || null           // Dulu fieldKey (sebab null)
 		searchDataRelationKey.value = relationKey || null
-		searchDataContext.value = context || 'filter'   // Fallback ke 'filter' jika undefined
+		searchDataContext.value = context   // Fallback ke 'filter' jika undefined
 		searchDataSchema.value = response.data
 		isSelectDialogOpen.value = true
 
@@ -617,7 +650,33 @@ const selectDialogSelectData = async (payload: any) => {
 		filterStore.setFilters(currentRoute, updatedFilters)
 		handleFilterChanged(updatedFilters)
 	}
+	if (context === 'relation') {
+		const selectedValue = selectedRow[relationKey]
+		const rowIndex = fieldKey.rowIndex
 
+		if (rowIndex !== undefined && rowIndex !== -1) {
+			const rowData = rows.value[rowIndex]
+			const keyToUpdate = fieldKey.prop || searchDataFieldKey.value
+
+			if (rowData && keyToUpdate) {
+				const oldValue = rowData[keyToUpdate]
+
+				// 1. Update data pada array rows secara reaktif
+				rowData[keyToUpdate] = selectedValue
+				rows.value = [...rows.value]
+
+				// 2. Trigger handler afterEdit secara manual
+				await afterEdit({
+					detail: {
+						oldValue: oldValue,
+						value: selectedValue,
+						prop: keyToUpdate,
+						model: rowData
+					}
+				})
+			}
+		}
+	}
 	closeSelectDialog()
 }
 

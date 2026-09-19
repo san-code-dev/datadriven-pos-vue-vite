@@ -189,7 +189,11 @@ const toggleCollapse = () => {
 }
 
 const allowedSchema = computed(() => {
-    return props.schema.filter(f => f.type !== 'json' && f.key !== 'action')
+    return props.schema.filter(f =>
+        f.type !== 'json' &&
+        f.key !== 'action' &&
+        !f.hideFilter // <--- Tambahkan baris ini
+    )
 })
 
 const getFieldConfig = (fieldKey) => props.schema.find(f => f.key === fieldKey)
@@ -197,7 +201,7 @@ const getFieldConfig = (fieldKey) => props.schema.find(f => f.key === fieldKey)
 const isNumericField = (fieldKey) => {
     const config = getFieldConfig(fieldKey)
     if (!config) return false
-    return ['number', 'currency'].includes(config.type) || fieldKey === 'id'
+    return ['number', 'currency'].includes(config.type)
 }
 
 const isValuelessOperator = (operator) => ['is_empty', 'is_not_empty'].includes(operator)

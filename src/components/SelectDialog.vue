@@ -159,8 +159,23 @@ async function focusBackToGrid() {
 watch(() => props.isOpen, async (isOpen) => {
     if (!isOpen || !props.schemaData) return;
 
+    const rawSchema = props.schemaData.schema || []
     const savedColumnsConfig = currentGridConfig.value?.column || []
-    columns.value = (props.schemaData.schema || []).map((field: any) => {
+
+    // 1. Cari field dengan type 'relation' yang memiliki array 'fields'
+    const relationField = rawSchema.find((field: any) => field.type === 'relation' && Array.isArray(field.fields) && field.fields.length > 0)
+
+    // 2. Tentukan daftar field yang diperbolehkan (ambil dari relationField.fields jika ada)
+    const allowedFields = relationField?.fields || props.schemaData?.fields
+
+    // 3. Filter schema berdasarkan allowedFields jika ada
+    let filteredSchema = rawSchema
+    if (Array.isArray(allowedFields) && allowedFields.length > 0) {
+        filteredSchema = rawSchema.filter((field: any) => allowedFields.includes(field.key))
+    }
+
+    // 4. Map ke format RevoGrid
+    columns.value = filteredSchema.map((field: any) => {
         const savedCol = savedColumnsConfig.find((c: any) => c.key === field.key)
 
         return {

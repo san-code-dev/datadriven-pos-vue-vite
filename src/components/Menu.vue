@@ -289,7 +289,7 @@ onUnmounted(() => {
                                         :class="route.path === menu.route ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'" />
 
                                     <!-- Label Menu -->
-                                    <span class="text-[11px] leading-tight line-clamp-2 w-full break-words capitalize">
+                                    <span class="text-xs leading-tight line-clamp-2 w-full break-words capitalize">
                                         {{ menu.label }}
                                     </span>
                                 </button>

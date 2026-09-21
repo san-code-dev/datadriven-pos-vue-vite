@@ -10,7 +10,7 @@ export interface SchemaField {
     isHidden?: boolean
     options?: any[]
     formula?: string
-    relationKey?: string
+    entityKey?: string
     entity?: string
     validation?: { required?: boolean; min?: number }
 }

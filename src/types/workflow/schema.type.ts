@@ -39,7 +39,7 @@ export interface DisplayColumnSchema<T = any> extends BaseColumnSchema<T> {
 export interface RelationColumnSchema<T = any> extends BaseColumnSchema<T> {
     type: 'relation';
     entity: string;
-    relationKey: string;
+    entityKey: string;
     primary?: boolean;
     readonly?: boolean;
     required?: boolean;

@@ -6,8 +6,9 @@
 
 			<div class="w-full">
 				<DynamicFilter v-if="props.schemaData?.schema" :schema="props.schemaData.schema"
-					:tabId="props.menu?.route || 'master'" @filter-changed="handleFilterChanged"
-					@escape-filter="focusBackToGrid" @open-select-dialog="handleOpenSelectDialog" />
+					:event-detail="selectDialogEventDetail" :tabId="props.menu?.route || 'master'"
+					@filter-changed="handleFilterChanged" @escape-filter="focusBackToGrid"
+					@open-select-dialog="handleOpenSelectDialog" />
 			</div>
 
 			<div
@@ -103,8 +104,8 @@
 
 				</div>
 			</div>
-			<SelectDialog :schema-data="searchDataSchema" :field-key="searchDataFieldKey"
-				:relation-key="searchDataRelationKey" :context="searchDataContext" :is-open="isSelectDialogOpen"
+			<SelectDialog :schema-data="selectDialogDataSchema" :event-detail="selectDialogEventDetail"
+				:relation-info="selectDialogRelationInfo" :context="selectDialogContext" :is-open="isSelectDialogOpen"
 				@close="closeSelectDialog" @select="selectDialogSelectData" />
 		</div>
 
@@ -131,10 +132,10 @@ import DateTypePlugin from '@revolist/revogrid-column-date'
 import { useRealtimeSync } from '@/composables/useRealtimeSync'
 import { getActiveCellState } from '@/composables/grid'
 
-const searchDataSchema = ref<any>(null)
-const searchDataFieldKey = ref<string | null>(null)
-const searchDataRelationKey = ref<string | null>(null)
-const searchDataContext = ref<'filter' | 'data' | 'relation' | 'form' | null>(null)
+const selectDialogDataSchema = ref<any>(null)
+const selectDialogRelationInfo = ref<any>(null)
+const selectDialogEventDetail = ref<any>(null)
+const selectDialogContext = ref<'filter' | 'data' | 'relation' | 'form' | null>(null)
 
 const isSelectDialogOpen = ref(false)
 
@@ -185,17 +186,17 @@ const columnTypes = {
 	date: new DateTypePlugin()
 }
 
-const relationCellRenderer = (createElement: any, cellProps: any, displayField: string, fieldKey: string, optionsList: any[]) => {
-	const rawValue = cellProps.model[fieldKey]
-	if (!rawValue) return createElement('span', {}, '')
+// const relationCellRenderer = (createElement: any, cellProps: any, displayField: string, fieldKey: string, optionsList: any[]) => {
+// 	const rawValue = cellProps.model[fieldKey]
+// 	if (!rawValue) return createElement('span', {}, '')
 
-	if (typeof rawValue === 'object' && rawValue !== null) {
-		return createElement('span', {}, rawValue[displayField] || rawValue.name || '')
-	}
+// 	if (typeof rawValue === 'object' && rawValue !== null) {
+// 		return createElement('span', {}, rawValue[displayField] || rawValue.name || '')
+// 	}
 
-	const matchedOption = optionsList.find(opt => opt.value === rawValue)
-	return createElement('span', {}, matchedOption ? matchedOption.label : rawValue)
-}
+// 	const matchedOption = optionsList.find(opt => opt.value === rawValue)
+// 	return createElement('span', {}, matchedOption ? matchedOption.label : rawValue)
+// }
 
 // 🟢 APPLY RESPONSE DATA: Khusus untuk initial load atau query get-all
 const applyResponseData = async (serverData: any) => {
@@ -394,14 +395,14 @@ const loadComponentData = async () => {
 			columnConfig.source = relationOptions.value[entity] || []
 			columnConfig.appendTo = 'body'
 			columnConfig.editorProperties = { appendToBody: true }
-			columnConfig.cellTemplate = (createElement: any, linkProps: any) =>
-				relationCellRenderer(
-					createElement,
-					linkProps,
-					field.relation.displayField,
-					field.key,
-					relationOptions.value[entity] || []
-				)
+			// columnConfig.cellTemplate = (createElement: any, linkProps: any) =>
+			// 	relationCellRenderer(
+			// 		createElement,
+			// 		linkProps,
+			// 		field.relation.displayField,
+			// 		field.key,
+			// 		relationOptions.value[entity] || []
+			// 	)
 		} else if (field.type == 'form') {
 
 		}
@@ -460,26 +461,30 @@ const beforeEdit = (event: any) => {
 }
 
 const beforeEditStart = async (event: any) => {
-	const { prop, rowIndex, colIndex } = event.detail;
+	const { prop } = event.detail;
 	const originalField = props.schemaData?.schema?.find((f: any) => f.key === prop);
 	if (!originalField) return;
 
 	const fieldType = originalField.type;
 
 	if (fieldType === 'relation') {
+		event.preventDefault()
 		handleOpenSelectDialog({
 			keyword: '',
 			context: 'relation',
-			entity: originalField.entity,
-			key: { prop, rowIndex, colIndex },
-			relationKey: originalField.relationKey
+			eventDetail: event.detail,
+			relationInfo: {
+				entity: originalField.entity,
+				entityKey: originalField.entityKey,
+				entityKeySetTo: originalField.entityKeySetTo,
+				fieldsToShow: originalField.fieldToShow,
+			}
 		})
 	}
 }
 
 // 🟢 4. AFTER EDIT (Kirim Update Tanpa Mengharapkan Master Schema)
 const afterEdit = async (event: any) => {
-	if (event.detail.oldValue === event.detail.value) return
 	const updatedModel = event.detail.model
 	const recordId = updatedModel[primaryKey.value]
 	if (!recordId) return
@@ -591,27 +596,24 @@ const handleDeleteKey = async () => {
 async function handleOpenSelectDialog({
 	keyword,
 	context,
-	entity,
-	key,
-	relationKey
+	eventDetail,
+	relationInfo,
 }: {
 	keyword?: string,
+	eventDetail?: any,
 	context?: 'filter' | 'data' | 'relation',
-	entity?: string,
-	key?: string | any,
-	relationKey?: string
+	relationInfo
 }) {
 	try {
-		const targetEntity = entity
+		const targetEntity = relationInfo.entity
 		const response = await api.get(`/${targetEntity}/search-data`, {
 			params: { keyword }
 		})
 
-		// Simpan nilai ke ref state induk
-		searchDataFieldKey.value = key || null           // Dulu fieldKey (sebab null)
-		searchDataRelationKey.value = relationKey || null
-		searchDataContext.value = context   // Fallback ke 'filter' jika undefined
-		searchDataSchema.value = response.data
+		selectDialogContext.value = context
+		selectDialogEventDetail.value = eventDetail
+		selectDialogRelationInfo.value = relationInfo
+		selectDialogDataSchema.value = response.data
 		isSelectDialogOpen.value = true
 
 	} catch (err) {
@@ -620,71 +622,33 @@ async function handleOpenSelectDialog({
 }
 
 
-const selectDialogSelectData = async (payload: any) => {
-	const selectedRow = payload?.selectedRow || payload
+const selectDialogSelectData = async (selectedData, context, relationInfo, eventDetail) => {
 
-	const context = payload?.context || searchDataContext.value || 'filter'
-	const fieldKey = payload?.fieldKey || payload?.key || searchDataFieldKey.value
-	const relationKey = payload?.relationKey || searchDataRelationKey.value || 'id'
-
-	if (!selectedRow || !relationKey || !context || !fieldKey) {
+	if (!selectedData || !relationInfo || !context) {
 		console.error('[selectDialogSelectData] Data tidak lengkap:', {
-			selectedRow,
+			selectedData,
 			context,
-			fieldKey,
-			relationKey
+			relationInfo
 		})
 		return
 	}
-
 	if (context === 'filter') {
-		const selectedValue = selectedRow[relationKey]
-		const currentRoute = props.menu?.route || route.path
-
-		// 1. Ambil filter yang sudah ada di store
-		const currentFilters = filterStore.getFiltersByTab(currentRoute)
-
-		// 2. Buat objek FilterItem baru sesuai antarmuka FilterStore
-		const newFilterItem: FilterItem = {
-			field: fieldKey,
-			operator: 'equals', // Relasi ID umumnya menggunakan operator 'equals'
-			value: selectedValue
-		}
-
-		// 3. Update atau tambahkan filter baru ke dalam array
-		const updatedFilters = currentFilters.filter(item => item.field !== fieldKey)
-		updatedFilters.push(newFilterItem)
-
-		// 4. Simpan ke store dan jalankan pencarian
-		filterStore.setFilters(currentRoute, updatedFilters)
-		handleFilterChanged(updatedFilters)
+		alert('not implemented')
 	}
 	if (context === 'relation') {
-		const selectedValue = selectedRow[relationKey]
-		const rowIndex = fieldKey.rowIndex
+		const selectedValue = selectedData[relationInfo.entityKey]
 
-		if (rowIndex !== undefined && rowIndex !== -1) {
-			const rowData = rows.value[rowIndex]
-			const keyToUpdate = fieldKey.prop || searchDataFieldKey.value
-
-			if (rowData && keyToUpdate) {
-				const oldValue = rowData[keyToUpdate]
-
-				// 1. Update data pada array rows secara reaktif
-				rowData[keyToUpdate] = selectedValue
-				rows.value = [...rows.value]
-
-				// 2. Trigger handler afterEdit secara manual
-				await afterEdit({
-					detail: {
-						oldValue: oldValue,
-						value: selectedValue,
-						prop: keyToUpdate,
-						model: rowData
-					}
-				})
-			}
+		if (!gridRef.value?.$el) {
+			console.log('grid not found')
+			return;
 		}
+
+		const updatedModel = { ...eventDetail.model, [relationInfo.entityKeySetTo]: selectedValue }
+		await afterEdit({
+			detail: {
+				model: updatedModel
+			}
+		})
 	}
 	closeSelectDialog()
 }

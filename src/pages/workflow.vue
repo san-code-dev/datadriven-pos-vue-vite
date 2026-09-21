@@ -78,7 +78,7 @@ const Menu = [
                 { key: 'id', label: 'ID', type: 'display', primary: true, readonly: true, nullable: false },
                 { key: 'noInvoice', label: 'No Invoice', type: 'text', readonly: true },
                 { key: 'createdAt', label: 'Tanggal Transaksi', type: 'date' },
-                { key: 'customerId', label: 'kode customer', type: 'relation', entity: 'customer', relationKey: 'id' },
+                { key: 'customerId', label: 'kode customer', type: 'relation', entity: 'customer', entityKey: 'id' },
                 { key: 'nmCustomer', label: 'Nama Customer', type: 'text', readonly: true, size: 250 },
                 { key: 'discount', label: 'Potongan Diskon', type: 'currency' },
                 { key: 'total', label: 'Total Bayar', type: 'currency', readonly: true, highlight: true },

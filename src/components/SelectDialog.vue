@@ -9,8 +9,8 @@ import { useTabStore } from '@/stores/tabs'
 
 interface Props {
     schemaData: any
-    fieldKey?: string
-    relationKey?: string
+    eventDetail: any
+    relationInfo: any
     context?: string
     isOpen: boolean
 }
@@ -25,7 +25,7 @@ const tabStore = useTabStore()
 const columns = ref<any[]>([])
 const rows = ref<any[]>([])
 
-const currentGridKey = computed(() => `${useTenantStore().selectedTenant?.code}-${props.context}-${props.fieldKey}-select_data_grid`)
+const currentGridKey = computed(() => `${useTenantStore().selectedTenant?.code}-${props.context}-${props.relationInfo?.entityKey}-select_data_grid`)
 
 const currentGridConfig = computed(() => {
     const activeTabId = tabStore.activeTabId
@@ -139,9 +139,8 @@ const selectData = async () => {
         alert("gagal memilih data");
         return
     }
-
     const selectedData = focusedColumn.model
-    await emit('select', selectedData, props.context, props.fieldKey, props.relationKey)
+    await emit('select', selectedData, props.context, props.relationInfo, props.eventDetail)
     emit('close')
 }
 
@@ -210,7 +209,7 @@ watch(() => props.isOpen, async (isOpen) => {
                         </div>
                         <div>
                             <h2 class="text-sm mb-0 font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-                                Data {{ props.schemaData?.key || props.context }}
+                                Data {{ props.schemaData?.key }} {{ props.context }}
                             </h2>
                         </div>
                     </div>

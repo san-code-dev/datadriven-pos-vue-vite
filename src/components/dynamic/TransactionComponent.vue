@@ -436,11 +436,11 @@ const handleGlobalKeyDown = (e: any) => {
 
 
 
-async function cariDataRef(keyword, context, entity, fieldKey, relationKey) {
+async function cariDataRef(keyword, context, entity, fieldKey, entityKey) {
   try {
     const response = await api.get(`/${entity}/search-data`, { params: { keyword } })
     searchDataFieldKey.value = fieldKey
-    searchDataRelationKey.value = relationKey
+    searchDataRelationKey.value = entityKey
     searchDataContext.value = context
     searchDataSchema.value = response.data
     isSelectDialogOpen.value = true
@@ -451,11 +451,11 @@ async function cariDataRef(keyword, context, entity, fieldKey, relationKey) {
 }
 
 
-async function getTransactionHistory(keyword, context, entity, fieldKey, relationKey) {
+async function getTransactionHistory(keyword, context, entity, fieldKey, entityKey) {
   try {
     const response = await api.get(`/${entity}/get-history`, { params: { keyword } })
     searchDataFieldKey.value = fieldKey
-    searchDataRelationKey.value = relationKey
+    searchDataRelationKey.value = entityKey
     searchDataContext.value = context
     searchDataSchema.value = response.data
     isSelectDialogOpen.value = true
@@ -465,13 +465,13 @@ async function getTransactionHistory(keyword, context, entity, fieldKey, relatio
   }
 }
 
-const selectDialogSelectData = async (selectedRow: any, context: string, fieldKey: string, relationKey) => {
-  if (!selectedRow || !relationKey || !context) {
-    console.error('[selectDialogSelectData] Tidak ada data yang dipilih atau relation tidak ditentukan.', selectedRow, relationKey, fieldKey)
+const selectDialogSelectData = async (selectedData, context, relationInfo, eventDetail) => {
+  if (!selectedData || !relationInfo || !context) {
+    console.error('[selectDialogSelectData] Tidak ada data yang dipilih atau relation tidak ditentukan.')
     return
   }
   if (context === 'header') {
-    await updateHeaderData(fieldKey, selectedRow[relationKey])
+    await updateHeaderData(relationInfo.entityKeySetTo, selectedData[relationInfo.entityKey])
   }
 
   if (context === 'history') {
@@ -632,12 +632,12 @@ onBeforeUnmount(() => {
               <div v-else-if="field.type === 'relation'" class="relative">
                 <input type="text" :value="headerData[field.key]" :placeholder="`Pilih...`" @change="e => {
                   const target = e.target as HTMLInputElement;
-                  cariDataRef(target.value, 'header', field.entity, field.key, field.relationKey)
+                  cariDataRef(target.value, 'header', field.entity, field.key, field.entityKey)
                 }"
                   class="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all pr-6" />
                 <Icon icon="mdi:magnify"
                   class="w-5 h-5 absolute right-1 rounded-md top-[3px] p-1 bg-emerald-200 dark:bg-slate-800 text-emerald-500 cursor-pointer hover:text-emerald-500"
-                  @click="cariDataRef('', 'header', field.entity, field.key, field.relationKey)" />
+                  @click="cariDataRef('', 'header', field.entity, field.key, field.entityKey)" />
               </div>
 
               <!-- Input teks, angka, atau tanggal -->

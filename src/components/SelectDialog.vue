@@ -162,11 +162,11 @@ watch(() => props.isOpen, async (isOpen) => {
     const rawSchema = props.schemaData.schema || []
     const savedColumnsConfig = currentGridConfig.value?.column || []
 
-    // 1. Cari field dengan type 'relation' yang memiliki array 'fields'
-    const relationField = rawSchema.find((field: any) => field.type === 'relation' && Array.isArray(field.fields) && field.fields.length > 0)
+    // 1. Cari field dengan type 'relation' yang memiliki array 'fieldsToShow'
+    const relationField = rawSchema.find((field: any) => field.type === 'relation' && Array.isArray(field.fieldsToShow) && field.fieldsToShow.length > 0)
 
     // 2. Tentukan daftar field yang diperbolehkan (ambil dari relationField.fields jika ada)
-    const allowedFields = relationField?.fields || props.schemaData?.fields
+    const allowedFields = relationField?.fieldsToShow || props.schemaData?.fieldsToShow
 
     // 3. Filter schema berdasarkan allowedFields jika ada
     let filteredSchema = rawSchema
@@ -194,7 +194,7 @@ watch(() => props.isOpen, async (isOpen) => {
 <template>
     <Transition name="modal-fade">
         <div v-if="props.isOpen"
-            class="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur sm:p-6 md:p-10"
+            class="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm sm:p-6 md:p-10"
             @click.self="closeDialog">
 
             <div :style="{ width: computedModalWidth, maxWidth: '95vw', maxHeight: '90vh' }"
@@ -230,7 +230,7 @@ watch(() => props.isOpen, async (isOpen) => {
                             class="absolute inset-0 w-full h-full focus:outline-none" :columns="columns" :source="rows"
                             :theme="isDark ? 'darkCompact' : 'compact'" @keydown="handleKeyDown" @dblclick="selectData"
                             @afterfocus="saveCurrentStateToStore" @aftercolumnresize="saveCurrentStateToStore"
-                            :resize="true" />
+                            :resize="true" :stretch="true" />
 
                         <GridNavigator ref="navRef" :columns="columns" :rows="rows" :grid="gridRef" />
 

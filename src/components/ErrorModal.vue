@@ -2,7 +2,7 @@
     <!-- Backdrop Modal -->
     <Transition enter-active-class="transition opacity-0 duration-200 ease-out" enter-to-class="opacity-100"
         leave-active-class="transition opacity-100 duration-150 ease-in" leave-to-class="opacity-0">
-        <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center  p-4 backdrop-blur"
+        <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center  p-4 backdrop-blur-sm"
             @click.self="closeError">
             <!-- Modal Box -->
             <div

@@ -25,11 +25,17 @@
 						</button>
 					</div>
 
-					<div>
+					<div class="relative">
+						<!-- 1. Ikon Iconify -->
+						<Icon icon="mdi:magnify"
+							class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500 transition-colors peer-focus:text-emerald-500" />
+
+						<!-- 2. Elemen Input (Ditambahkan class 'peer' dan 'pl-8') -->
 						<input
-							class="filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+							class="peer filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-8 pr-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
 							placeholder="Cari...">
 					</div>
+
 					<div class="flex items-center gap-1">
 						<span class="font-medium text-slate-700 dark:text-slate-300">{{ rows.length }}</span>
 						<span>items</span>
@@ -65,7 +71,7 @@
 						:auto-size-column="true" @afteredit="afterEdit" @beforeedit="beforeEdit"
 						@keydown="handleKeyDown" @beforeeditstart="beforeEditStart"
 						@afterfocus="saveCurrentStateToStore" @aftercolumnresize="saveCurrentStateToStore"
-						:column-types="columnTypes" />
+						:column-types="columnTypes" :can-move-columns="true" :stretch="true" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
 

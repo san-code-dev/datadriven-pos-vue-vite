@@ -54,7 +54,7 @@
 
                     <div class="relative flex items-center h-full">
                         <select v-model="item.field" @change="onFieldChange(index)"
-                            class="filter-input data-field text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[140px]">
+                            class="filter-input data-field cursor-pointer text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[140px]">
                             <option value="" disabled>-- Pilih Kolom --</option>
                             <option v-for="field in allowedSchema" :key="field.key" :value="field.key">
                                 {{ field.label }}
@@ -68,7 +68,7 @@
 
                     <div class="relative flex items-center h-full">
                         <select v-model="item.operator" @change="onOperatorChange(index)"
-                            class="filter-input data-operator text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[150px]">
+                            class="filter-input data-operator  cursor-pointer text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[150px]">
                             <option v-for="op in getAvailableOperators(item.field)" :key="op.value" :value="op.value">
                                 {{ op.label }}
                             </option>
@@ -101,7 +101,7 @@
                     <!-- Nilai boolean -->
                     <div v-else-if="getFieldConfig(item.field)?.type === 'boolean'" class="flex items-center">
                         <select v-model="item.value"
-                            class="filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                            class="filter-input data-val cursor-pointer text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
                             <option value="" disabled>-- Pilih --</option>
                             <option value="true">Ya</option>
                             <option value="false">Tidak</option>

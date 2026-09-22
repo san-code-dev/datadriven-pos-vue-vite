@@ -579,6 +579,7 @@ async function handleOpenSelectDialog({
 		selectDialogEventDetail.value = eventDetail
 		selectDialogRelationInfo.value = relationInfo
 		selectDialogDataSchema.value = response.data
+		clearGridFocus()
 		isSelectDialogOpen.value = true
 
 	} catch (err) {
@@ -642,7 +643,6 @@ const focusBackToGrid = async () => {
 	grid.focus?.()
 
 	const startCoord = currentGridConfig.value?.coordinate || { x: 0, y: 0 }
-	await grid.scrollToCoordinate?.(startCoord)
 	grid.setCellsFocus?.(startCoord, startCoord)
 }
 const clearGridFocus = () => {

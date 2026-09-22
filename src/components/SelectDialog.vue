@@ -145,13 +145,11 @@ const selectData = async () => {
 }
 
 async function focusBackToGrid() {
-    await nextTick()
     const grid = gridRef?.value?.$el
     await grid?.focus()
 
     const startCoord = currentGridConfig.value?.coordinate || { x: 0, y: 0 }
-    await grid?.scrollToCoordinate(startCoord)
-    grid?.setCellsFocus(startCoord, startCoord)
+    await grid?.setCellsFocus(startCoord, startCoord)
 }
 
 // Watch ketika modal dibuka (isOpen bernilai true)
@@ -180,6 +178,7 @@ watch(() => props.isOpen, async (isOpen) => {
     })
 
     rows.value = props.schemaData.data || []
+    await nextTick()
     focusBackToGrid()
 }, { immediate: true })
 </script>

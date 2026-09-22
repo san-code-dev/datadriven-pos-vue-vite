@@ -161,13 +161,7 @@ watch(() => props.isOpen, async (isOpen) => {
     const rawSchema = props.schemaData.schema || []
     const savedColumnsConfig = currentGridConfig.value?.column || []
 
-    // 1. Cari field dengan type 'relation' yang memiliki array 'fieldsToShow'
-    const relationField = rawSchema.find((field: any) => field.type === 'relation' && Array.isArray(field.fieldsToShow) && field.fieldsToShow.length > 0)
-
-    // 2. Tentukan daftar field yang diperbolehkan (ambil dari relationField.fields jika ada)
-    const allowedFields = relationField?.fieldsToShow || props.schemaData?.fieldsToShow
-
-    // 3. Filter schema berdasarkan allowedFields jika ada
+    const allowedFields = props.relationInfo.fieldsToShow
     let filteredSchema = rawSchema
     if (Array.isArray(allowedFields) && allowedFields.length > 0) {
         filteredSchema = rawSchema.filter((field: any) => allowedFields.includes(field.key))

@@ -477,7 +477,7 @@ const beforeEditStart = async (event: any) => {
 				entity: originalField.entity,
 				entityKey: originalField.entityKey,
 				entityKeySetTo: originalField.entityKeySetTo,
-				fieldsToShow: originalField.fieldToShow,
+				fieldsToShow: originalField.fieldsToShow,
 			}
 		})
 	}
@@ -639,7 +639,7 @@ const selectDialogSelectData = async (selectedData, context, relationInfo, event
 		const selectedValue = selectedData[relationInfo.entityKey]
 
 		if (!gridRef.value?.$el) {
-			console.log('grid not found')
+			console.error('[selectDialogSelectData] grid not found')
 			return;
 		}
 

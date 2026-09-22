@@ -21,7 +21,6 @@ export function useRealtimeSync(
 
       socket.on(eventName, (response) => {
         onUpdate(response.data || response)
-        console.log(eventName)
         if (gridRef) {
           nextTick(async () => {
             const grid = typeof gridRef.value === 'function' ? gridRef.value() : gridRef.value
@@ -35,8 +34,6 @@ export function useRealtimeSync(
     }
 
     if (socket.connected) {
-      console.log(eventName)
-
       register()
     } else {
       socket.once('connect', () => register())

@@ -176,7 +176,6 @@ const applyResponseData = (socketIoData: any) => {
 
   // Ambil objek 'data' utama dari payload Socket.IO
   const payload = socketIoData.data || socketIoData
-  console.log('[Realtime Sync] Processing payload:', payload)
 
   // Update data ke schema
   if (payload.queue?.data) {
@@ -444,7 +443,6 @@ async function cariDataRef(keyword, context, entity, fieldKey, entityKey) {
     searchDataContext.value = context
     searchDataSchema.value = response.data
     isSelectDialogOpen.value = true
-    // console.log('[Api] Response for:', response.config.url, response.data)
   } catch (err) {
     console.error('[Api][cariDataRef] Gagal mencari data:', err)
   }
@@ -459,7 +457,6 @@ async function getTransactionHistory(keyword, context, entity, fieldKey, entityK
     searchDataContext.value = context
     searchDataSchema.value = response.data
     isSelectDialogOpen.value = true
-    // console.log('[Api] Response for:', response.config.url, response.data)
   } catch (err) {
     console.error('[Api][getTransactionHistory] Gagal mengambil riwayat transaksi:', err)
   }

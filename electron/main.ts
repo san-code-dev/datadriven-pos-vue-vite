@@ -127,12 +127,10 @@ function createWindow() {
 
   // Muat halaman renderer
   if (VITE_DEV_SERVER_URL) {
-    console.log('[Electron] Memuat Dev Server:', VITE_DEV_SERVER_URL)
     win.loadURL(VITE_DEV_SERVER_URL)
     win.webContents.openDevTools({ mode: 'detach' })
   } else {
     const indexPath = path.join(RENDERER_DIST, 'index.html')
-    console.log('[Electron] Memuat File Lokal:', indexPath)
     win.loadFile(indexPath)
   }
 

@@ -253,8 +253,9 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Flyout Submenu -->
-                    <div v-show="openCategory === category" class="absolute z-50 top-0 w-[500px] flyout-container"
-                        :class="sidebarStore.isCollapsed ? 'left-[72px]' : 'left-[244px]'">
+                    <div v-show="openCategory === category"
+                        class="absolute z-50 top-1/2 -translate-y-1/2 w-[500px] flyout-container pl-3"
+                        :class="sidebarStore.isCollapsed ? 'left-full' : 'left-full'">
 
                         <div
                             class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none animate-fadeInFast">

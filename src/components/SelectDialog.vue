@@ -203,7 +203,7 @@ watch(() => props.isOpen, async (isOpen) => {
                         </div>
                         <div>
                             <h2 class="text-sm mb-0 font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-                                Data {{ props.schemaData?.key }} {{ props.context }}
+                                Data {{ props.schemaData?.key }}
                             </h2>
                         </div>
                     </div>

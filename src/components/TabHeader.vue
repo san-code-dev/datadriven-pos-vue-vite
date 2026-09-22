@@ -226,7 +226,7 @@ const closeAllTabs = () => {
                 'border-gray-200 dark:border-gray-700',
 
                 tabStore.activeTabId === tab.id
-                    ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 border-b-transparent mb-[-1px] pb-[2px] z-10'
+                    ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 border-b-transparent mb-[0px] pb-[1px] z-10'
                     : 'bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-b hover:bg-gray-50 dark:hover:bg-gray-700/50',
 
                 activeDragIndex !== null && isDragging

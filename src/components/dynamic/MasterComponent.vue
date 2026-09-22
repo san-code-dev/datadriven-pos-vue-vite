@@ -16,7 +16,6 @@
 
 				<div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 select-none">
 
-
 					<div>
 						<button @click="fetchGridData" type="button" class="btn-action-slate"
 							:disabled="syncStatusRef?.syncStatus.state === 'loading'">
@@ -27,11 +26,9 @@
 					</div>
 
 					<div class="relative">
-						<!-- 1. Ikon Iconify -->
 						<Icon icon="mdi:magnify"
 							class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500 transition-colors peer-focus:text-emerald-500" />
 
-						<!-- 2. Elemen Input (Ditambahkan class 'peer' dan 'pl-8') -->
 						<input
 							class="peer filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-8 pr-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
 							placeholder="Cari...">
@@ -111,6 +108,7 @@
 
 	</div>
 </template>
+
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import { Icon } from '@iconify/vue'
@@ -154,17 +152,27 @@ const filterStore = useFilterStore()
 const tenantStore = useTenantStore()
 
 const gridRef = ref<any>(null)
-const navigatorRef = ref(null)
-const columns = ref([])
-const rows = ref([])
+const navigatorRef = ref<any>(null)
+const columns = ref<any[]>([])
+const rows = ref<any[]>([])
 const primaryKey = ref('id')
 const permission = ref<Record<string, boolean | undefined>>({})
 
 const showSearchModal = ref(false)
 const searchQuery = ref('')
-const searchInputRef = ref(null)
+const searchInputRef = ref<HTMLInputElement | null>(null)
 
-let activeTimeoutId: any = null
+// 🟢 MEMORY MANAGEMENT: Lacak seluruh active setTimeout agar bisa dibersihkan saat unmount
+const activeTimeouts = new Set<ReturnType<typeof setTimeout>>()
+
+const safeSetTimeout = (fn: Function, delay: number) => {
+	const timer = setTimeout(() => {
+		fn()
+		activeTimeouts.delete(timer)
+	}, delay)
+	activeTimeouts.add(timer)
+	return timer
+}
 
 const syncStatusRef = ref<InstanceType<typeof SyncStatus> | null>(null)
 
@@ -186,29 +194,15 @@ const columnTypes = {
 	date: new DateTypePlugin()
 }
 
-// const relationCellRenderer = (createElement: any, cellProps: any, displayField: string, fieldKey: string, optionsList: any[]) => {
-// 	const rawValue = cellProps.model[fieldKey]
-// 	if (!rawValue) return createElement('span', {}, '')
-
-// 	if (typeof rawValue === 'object' && rawValue !== null) {
-// 		return createElement('span', {}, rawValue[displayField] || rawValue.name || '')
-// 	}
-
-// 	const matchedOption = optionsList.find(opt => opt.value === rawValue)
-// 	return createElement('span', {}, matchedOption ? matchedOption.label : rawValue)
-// }
-
-// 🟢 APPLY RESPONSE DATA: Khusus untuk initial load atau query get-all
+// 🟢 APPLY RESPONSE DATA
 const applyResponseData = async (serverData: any) => {
 	if (!serverData) return
 
-	// 1. Jika payload berasal dari Socket realtime event: { action: 'UPDATE', id: 10 }
 	if (serverData.action && serverData.id) {
 		await handleRealtimeMutation(serverData.action, serverData.id)
 		return
 	}
 
-	// 2. Jika payload dari GET/Fetch schema biasa (Array / Object Schema)
 	let incomingRows: any[] = []
 
 	if (Array.isArray(serverData)) {
@@ -231,31 +225,35 @@ const applyResponseData = async (serverData: any) => {
 	}
 }
 
-
-
-// Helper untuk menunggu RevoGrid selesai melakukan kalkulasi & render Shadow DOM
+// 🟢 SAFE GRID RENDER: Dengan timeout fallback untuk cegah listener menggantung jika render batal
 const waitForGridRender = (): Promise<void> => {
 	return new Promise((resolve) => {
 		const gridEl = gridRef.value?.$el
 		if (!gridEl) return resolve()
 
+		let safetyTimer: ReturnType<typeof setTimeout> | null = null
+
 		const handleRender = () => {
+			if (safetyTimer) clearTimeout(safetyTimer)
 			gridEl.removeEventListener('afterrender', handleRender)
 			resolve()
 		}
 
-		// Event resmi RevoGrid saat render VDOM selesai
+		safetyTimer = setTimeout(() => {
+			gridEl.removeEventListener('afterrender', handleRender)
+			resolve()
+		}, 300)
+
 		gridEl.addEventListener('afterrender', handleRender)
 	})
 }
 
+// 🟢 SAFE FLASH ROW: Mencegah error/leak jika komponen di-unmount saat animasi berjalan
 function flashRowDirectly(rowIndex: number, color: string = 'rgba(59, 130, 246, 0.45)', duration: number = 300) {
 	if (!gridRef.value?.$el) return
 
 	const gridEl = gridRef.value.$el
 	const shadowRoot = gridEl.shadowRoot || gridEl
-
-	// Cari seluruh sel pada baris target di dalam Shadow DOM
 	const cells = shadowRoot.querySelectorAll(`[data-rgrow="${rowIndex}"]`)
 
 	if (cells && cells.length > 0) {
@@ -265,29 +263,27 @@ function flashRowDirectly(rowIndex: number, color: string = 'rgba(59, 130, 246, 
 			htmlCell.style.transition = 'background-color 0.05s ease-in-out'
 			htmlCell.style.backgroundColor = color
 
-			setTimeout(() => {
-				htmlCell.style.backgroundColor = ''
+			safeSetTimeout(() => {
+				if (htmlCell) {
+					htmlCell.style.backgroundColor = ''
+				}
 			}, duration)
 		})
 	}
 }
 
 const handleRealtimeMutation = async (action: 'CREATE' | 'UPDATE' | 'DELETE', id: number) => {
-
-
-	// A. KASUS DELETE
 	if (action === 'DELETE') {
 		const index = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
 		if (index !== -1) {
 			flashRowDirectly(index, COLOR_DELETE, 100)
-			setTimeout(() => {
+			safeSetTimeout(() => {
 				rows.value = rows.value.filter((row: any) => row[primaryKey.value] !== id)
 			}, 125)
 		}
 		return
 	}
 
-	// B. KASUS CREATE / UPDATE
 	try {
 		const response = await api.get(`/${formKey.value}/get-by-id`, {
 			params: { id }
@@ -299,21 +295,16 @@ const handleRealtimeMutation = async (action: 'CREATE' | 'UPDATE' | 'DELETE', id
 		const index = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
 
 		if (index !== -1) {
-			// 1. UPDATE DATA
 			const renderPromise = waitForGridRender()
 			rows.value[index] = { ...rows.value[index], ...updatedRecord }
 			rows.value = [...rows.value]
 			await renderPromise
 			flashRowDirectly(index, COLOR_UPDATE, 100)
 		} else {
-			// 2. CREATE DATA (Event-Driven: Bebas Race Condition)
-			const renderPromise = waitForGridRender() // Listen event sebelum state berubah
+			const renderPromise = waitForGridRender()
+			rows.value = [...rows.value, updatedRecord]
+			await renderPromise
 
-			rows.value = [...rows.value, updatedRecord] // Trigger re-render
-
-			await renderPromise // Tunggu RevoGrid memproses node baru di Shadow DOM
-
-			// Cari indeks baru setelah array diperbarui
 			const newIndex = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
 			if (newIndex !== -1) {
 				flashRowDirectly(newIndex, COLOR_CREATE, 100)
@@ -325,10 +316,6 @@ const handleRealtimeMutation = async (action: 'CREATE' | 'UPDATE' | 'DELETE', id
 	}
 }
 
-
-
-
-// 🟢 FETCH GRID DATA (Panggil getAll saat load awal/filter)
 const fetchGridData = async () => {
 	setSyncStatus('loading', 'Mengambil data..')
 	try {
@@ -350,7 +337,6 @@ const fetchGridData = async () => {
 	}
 }
 
-// 🟢 LOAD COMPONENT DATA
 const loadComponentData = async () => {
 	const res = props.schemaData
 	if (!res) return
@@ -395,25 +381,14 @@ const loadComponentData = async () => {
 			columnConfig.source = relationOptions.value[entity] || []
 			columnConfig.appendTo = 'body'
 			columnConfig.editorProperties = { appendToBody: true }
-			// columnConfig.cellTemplate = (createElement: any, linkProps: any) =>
-			// 	relationCellRenderer(
-			// 		createElement,
-			// 		linkProps,
-			// 		field.relation.displayField,
-			// 		field.key,
-			// 		relationOptions.value[entity] || []
-			// 	)
-		} else if (field.type == 'form') {
-
 		}
 		return columnConfig
 	})
 
 	primaryKey.value = (res.schema || []).find((f: any) => f.primary)?.key || 'id'
 	permission.value = res.permissions || {}
-	await nextTick(() => {
-		focusBackToGrid()
-	})
+	await nextTick()
+	focusBackToGrid()
 }
 
 const beforeEdit = (event: any) => {
@@ -483,7 +458,6 @@ const beforeEditStart = async (event: any) => {
 	}
 }
 
-// 🟢 4. AFTER EDIT (Kirim Update Tanpa Mengharapkan Master Schema)
 const afterEdit = async (event: any) => {
 	const updatedModel = event.detail.model
 	const recordId = updatedModel[primaryKey.value]
@@ -491,28 +465,19 @@ const afterEdit = async (event: any) => {
 
 	setSyncStatus('loading', 'Memperbarui..')
 	try {
-		// Response backend: { success: true, id: X }
 		await api.put(`/${formKey.value}/update`, updatedModel, {
 			params: { id: recordId }
 		})
-
 		setSyncStatus('success', 'Perubahan disimpan')
-		// Jika Socket mati, panggil manual handleRealtimeMutation
-		// handleRealtimeMutation('UPDATE', recordId)
-
 	} catch (err: any) {
 		const errorMessage = err.customMessage || err.message || 'Gagal memperbarui'
 		await fetchGridData()
 		setSyncStatus('error', errorMessage)
 	}
-
-
 }
 
 const handleKeyDown = async (e: KeyboardEvent) => {
-	// 1. CEGAT EVENT REPEAT (Tombol Ditahan/Hold)
 	if (e.repeat) {
-		// Hentikan Enter beruntun agar RevoGrid tidak terus-menerus membuka/menutup editor
 		if (e.key === 'Enter') {
 			e.preventDefault()
 			e.stopPropagation()
@@ -520,7 +485,6 @@ const handleKeyDown = async (e: KeyboardEvent) => {
 		return
 	}
 
-	// 2. Abaikan jika fokus sedang berada di dalam elemen Input/Editor aktif
 	const target = e.target as HTMLElement
 	if (
 		target.tagName === 'INPUT' ||
@@ -536,7 +500,6 @@ const handleKeyDown = async (e: KeyboardEvent) => {
 		return
 	}
 
-	// Shortcut Navigasi
 	if (e.altKey && e.key === 'ArrowLeft') { navigatorRef.value?.scrollToFirstCol(); e.preventDefault(); return; }
 	if (e.altKey && e.key === 'ArrowRight') { navigatorRef.value?.scrollToLastCol(); e.preventDefault(); return; }
 	if (e.altKey && e.key === 'ArrowDown') { navigatorRef.value?.scrollToLastRow(); e.preventDefault(); return; }
@@ -551,7 +514,7 @@ const handleKeyDown = async (e: KeyboardEvent) => {
 		e.preventDefault()
 	}
 }
-// 🟢 5. CREATE BARIS BARU (Menerima { success: true, id: X })
+
 const handleAddNewRow = async () => {
 	if (!permission.value.create) {
 		alert('Anda tidak memiliki akses untuk menambah data!')
@@ -568,7 +531,6 @@ const handleAddNewRow = async () => {
 	}
 }
 
-// 🟢 6. DELETE BARIS (Menerima { success: true, id: X })
 const handleDeleteKey = async () => {
 	if (!permission.value.delete) return
 
@@ -591,8 +553,6 @@ const handleDeleteKey = async () => {
 	}
 }
 
-
-
 async function handleOpenSelectDialog({
 	keyword,
 	context,
@@ -602,7 +562,7 @@ async function handleOpenSelectDialog({
 	keyword?: string,
 	eventDetail?: any,
 	context?: 'filter' | 'data' | 'relation',
-	relationInfo
+	relationInfo: any
 }) {
 	try {
 		const targetEntity = relationInfo.entity
@@ -621,9 +581,7 @@ async function handleOpenSelectDialog({
 	}
 }
 
-
-const selectDialogSelectData = async (selectedData, context, relationInfo, eventDetail) => {
-
+const selectDialogSelectData = async (selectedData: any, context: any, relationInfo: any, eventDetail: any) => {
 	if (!selectedData || !relationInfo || !context) {
 		console.error('[selectDialogSelectData] Data tidak lengkap:', {
 			selectedData,
@@ -658,7 +616,6 @@ const closeSelectDialog = () => {
 	focusBackToGrid()
 }
 
-
 const handleFilterChanged = (filter: any) => {
 	activeFilters.value = filter
 	fetchGridData()
@@ -669,7 +626,9 @@ const focusBackToGrid = async () => {
 
 	await waitForGridRender()
 
-	const grid = gridRef.value.$el
+	const grid = gridRef.value?.$el
+	if (!grid) return
+
 	grid.focus?.()
 
 	const startCoord = currentGridConfig.value?.coordinate || { x: 0, y: 0 }
@@ -683,14 +642,14 @@ const cariDataDenganKarakter = async (char: string) => {
 	await nextTick()
 	searchInputRef.value?.focus()
 }
+
 const handleSearchSubmit = () => {
 	const value = searchQuery.value.trim()
 	if (!value) return
 
 	const currentRoute = props.menu?.route || route.path
 
-	// Buat FilterItem sesuai kriteria pencarian nama/kata kunci
-	const quickFilterItems: FilterItem[] = [
+	const quickFilterItems = [
 		{
 			field: 'name',
 			operator: 'contains',
@@ -783,12 +742,29 @@ onMounted(async () => {
 	await focusBackToGrid()
 })
 
+// 🟢 COMPLETE UNMOUNT CLEANUP
 onBeforeUnmount(() => {
-	if (activeTimeoutId) clearTimeout(activeTimeoutId)
+	// 1. Hentikan semua setTimeout yang masih menggantung
+	activeTimeouts.forEach(timer => clearTimeout(timer))
+	activeTimeouts.clear()
+
+	// 2. Kosongkan array data besar
 	rows.value = []
 	columns.value = []
+	relationOptions.value = {}
+
+	// 3. Putuskan referensi modal dialog & event
+	selectDialogDataSchema.value = null
+	selectDialogEventDetail.value = null
+	selectDialogRelationInfo.value = null
+
+	// 4. Putuskan referensi DOM Ref
+	gridRef.value = null
+	navigatorRef.value = null
+	searchInputRef.value = null
 })
 </script>
+
 <style scoped>
 :deep(revo-grid) {
 	z-index: 10 !important;

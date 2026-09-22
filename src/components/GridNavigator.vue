@@ -3,13 +3,13 @@
         class="absolute right-0 top-0 bottom-[15px] w-[15px] flex flex-col justify-between pointer-events-none z-50">
         <button @click="scrollToFirstRow"
             class="pointer-events-auto w-full h-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-b-sm"
-            title="Ke Baris Pertama">
+            title="Ke Baris Pertama Alt+⬆">
             <Icon icon="heroicons:chevron-up-20-solid" class="w-3 h-3 flex-shrink-0" />
         </button>
 
         <button @click="scrollToLastRow"
             class="pointer-events-auto w-full h-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-t-sm"
-            title="Ke Baris Terakhir">
+            title="Ke Baris Terakhir Alt+⬇">
             <Icon icon="heroicons:chevron-down-20-solid" class="w-3 h-3 flex-shrink-0" />
         </button>
     </div>
@@ -18,13 +18,13 @@
         class="absolute bottom-0 left-0 right-[15px] h-[15px] flex justify-between pointer-events-none z-50">
         <button @click="scrollToFirstCol"
             class="pointer-events-auto h-full w-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-r-sm"
-            title="Ke Kolom Pertama">
+            title="Ke Kolom Pertama Ke Kolom Terakhir Alt+⬅">
             <Icon icon="heroicons:chevron-left-20-solid" class="w-3 h-3 flex-shrink-0" />
         </button>
 
         <button @click="scrollToLastCol"
             class="pointer-events-auto h-full w-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-l-sm"
-            title="Ke Kolom Terakhir">
+            title="Ke Kolom Terakhir Alt+➡">
             <Icon icon="heroicons:chevron-right-20-solid" class="w-3 h-3 flex-shrink-0" />
         </button>
     </div>

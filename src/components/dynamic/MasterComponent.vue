@@ -26,13 +26,21 @@
 					</div>
 
 					<div class="relative">
+
 						<Icon icon="mdi:magnify"
 							class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500 transition-colors peer-focus:text-emerald-500" />
 
-						<input
+
+
+						<input ref="searchInputRef" type="search" @focus="handleFocus"
 							class="peer filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-8 pr-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-							placeholder="Cari...">
+							placeholder="Ctrl + / cari lalu enter"
+							@search="($event.target as HTMLInputElement).value === '' ? fetchGridData() : null"
+							@keydown.enter.prevent="searchData(($event.target as HTMLInputElement).value)"
+							@keydown.escape.prevent="focusBackToGrid()">
+
 					</div>
+
 
 					<div class="flex items-center gap-1">
 						<span class="font-medium text-slate-700 dark:text-slate-300">{{ rows.length }}</span>
@@ -72,32 +80,6 @@
 						:column-types="columnTypes" :can-move-columns="true" :stretch="true" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
-
-					<div v-if="showSearchModal" @click.self="closeSearchModal"
-						class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-start justify-center pt-20 z-50 transition-all">
-						<div class="bg-white dark:bg-slate-800 w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden p-3 mx-4"
-							@keydown.stop>
-							<form @submit.prevent="handleSearchSubmit" class="relative flex items-center">
-
-								<div
-									class="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
-									<Icon icon="heroicons:magnifying-glass-20-solid" class="w-5 h-5" />
-								</div>
-
-								<input ref="searchInputRef" v-model="searchQuery" type="text"
-									placeholder="Lanjutkan mengetik untuk mencari data..."
-									class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-slate-400 transition-all" />
-
-								<div class="absolute right-3 flex items-center gap-1.5 pointer-events-none">
-									<kbd
-										class="px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-600 rounded shadow-sm">Enter
-										↩</kbd>
-									<button type="button" @click="closeSearchModal"
-										class="pointer-events-auto text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">Esc</button>
-								</div>
-							</form>
-						</div>
-					</div>
 
 				</div>
 			</div>
@@ -153,14 +135,11 @@ const tenantStore = useTenantStore()
 
 const gridRef = ref<any>(null)
 const navigatorRef = ref<any>(null)
+const searchInputRef = ref<HTMLInputElement | null>(null)
 const columns = ref<any[]>([])
 const rows = ref<any[]>([])
 const primaryKey = ref('id')
 const permission = ref<Record<string, boolean | undefined>>({})
-
-const showSearchModal = ref(false)
-const searchQuery = ref('')
-const searchInputRef = ref<HTMLInputElement | null>(null)
 
 // 🟢 MEMORY MANAGEMENT: Lacak seluruh active setTimeout agar bisa dibersihkan saat unmount
 const activeTimeouts = new Set<ReturnType<typeof setTimeout>>()
@@ -317,6 +296,7 @@ const handleRealtimeMutation = async (action: 'CREATE' | 'UPDATE' | 'DELETE', id
 }
 
 const fetchGridData = async () => {
+	searchInputRef.value.value = ''
 	setSyncStatus('loading', 'Mengambil data..')
 	try {
 		const response = await api.get(`/${formKey.value}/get-all`, {
@@ -331,11 +311,35 @@ const fetchGridData = async () => {
 		} else {
 			setSyncStatus('success', 'Semua data ditampilkan')
 		}
+		await nextTick()
+		focusBackToGrid()
 	} catch (err: any) {
 		console.error("[Api] Gagal sinkronisasi data dengan server:", err)
 		setSyncStatus('error', `Gagal memuat: ${err.message || 'Server Error'}`)
 	}
 }
+
+const searchData = async (e: Event | string) => {
+	// Ambil nilai string baik dari Event maupun string langsung
+	const keyword = typeof e === 'string' ? e : (e.target as HTMLInputElement).value
+
+	setSyncStatus('loading', 'Mencari data..')
+	try {
+		const response = await api.get(`/${formKey.value}/search-data`, {
+			params: { keyword }
+		})
+
+		applyResponseData(response.data)
+		await nextTick()
+		focusBackToGrid()
+		setSyncStatus('success', 'Hasil pencarian ditampilkan')
+
+	} catch (err: any) {
+		console.error("[searchData] Gagal mencari data server:", err)
+		setSyncStatus('error', `Gagal memuat: ${err.message || 'Server Error'}`)
+	}
+}
+
 
 const loadComponentData = async () => {
 	const res = props.schemaData
@@ -476,6 +480,16 @@ const afterEdit = async (event: any) => {
 	}
 }
 
+
+const handleGlobalKeyDown = (e: KeyboardEvent) => {
+
+	if (e.key === '/' && e.ctrlKey) {
+		e.preventDefault()
+		clearGridFocus()
+		searchInputRef.value?.focus()
+	}
+}
+
 const handleKeyDown = async (e: KeyboardEvent) => {
 	if (e.repeat) {
 		if (e.key === 'Enter') {
@@ -504,15 +518,6 @@ const handleKeyDown = async (e: KeyboardEvent) => {
 	if (e.altKey && e.key === 'ArrowRight') { navigatorRef.value?.scrollToLastCol(); e.preventDefault(); return; }
 	if (e.altKey && e.key === 'ArrowDown') { navigatorRef.value?.scrollToLastRow(); e.preventDefault(); return; }
 	if (e.altKey && e.key === 'ArrowUp') { navigatorRef.value?.scrollToFirstRow(); e.preventDefault(); return; }
-
-	const { column } = await getActiveCellState(gridRef)
-
-	if (!column?._primary && column?._type !== 'relation') return
-
-	if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
-		cariDataDenganKarakter(e.key)
-		e.preventDefault()
-	}
 }
 
 const handleAddNewRow = async () => {
@@ -621,6 +626,11 @@ const handleFilterChanged = (filter: any) => {
 	fetchGridData()
 }
 
+const handleFocus = (event: FocusEvent) => {
+	const input = event.target as HTMLInputElement
+	input.select()
+}
+
 const focusBackToGrid = async () => {
 	if (!gridRef.value?.$el) return
 
@@ -635,37 +645,26 @@ const focusBackToGrid = async () => {
 	await grid.scrollToCoordinate?.(startCoord)
 	grid.setCellsFocus?.(startCoord, startCoord)
 }
-
-const cariDataDenganKarakter = async (char: string) => {
-	searchQuery.value = char
-	showSearchModal.value = true
-	await nextTick()
-	searchInputRef.value?.focus()
-}
-
-const handleSearchSubmit = () => {
-	const value = searchQuery.value.trim()
-	if (!value) return
-
-	const currentRoute = props.menu?.route || route.path
-
-	const quickFilterItems = [
-		{
-			field: 'name',
-			operator: 'contains',
-			value: value
+const clearGridFocus = () => {
+	try {
+		const gridEl = gridRef.value?.$el
+		if (gridEl) {
+			// Hapus fokus dari shadow root / element aktif jika ada
+			if (typeof gridEl.clearFocus === 'function') {
+				gridEl.clearFocus()
+			}
+			if (typeof gridEl.blur === 'function') {
+				gridEl.blur()
+			}
 		}
-	]
-
-	filterStore.setFilters(currentRoute, quickFilterItems)
-	handleFilterChanged(quickFilterItems)
-	closeSearchModal()
-}
-
-const closeSearchModal = async () => {
-	showSearchModal.value = false
-	searchQuery.value = ''
-	await focusBackToGrid()
+		// Pastikan fokus kembali ke document body agar tidak mengendap di Web Component
+		if (document.activeElement instanceof HTMLElement) {
+			document.activeElement.blur()
+		}
+	} catch (err) {
+		// Mencegah unmount crash jika method RevoGrid sudah tidak terjangkau
+		console.warn('[Grid] Error clearing focus during unmount:', err)
+	}
 }
 
 const handlePrint = () => { window.print() }
@@ -720,48 +719,62 @@ const saveCurrentStateToStore = async (event: any) => {
 	})
 }
 
-watch(() => props.schemaData, async () => {
-	loadComponentData()
-	await nextTick()
-	focusBackToGrid()
-})
+const cleanupOnTabLeave = () => {
+	clearGridFocus()
+	window.removeEventListener('keydown', handleGlobalKeyDown)
 
-watch(() => tabStore.activeTabId, async (activeTabId) => {
-	if (activeTabId === props.menu?.route) {
-		const currentRoute = props.menu?.route || route.path
-		activeFilters.value = filterStore.getFiltersByTab(currentRoute) || {}
-		await focusBackToGrid()
-	}
-}, { immediate: false })
-
-// Hook Realtime Sync
-useRealtimeSync(formKey, applyResponseData, gridRef)
-
-onMounted(async () => {
-	loadComponentData()
-	await focusBackToGrid()
-})
-
-// 🟢 COMPLETE UNMOUNT CLEANUP
-onBeforeUnmount(() => {
-	// 1. Hentikan semua setTimeout yang masih menggantung
+	// Bersihkan timer/timeout jika ada
 	activeTimeouts.forEach(timer => clearTimeout(timer))
 	activeTimeouts.clear()
+}
 
-	// 2. Kosongkan array data besar
+// 2. Fungsi berat saat TAB DITUTUP / UNMOUNT SUNGGUHAN
+const destroyAll = () => {
+	cleanupOnTabLeave()
+
+	// Hanya kosongkan data jika komponen benar-benar di-unmount/dihapus
 	rows.value = []
 	columns.value = []
 	relationOptions.value = {}
 
-	// 3. Putuskan referensi modal dialog & event
 	selectDialogDataSchema.value = null
 	selectDialogEventDetail.value = null
 	selectDialogRelationInfo.value = null
 
-	// 4. Putuskan referensi DOM Ref
 	gridRef.value = null
 	navigatorRef.value = null
-	searchInputRef.value = null
+}
+
+watch(() => props.schemaData, async () => {
+	loadComponentData()
+})
+// Watcher perpindahan tab
+watch(() => tabStore.activeTabId, (newActiveTabId, oldActiveTabId) => {
+	const currentTabRoute = props.menu?.route || route.path
+
+	// KONDISI 1: Pengguna PINDAH TAB (Meninggalkan tab ini)
+	if (oldActiveTabId === currentTabRoute && newActiveTabId !== currentTabRoute) {
+		// Panggil cleanup ringan SAJA agar data 'rows' dan 'columns' tetap aman di memory
+		cleanupOnTabLeave()
+	}
+
+	// KONDISI 2: Pengguna KEMBALI ke tab ini
+	if (newActiveTabId === currentTabRoute) {
+		activeFilters.value = filterStore.getFiltersByTab(currentTabRoute) || {}
+
+		// Pasang kembali global event listener jika diperlukan
+		window.addEventListener('keydown', handleGlobalKeyDown)
+
+		focusBackToGrid()
+	}
+}, { immediate: false })
+useRealtimeSync(formKey, applyResponseData, gridRef)
+onBeforeUnmount(() => {
+	destroyAll()
+})
+onMounted(async () => {
+	loadComponentData()
+	window.addEventListener('keydown', handleGlobalKeyDown)
 })
 </script>
 

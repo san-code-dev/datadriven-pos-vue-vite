@@ -68,6 +68,7 @@ onUnmounted(() => {
 <style>
 revogr-data .arrow-down {
     top: 15px !important;
+    right: 15px !important;
 }
 
 duet-date-picker {

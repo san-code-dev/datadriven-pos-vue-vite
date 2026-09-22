@@ -273,7 +273,7 @@ onUnmounted(() => {
                                 <button v-for="menu in menus" :key="menu.key" @click="handleMenuClick(menu)"
                                     :title="menu.label" :class="[
                                         route.path === menu.route
-                                            ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-semibold'
+                                            ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
                                             : 'bg-slate-50/60 dark:bg-slate-700/30 border-slate-200/50 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600',
                                         'flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all duration-150 aspect-square group/item text-center relative overflow-hidden'
                                     ]">

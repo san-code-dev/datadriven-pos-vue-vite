@@ -11,6 +11,8 @@ export interface SchemaField {
     options?: any[]
     formula?: string
     entityKey?: string
+    entityKeySetTo?: string
+    fieldsToShow?: string[]
     entity?: string
     validation?: { required?: boolean; min?: number }
 }

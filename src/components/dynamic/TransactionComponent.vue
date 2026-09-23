@@ -43,10 +43,10 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 const schema = ref<TransactionSchemaState>(props.schemaData)
 const currentGridKey = computed(() => `${useTenantStore().selectedTenant?.code}-${formKey.value}-details_transaction_grid`)
 
-const searchDataSchema = ref<any>(null)
-const searchDataFieldKey = ref<string | null>(null)
-const searchDataRelationKey = ref<string | null>(null)
-const searchDataContext = ref<'header' | 'details' | 'history' | null>(null)
+const selectDialogDataSchema = ref<any>(null)
+const selectDialogRelationInfo = ref<any>(null)
+const selectDialogEventDetail = ref<any>(null)
+const selectDialogContext = ref<'history' | 'relation-header' | 'relation-detail' | null>(null)
 
 const isSelectDialogOpen = ref(false)
 const showSearchModal = ref(false)
@@ -433,54 +433,82 @@ const handleGlobalKeyDown = (e: any) => {
   }
 }
 
-
-
-async function cariDataRef(keyword, context, entity, fieldKey, entityKey) {
+const clearGridFocus = () => {
   try {
-    const response = await api.get(`/${entity}/search-data`, { params: { keyword } })
-    searchDataFieldKey.value = fieldKey
-    searchDataRelationKey.value = entityKey
-    searchDataContext.value = context
-    searchDataSchema.value = response.data
-    isSelectDialogOpen.value = true
+    const gridEl = gridRef.value?.$el
+    if (gridEl) {
+      // Hapus fokus dari shadow root / element aktif jika ada
+      if (typeof gridEl.clearFocus === 'function') {
+        gridEl.clearFocus()
+      }
+      if (typeof gridEl.blur === 'function') {
+        gridEl.blur()
+      }
+    }
+    // Pastikan fokus kembali ke document body agar tidak mengendap di Web Component
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
   } catch (err) {
-    console.error('[Api][cariDataRef] Gagal mencari data:', err)
+    // Mencegah unmount crash jika method RevoGrid sudah tidak terjangkau
+    console.warn('[Grid] Error clearing focus during unmount:', err)
+  }
+}
+
+async function handleOpenSelectDialog({ keyword, context, eventDetail, relationInfo, }: { keyword?: string, eventDetail?: any, context?: 'history' | 'relation-header' | 'relation-detail', relationInfo: any }) {
+  try {
+    const targetEntity = relationInfo.entity
+    const response = await api.get(`/${targetEntity}/search-data`, {
+      params: { keyword }
+    })
+
+    selectDialogContext.value = context
+    selectDialogEventDetail.value = eventDetail
+    selectDialogRelationInfo.value = relationInfo
+    selectDialogDataSchema.value = response.data
+    clearGridFocus()
+    isSelectDialogOpen.value = true
+
+  } catch (err) {
+    console.error('[Api][handleOpenSelectDialogFilter] Gagal mencari data:', err)
   }
 }
 
 
-async function getTransactionHistory(keyword, context, entity, fieldKey, entityKey) {
-  try {
-    const response = await api.get(`/${entity}/get-history`, { params: { keyword } })
-    searchDataFieldKey.value = fieldKey
-    searchDataRelationKey.value = entityKey
-    searchDataContext.value = context
-    searchDataSchema.value = response.data
-    isSelectDialogOpen.value = true
-  } catch (err) {
-    console.error('[Api][getTransactionHistory] Gagal mengambil riwayat transaksi:', err)
-  }
+async function getTransactionHistory(event) {
+  handleOpenSelectDialog({
+    keyword: '',
+    context: 'history',
+    eventDetail: event.detail,
+    relationInfo: {
+      entity: formKey.value,
+      entityKey: schema.value.prefix,
+      entityKeySetTo: null,
+      fieldsToShow: null,
+    }
+  })
 }
 
-const selectDialogSelectData = async (selectedData, context, relationInfo, eventDetail) => {
+const handleSelectDialogDataSelected = async (selectedData: any, context: any, relationInfo: any, eventDetail: any) => {
   if (!selectedData || !relationInfo || !context) {
-    console.error('[selectDialogSelectData] Tidak ada data yang dipilih atau relation tidak ditentukan.')
+    console.error('[handleSelectDialogDataSelected] Tidak ada data yang dipilih atau relation tidak ditentukan.')
     return
   }
-  if (context === 'header') {
+  if (context === 'relation-header') {
     await updateHeaderData(relationInfo.entityKeySetTo, selectedData[relationInfo.entityKey])
   }
 
   if (context === 'history') {
     router.push('print')
   }
-  closeSelectDialog()
+  handleSelectDialogClosed()
 }
 
-const closeSelectDialog = () => {
+const handleSelectDialogClosed = () => {
   isSelectDialogOpen.value = false
   focusBackToGrid()
 }
+
 
 
 
@@ -494,6 +522,24 @@ async function focusBackToGrid() {
   grid?.setCellsFocus(startCoord, startCoord)
 }
 
+
+const handleInputChange = (e: Event, field: any) => {
+  const target = e.target as HTMLInputElement;
+
+  const relationInfo = {
+    entity: field.entity,
+    entityKey: field.entityKey,
+    entityKeySetTo: field.entityKeySetTo,
+    fieldsToShow: field.fieldsToShow
+  };
+
+  handleOpenSelectDialog({
+    keyword: target.value,
+    context: 'relation-header',
+    eventDetail: e,
+    relationInfo
+  });
+};
 
 
 
@@ -575,7 +621,7 @@ onBeforeUnmount(() => {
         <div class="flex items-center gap-1 dark:border-slate-800 shrink-0 overflow-hidden px-2 flex-wrap">
           <button
             class="flex text-xs font-extralight px-2 gap-1 py-1 rounded-md items-center text-slate-500 dark:hover:bg-slate-800 hover:bg-slate-200"
-            @click="getTransactionHistory(schema.prefix, 'history', schema.key, '', 'id')">
+            @click="getTransactionHistory">
             <Icon icon="mdi:view-grid-outline" class="w-3.5 h-3.5" /> history
           </button>
 
@@ -627,14 +673,12 @@ onBeforeUnmount(() => {
               </div>
 
               <div v-else-if="field.type === 'relation'" class="relative">
-                <input type="text" :value="headerData[field.key]" :placeholder="`Pilih...`" @change="e => {
-                  const target = e.target as HTMLInputElement;
-                  cariDataRef(target.value, 'header', field.entity, field.key, field.entityKey)
-                }"
+                <input type="text" :value="headerData[field.key]" :placeholder="`Pilih...`"
+                  @keydown.enter.prevent="handleInputChange($event, field)" @change="handleInputChange($event, field)"
                   class="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all pr-6" />
                 <Icon icon="mdi:magnify"
                   class="w-5 h-5 absolute right-1 rounded-md top-[3px] p-1 bg-emerald-200 dark:bg-slate-800 text-emerald-500 cursor-pointer hover:text-emerald-500"
-                  @click="cariDataRef('', 'header', field.entity, field.key, field.entityKey)" />
+                  @click="handleInputChange($event, field)" />
               </div>
 
               <!-- Input teks, angka, atau tanggal -->
@@ -687,9 +731,9 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <SelectDialog :schema-data="searchDataSchema" :field-key="searchDataFieldKey"
-        :relation-key="searchDataRelationKey" :context="searchDataContext" :is-open="isSelectDialogOpen"
-        @close="closeSelectDialog" @select="selectDialogSelectData" />
+      <SelectDialog :schema-data="selectDialogDataSchema" :event-detail="selectDialogEventDetail"
+        :relation-info="selectDialogRelationInfo" :context="selectDialogContext" :is-open="isSelectDialogOpen"
+        @close="handleSelectDialogClosed" @select="handleSelectDialogDataSelected" />
     </div>
   </div>
 </template>

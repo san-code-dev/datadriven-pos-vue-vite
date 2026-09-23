@@ -41,14 +41,7 @@
         </div>
 
         <div v-show="isExpanded">
-
-            <div v-if="localFilters.length === 0"
-                class="text-center py-3 text-xs text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg my-2">
-                Belum ada filter aktif. Tekan tombol atau <kbd
-                    class="px-1 bg-slate-100 dark:bg-slate-700 rounded shadow">Alt+F</kbd> untuk menyaring data.
-            </div>
-
-            <div v-else class="space-y-3 pt-2">
+            <div class="space-y-3 pt-2">
                 <div v-for="(item, index) in localFilters" :key="index" :ref="el => { if (el) rowRefs[index] = el }"
                     class="flex flex-wrap items-center gap-2 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 focus-within:border-emerald-500/40">
 

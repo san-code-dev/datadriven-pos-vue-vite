@@ -106,23 +106,11 @@ async function submitLogout() {
                 <div
                     class="bg-white dark:bg-gray-800 rounded-xl max-w-sm w-full p-6 shadow-xl border border-gray-100 dark:border-gray-700 transform transition-all animate-in fade-in zoom-in-95 duration-150 text-gray-900 dark:text-gray-200">
                     <div class="flex place-items-center space-x-3 text-amber-500 dark:text-amber-400 mb-3">
-                        <Icon icon="mdi:alert-circle-outline" class="text-3xl" />
+                        <Icon icon="mdi:help-circle-outline" class="text-3xl" />
                         <h3 class="text-lg font-bold mb-0 text-gray-900 dark:text-white">
-                            Konfirmasi Keluar
+                            Konfirmasi keluar?
                         </h3>
                     </div>
-
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 leading-relaxed">
-                        Apakah Anda yakin ingin mengakhiri sesi ini? Gunakan tombol
-                        <kbd
-                            class="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 font-mono">←</kbd>
-                        atau
-                        <kbd
-                            class="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 font-mono">→</kbd>
-                        untuk memilih, lalu tekan
-                        <kbd
-                            class="px-1.5 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600 font-mono">Enter</kbd>.
-                    </p>
 
                     <div class="flex justify-end space-x-3">
                         <button type="button" :disabled="isLoggingOut"

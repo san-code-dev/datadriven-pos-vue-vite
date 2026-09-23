@@ -6,6 +6,8 @@ import RevoGrid from '@revolist/vue3-datagrid'
 import GridNavigator from './GridNavigator.vue'
 import { getActiveCellState } from '@/composables/grid.ts'
 import { useTabStore } from '@/stores/tabs'
+import api from '@/lib/axios.ts'
+import SyncStatus from '@/components/SyncStatus.vue'
 
 interface Props {
     schemaData: any
@@ -19,6 +21,12 @@ const gridRef = ref()
 const navRef = ref<InstanceType<typeof GridNavigator> | null>(null);
 const props = defineProps<Props>()
 const emit = defineEmits(['close', 'select'])
+
+const syncStatusRef = ref<InstanceType<typeof SyncStatus> | null>(null)
+
+const setSyncStatus = (state: any, message: string, autoResetDelay = 3000) => {
+    syncStatusRef.value?.setStatus(state, message, autoResetDelay)
+}
 
 const tabStore = useTabStore()
 
@@ -143,6 +151,27 @@ const selectData = async () => {
     await emit('select', selectedData, props.context, props.relationInfo, props.eventDetail)
     emit('close')
 }
+const handleSearchInputSubmit = async (e: Event | string) => {
+    // Ambil nilai string baik dari Event maupun string langsung
+    const keyword = typeof e === 'string' ? e : (e.target as HTMLInputElement).value
+
+    setSyncStatus('loading', 'Mencari data..')
+
+    try {
+        const response = await api.get(`/${props.relationInfo.entity}/search-data`, {
+            params: { keyword }
+        })
+
+        console.log(response.data)
+        await nextTick()
+        focusBackToGrid()
+        setSyncStatus('success', 'Hasil pencarian ditampilkan')
+
+    } catch (err: any) {
+        console.error("[searchData] Gagal mencari data server:", err)
+        setSyncStatus('error', `Gagal memuat: ${err.message || 'Server Error'}`)
+    }
+}
 
 async function focusBackToGrid() {
     const grid = gridRef?.value?.$el
@@ -151,11 +180,13 @@ async function focusBackToGrid() {
     const startCoord = currentGridConfig.value?.coordinate || { x: 0, y: 0 }
     await grid?.setCellsFocus(startCoord, startCoord)
 }
+const handleInputSearchFocus = (event: FocusEvent) => {
+    const input = event.target as HTMLInputElement
+    input.select()
+}
 
-// Watch ketika modal dibuka (isOpen bernilai true)
-watch(() => props.isOpen, async (isOpen) => {
-    if (!isOpen || !props.schemaData) return;
-
+const loadComponentData = async () => {
+    if (!props.schemaData) return;
     const rawSchema = props.schemaData.schema || []
     const savedColumnsConfig = currentGridConfig.value?.column || []
 
@@ -180,6 +211,13 @@ watch(() => props.isOpen, async (isOpen) => {
     rows.value = props.schemaData.data || []
     await nextTick()
     focusBackToGrid()
+}
+
+// Watch ketika modal dibuka (isOpen bernilai true)
+watch(() => props.isOpen, async (isOpen) => {
+    if (!isOpen) return;
+    loadComponentData()
+
 }, { immediate: true })
 </script>
 
@@ -212,6 +250,36 @@ watch(() => props.isOpen, async (isOpen) => {
                         <Icon icon="heroicons:x-mark-20-solid" class="w-4 h-4" />
                     </button>
                 </div>
+                <div
+                    class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800/60">
+
+                    <div class="flex items-center gap-3 text-xs  p-2 text-slate-500 dark:text-slate-400 select-none">
+
+                        <div class="relative">
+
+                            <Icon icon="mdi:magnify"
+                                class="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500 transition-colors peer-focus:text-emerald-500" />
+
+
+
+                            <input ref="searchInputRef" type="search" @focus="handleInputSearchFocus"
+                                class="peer filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-8 pr-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                placeholder="Ctrl + / cari lalu enter"
+                                @search="($event.target as HTMLInputElement).value === '' ? loadComponentData() : null"
+                                @keydown.enter.prevent="handleSearchInputSubmit(($event.target as HTMLInputElement).value)"
+                                @keydown.escape.prevent="focusBackToGrid()">
+
+                        </div>
+
+
+                        <div class="flex items-center gap-1">
+                            <span class="font-medium text-slate-700 dark:text-slate-300">{{ rows.length }}</span>
+                            <span>items</span>
+                        </div>
+                        <SyncStatus ref="syncStatusRef" />
+                    </div>
+                </div>
+
 
                 <!-- BODY / GRID CONTAINER -->
                 <div :style="{ height: computedModalHeight }"

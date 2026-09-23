@@ -32,11 +32,11 @@
 
 
 
-						<input ref="searchInputRef" type="search" @focus="handleFocus"
+						<input ref="searchInputRef" type="search" @focus="handleInputSearchFocus"
 							class="peer filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-8 pr-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
 							placeholder="Ctrl + / cari lalu enter"
 							@search="($event.target as HTMLInputElement).value === '' ? fetchGridData() : null"
-							@keydown.enter.prevent="searchData(($event.target as HTMLInputElement).value)"
+							@keydown.enter.prevent="handleSearchInputSubmit(($event.target as HTMLInputElement).value)"
 							@keydown.escape.prevent="focusBackToGrid()">
 
 					</div>
@@ -85,7 +85,7 @@
 			</div>
 			<SelectDialog :schema-data="selectDialogDataSchema" :event-detail="selectDialogEventDetail"
 				:relation-info="selectDialogRelationInfo" :context="selectDialogContext" :is-open="isSelectDialogOpen"
-				@close="closeSelectDialog" @select="selectDialogSelectData" />
+				@close="handleSelectDialogClosed" @select="handleSelectDialogDataSelected" />
 		</div>
 
 	</div>
@@ -115,7 +115,7 @@ import { getActiveCellState } from '@/composables/grid'
 const selectDialogDataSchema = ref<any>(null)
 const selectDialogRelationInfo = ref<any>(null)
 const selectDialogEventDetail = ref<any>(null)
-const selectDialogContext = ref<'filter' | 'data' | 'relation' | 'form' | null>(null)
+const selectDialogContext = ref<'filter' | 'relation' | null>(null)
 
 const isSelectDialogOpen = ref(false)
 
@@ -173,7 +173,6 @@ const columnTypes = {
 	date: new DateTypePlugin()
 }
 
-// 🟢 APPLY RESPONSE DATA
 const applyResponseData = async (serverData: any) => {
 	if (!serverData) return
 
@@ -204,30 +203,7 @@ const applyResponseData = async (serverData: any) => {
 	}
 }
 
-// 🟢 SAFE GRID RENDER: Dengan timeout fallback untuk cegah listener menggantung jika render batal
-const waitForGridRender = (): Promise<void> => {
-	return new Promise((resolve) => {
-		const gridEl = gridRef.value?.$el
-		if (!gridEl) return resolve()
 
-		let safetyTimer: ReturnType<typeof setTimeout> | null = null
-
-		const handleRender = () => {
-			if (safetyTimer) clearTimeout(safetyTimer)
-			gridEl.removeEventListener('afterrender', handleRender)
-			resolve()
-		}
-
-		safetyTimer = setTimeout(() => {
-			gridEl.removeEventListener('afterrender', handleRender)
-			resolve()
-		}, 300)
-
-		gridEl.addEventListener('afterrender', handleRender)
-	})
-}
-
-// 🟢 SAFE FLASH ROW: Mencegah error/leak jika komponen di-unmount saat animasi berjalan
 function flashRowDirectly(rowIndex: number, color: string = 'rgba(59, 130, 246, 0.45)', duration: number = 300) {
 	if (!gridRef.value?.$el) return
 
@@ -274,16 +250,11 @@ const handleRealtimeMutation = async (action: 'CREATE' | 'UPDATE' | 'DELETE', id
 		const index = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
 
 		if (index !== -1) {
-			const renderPromise = waitForGridRender()
 			rows.value[index] = { ...rows.value[index], ...updatedRecord }
 			rows.value = [...rows.value]
-			await renderPromise
 			flashRowDirectly(index, COLOR_UPDATE, 100)
 		} else {
-			const renderPromise = waitForGridRender()
 			rows.value = [...rows.value, updatedRecord]
-			await renderPromise
-
 			const newIndex = rows.value.findIndex((row: any) => row[primaryKey.value] === id)
 			if (newIndex !== -1) {
 				flashRowDirectly(newIndex, COLOR_CREATE, 100)
@@ -319,7 +290,7 @@ const fetchGridData = async () => {
 	}
 }
 
-const searchData = async (e: Event | string) => {
+const handleSearchInputSubmit = async (e: Event | string) => {
 	// Ambil nilai string baik dari Event maupun string langsung
 	const keyword = typeof e === 'string' ? e : (e.target as HTMLInputElement).value
 
@@ -339,7 +310,6 @@ const searchData = async (e: Event | string) => {
 		setSyncStatus('error', `Gagal memuat: ${err.message || 'Server Error'}`)
 	}
 }
-
 
 const loadComponentData = async () => {
 	const res = props.schemaData
@@ -558,17 +528,7 @@ const handleDeleteKey = async () => {
 	}
 }
 
-async function handleOpenSelectDialog({
-	keyword,
-	context,
-	eventDetail,
-	relationInfo,
-}: {
-	keyword?: string,
-	eventDetail?: any,
-	context?: 'filter' | 'data' | 'relation',
-	relationInfo: any
-}) {
+async function handleOpenSelectDialog({ keyword, context, eventDetail, relationInfo, }: { keyword?: string, eventDetail?: any, context?: 'filter' | 'relation', relationInfo: any }) {
 	try {
 		const targetEntity = relationInfo.entity
 		const response = await api.get(`/${targetEntity}/search-data`, {
@@ -587,7 +547,7 @@ async function handleOpenSelectDialog({
 	}
 }
 
-const selectDialogSelectData = async (selectedData: any, context: any, relationInfo: any, eventDetail: any) => {
+const handleSelectDialogDataSelected = async (selectedData: any, context: any, relationInfo: any, eventDetail: any) => {
 	if (!selectedData || !relationInfo || !context) {
 		console.error('[selectDialogSelectData] Data tidak lengkap:', {
 			selectedData,
@@ -614,10 +574,10 @@ const selectDialogSelectData = async (selectedData: any, context: any, relationI
 			}
 		})
 	}
-	closeSelectDialog()
+	handleSelectDialogClosed()
 }
 
-const closeSelectDialog = () => {
+const handleSelectDialogClosed = () => {
 	isSelectDialogOpen.value = false
 	focusBackToGrid()
 }
@@ -627,16 +587,12 @@ const handleFilterChanged = (filter: any) => {
 	fetchGridData()
 }
 
-const handleFocus = (event: FocusEvent) => {
+const handleInputSearchFocus = (event: FocusEvent) => {
 	const input = event.target as HTMLInputElement
 	input.select()
 }
 
 const focusBackToGrid = async () => {
-	if (!gridRef.value?.$el) return
-
-	await waitForGridRender()
-
 	const grid = gridRef.value?.$el
 	if (!grid) return
 
@@ -645,6 +601,7 @@ const focusBackToGrid = async () => {
 	const startCoord = currentGridConfig.value?.coordinate || { x: 0, y: 0 }
 	grid.setCellsFocus?.(startCoord, startCoord)
 }
+
 const clearGridFocus = () => {
 	try {
 		const gridEl = gridRef.value?.$el
@@ -748,6 +705,7 @@ const destroyAll = () => {
 watch(() => props.schemaData, async () => {
 	loadComponentData()
 })
+
 // Watcher perpindahan tab
 watch(() => tabStore.activeTabId, (newActiveTabId, oldActiveTabId) => {
 	const currentTabRoute = props.menu?.route || route.path
@@ -768,10 +726,13 @@ watch(() => tabStore.activeTabId, (newActiveTabId, oldActiveTabId) => {
 		focusBackToGrid()
 	}
 }, { immediate: false })
+
 useRealtimeSync(formKey, applyResponseData, gridRef)
+
 onBeforeUnmount(() => {
 	destroyAll()
 })
+
 onMounted(async () => {
 	loadComponentData()
 	window.addEventListener('keydown', handleGlobalKeyDown)

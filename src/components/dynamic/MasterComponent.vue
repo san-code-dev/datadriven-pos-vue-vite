@@ -318,13 +318,15 @@ const loadComponentData = async () => {
 
 	const savedColumnsConfig = currentGridConfig.value?.column || []
 
-	columns.value = (res.schema || []).map((field: any) => {
+	// 1. Buat konfigurasi seluruh kolom seperti biasa
+	const allColumns = (res.schema || []).map((field: any) => {
 		const savedCol = savedColumnsConfig.find((c: any) => c.key === field.key)
 
 		const columnConfig: Record<string, any> = {
 			prop: field.key,
 			name: field.label,
 			size: savedCol ? savedCol.size : field.size,
+			isHidden: field.isHidden || false,
 			readonly: field.readonly || false,
 			required: field.required || false,
 			_type: field.type || 'text',
@@ -358,6 +360,9 @@ const loadComponentData = async () => {
 		}
 		return columnConfig
 	})
+
+	// 2. Filter kolom yang TIDAK disembunyikan
+	columns.value = allColumns.filter((col: any) => !col.isHidden)
 
 	primaryKey.value = (res.schema || []).find((f: any) => f.primary)?.key || 'id'
 	permission.value = res.permissions || {}
@@ -556,9 +561,39 @@ const handleSelectDialogDataSelected = async (selectedData: any, context: any, r
 		})
 		return
 	}
+
+
 	if (context === 'filter') {
-		alert('not implemented')
+		const selectedValue = selectedData[relationInfo.entityKey]
+		const currentRoute = props.menu?.route || route.path
+		const currentFilters = filterStore.getFiltersByTab(currentRoute)
+		console.log(selectedValue)
+		const newFilterItem: FilterItem = {
+			field: relationInfo.entityKeySetTo,
+			operator: 'equals',
+			value: selectedValue
+			//[selectedValue] 
+		}
+
+		const updatedFilters = [...currentFilters]
+		const existingIndex = updatedFilters.findIndex(
+
+			item => item.field === relationInfo.entityKey
+
+		)
+		console.log(updatedFilters, '==>', relationInfo)
+
+		if (existingIndex !== -1) {
+			updatedFilters[existingIndex] = newFilterItem
+			console.log('ketemu')
+		}
+
+		filterStore.setFilters(currentRoute, updatedFilters)
+		handleFilterChanged(updatedFilters)
 	}
+
+
+
 	if (context === 'relation') {
 		const selectedValue = selectedData[relationInfo.entityKey]
 

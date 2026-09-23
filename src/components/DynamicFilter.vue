@@ -106,27 +106,26 @@
 
                         <!-- Ambil config skema field relasi -->
                         <template v-if="getFieldConfig(item.field)">
-                            <input type="text" :value="item.value" placeholder="Pilih..." readonly @change="e => {
-                                const target = e.target;
-                                emit('open-select-dialog', {
-                                    value: target.value,
-                                    type: 'relation',
-                                    entity: getFieldConfig(item.field)?.entity,
-                                    key: item.field,
-                                    relationKey: getFieldConfig(item.field)?.relationKey
-                                });
-                            }"
-                                class="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all pr-8" />
+                            <input type="search" :value="item.value" placeholder="Pilih..."
+                                class="filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
 
                             <Icon icon="mdi:magnify"
-                                class="w-5 h-5 absolute right-1 rounded-md top-[3px] p-1 bg-emerald-200 dark:bg-slate-800 text-emerald-500 cursor-pointer hover:text-emerald-500"
-                                @click="emit('open-select-dialog', {
-                                    value: item.value || '',
-                                    type: 'relation',
-                                    entity: getFieldConfig(item.field)?.entity,
-                                    key: item.field,
-                                    relationKey: getFieldConfig(item.field)?.relationKey
-                                })" />
+                                class="w-5 h-5 absolute right-1 rounded-md p-1 bg-emerald-200 dark:bg-slate-700 text-emerald-500 cursor-pointer hover:text-emerald-500"
+                                @click="e => {
+                                    const fieldKey = item.field.key;
+                                    emit('open-select-dialog', {
+                                        keyword: '',
+                                        context: 'filter',
+                                        eventDetail: e.detail,
+                                        relationInfo: {
+                                            entity: getFieldConfig(item.field)?.entity,
+                                            entityKey: item.field,
+                                            entityKeySetTo: item.field,
+                                            fieldsToShow: getFieldConfig(item.field)?.fieldsToShow,
+                                        }
+                                    })
+                                }
+                                " />
                         </template>
 
                     </div>

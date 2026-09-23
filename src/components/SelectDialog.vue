@@ -235,7 +235,7 @@ watch(() => props.isOpen, async (isOpen) => {
                     class="flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800/80 shrink-0">
                     <div class="flex items-center gap-3">
                         <div
-                            class="flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+                            class="flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
                             <Icon icon="heroicons:table-cells-20-solid" class="w-4 h-4" />
                         </div>
                         <div>

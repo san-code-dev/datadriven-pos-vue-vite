@@ -227,11 +227,13 @@ watch(() => route.path, fetchSchemaFromApi, { immediate: true })
                 </div>
 
                 <!-- Tab Render -->
-                <div v-for="tab in tabStore.openedTabs" :key="tab.id + (tab.refreshKey || 0)"
-                    v-show="tabStore.activeTabId === tab.id && !isError" :data-tab-id="tab.id" class="w-full h-full">
-                    <component v-if="tab.apiResponse && getComponentByType(tab.apiResponse.type)"
-                        :is="getComponentByType(tab.apiResponse.type)" :menu="tab.currentMenu"
-                        :schemaData="tab.apiResponse" />
+                <div v-for="tab in tabStore.openedTabs" :key="tab.id + (tab.refreshKey || 0)" :data-tab-id="tab.id">
+                    <div v-if="tabStore.activeTabId === tab.id && !isError" class="w-full h-full">
+                        <component v-if="tab.apiResponse && getComponentByType(tab.apiResponse.type)"
+                            :is="getComponentByType(tab.apiResponse.type)" :menu="tab.currentMenu"
+                            :schemaData="tab.apiResponse" />
+                    </div>
+
                 </div>
 
                 <!-- Error Screen -->

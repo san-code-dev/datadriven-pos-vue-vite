@@ -462,6 +462,7 @@ const handleGlobalKeyDown = (e: KeyboardEvent) => {
 		e.preventDefault()
 		clearGridFocus()
 		searchInputRef.value?.focus()
+		console.log(1)
 	}
 }
 
@@ -714,7 +715,7 @@ const saveCurrentStateToStore = async (event: any) => {
 const cleanupOnTabLeave = () => {
 	clearGridFocus()
 	window.removeEventListener('keydown', handleGlobalKeyDown)
-
+	console.log('cleaned!')
 	// Bersihkan timer/timeout jika ada
 	activeTimeouts.forEach(timer => clearTimeout(timer))
 	activeTimeouts.clear()
@@ -754,10 +755,6 @@ watch(() => tabStore.activeTabId, (newActiveTabId, oldActiveTabId) => {
 	// KONDISI 2: Pengguna KEMBALI ke tab ini
 	if (newActiveTabId === currentTabRoute) {
 		activeFilters.value = filterStore.getFiltersByTab(currentTabRoute) || {}
-
-		// Pasang kembali global event listener jika diperlukan
-		window.addEventListener('keydown', handleGlobalKeyDown)
-
 		focusBackToGrid()
 	}
 }, { immediate: false })

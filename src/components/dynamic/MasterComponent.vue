@@ -462,7 +462,6 @@ const handleGlobalKeyDown = (e: KeyboardEvent) => {
 		e.preventDefault()
 		clearGridFocus()
 		searchInputRef.value?.focus()
-		console.log(1)
 	}
 }
 

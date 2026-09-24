@@ -632,8 +632,8 @@ onBeforeUnmount(() => {
               @keydown.enter.prevent="handleInputChange($event, field)" @change="handleInputChange($event, field)"
               class="w-full pl-2.5 pr-8 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" />
             <button type="button" @click="handleInputChange($event, field)"
-              class="absolute right-1 p-1 rounded-md text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <Icon icon="mdi:magnify" class="w-4 h-4" />
+              class="absolute right-0 m-0.5 p-1 rounded-md text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <Icon icon="mdi:magnify" class="w-3 h-3" />
             </button>
           </div>
 

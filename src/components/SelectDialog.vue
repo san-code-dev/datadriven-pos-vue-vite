@@ -22,6 +22,7 @@ const navRef = ref<InstanceType<typeof GridNavigator> | null>(null);
 const props = defineProps<Props>()
 const emit = defineEmits(['close', 'select'])
 
+const searchInputRef = ref<HTMLInputElement | null>(null)
 const syncStatusRef = ref<InstanceType<typeof SyncStatus> | null>(null)
 
 const setSyncStatus = (state: any, message: string, autoResetDelay = 3000) => {
@@ -105,8 +106,36 @@ const saveCurrentStateToStore = async (event: CustomEvent) => {
         column: updatedColumns.map(col => ({ key: col.prop, size: col.size }))
     })
 }
-
+const clearGridFocus = () => {
+    try {
+        const gridEl = gridRef.value?.$el
+        if (gridEl) {
+            // Hapus fokus dari shadow root / element aktif jika ada
+            if (typeof gridEl.clearFocus === 'function') {
+                gridEl.clearFocus()
+            }
+            if (typeof gridEl.blur === 'function') {
+                gridEl.blur()
+            }
+        }
+        // Pastikan fokus kembali ke document body agar tidak mengendap di Web Component
+        if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur()
+        }
+    } catch (err) {
+        // Mencegah unmount crash jika method RevoGrid sudah tidak terjangkau
+        console.warn('[Grid] Error clearing focus during unmount:', err)
+    }
+}
 const handleKeyDown = (e: KeyboardEvent) => {
+
+
+    if (e.key === '/' && e.ctrlKey) {
+        e.preventDefault()
+        clearGridFocus()
+        searchInputRef.value?.focus()
+    }
+
     if (e.key === 'Enter') {
         selectData()
     }
@@ -162,7 +191,7 @@ const handleSearchInputSubmit = async (e: Event | string) => {
             params: { keyword }
         })
 
-        console.log(response.data)
+        rows.value = response.data.data || response.data || []
         await nextTick()
         focusBackToGrid()
         setSyncStatus('success', 'Hasil pencarian ditampilkan')
@@ -227,7 +256,7 @@ watch(() => props.isOpen, async (isOpen) => {
             class="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm sm:p-6 md:p-10"
             @click.self="closeDialog">
 
-            <div :style="{ width: computedModalWidth, maxWidth: '95vw', maxHeight: '90vh' }"
+            <div :style="{ width: computedModalWidth, maxWidth: '75vw', maxHeight: '90vh' }"
                 class="flex flex-col overflow-hidden bg-white dark:bg-slate-900 shadow-2xl ring-1 ring-slate-900/10 dark:ring-slate-100/10 transform transition-all duration-300">
 
                 <!-- HEADER & ACTIONS -->

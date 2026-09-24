@@ -7,11 +7,11 @@ import type { ColumnRegular } from '@revolist/revogrid'
 import GridNavigator from '@/components/GridNavigator.vue'
 import SyncStatus from '../SyncStatus.vue'
 import api from '@/lib/axios'
-import { useTabStore } from '@/stores/tabs' // Pastikan sudah diimport
+import { useTabStore } from '@/stores/tabs'
 import { useNumberFormat } from '@/composables/number-format.ts'
 import { useRealtimeSync } from '@/composables/useRealtimeSync'
 import { useRouter } from 'vue-router'
-import { getActiveCellState, gridFocus } from '@/composables/grid.ts'
+import { getActiveCellState } from '@/composables/grid.ts'
 
 import NumberColumnType from '@revolist/revogrid-column-numeral'
 import DateTypePlugin from '@revolist/revogrid-column-date'
@@ -67,6 +67,12 @@ const formKey = computed(() => (schema.value?.key || '').toLowerCase())
 
 const headerSchema = computed(() => schema.value?.header?.schema || [])
 const detailsSchema = computed(() => schema.value?.details?.schema || [])
+
+// 🔹 Filter Header Schema: Hanya ambil field yang TIDAK hidden
+const visibleHeaderSchema = computed(() =>
+  headerSchema.value.filter((field) => !field.isHidden)
+)
+
 const permission = computed(() => schema.value?.permissions || {})
 
 const headerData = computed(() => schema.value?.header?.data ?? null)
@@ -77,7 +83,6 @@ const activeHeaderId = computed(() => headerData.value?.id ?? null)
 const primaryKeyFieldName = computed(
   () => detailsSchema.value.find((f) => f.primary)?.key || undefined
 )
-
 
 const currentGridConfig = computed(() => {
   const activeTabId = tabStore.activeTabId
@@ -129,39 +134,41 @@ const saveCurrentStateToStore = async (event: any) => {
   })
 }
 
+// 🔹 Filter Details Schema: Hanya petakan kolom yang TIDAK hidden
 const columns = computed(() => {
   const savedColumnsConfig = currentGridConfig.value?.column || []
 
-  return detailsSchema.value.map((field) => {
-    const savedCol = savedColumnsConfig.find((c: any) => c.key === field.key)
+  return detailsSchema.value
+    .filter((field) => !field.isHidden) // <--- Array Filter untuk membuang field hidden di tabel
+    .map((field) => {
+      const savedCol = savedColumnsConfig.find((c: any) => c.key === field.key)
 
-    const columnConfig: ColumnRegular & Record<string, any> = {
-      prop: field.key,
-      name: field.label,
-      size: savedCol ? savedCol.size : (field.size || 150), // Memuat ukuran dari Pinia jika ada
-      readonly: field.readonly || false,
-      required: field.validation?.required || false,
-      _type: field.type || 'text',
-      _primary: field.primary || false
-    }
+      const columnConfig: ColumnRegular & Record<string, any> = {
+        prop: field.key,
+        name: field.label,
+        size: savedCol ? savedCol.size : (field.size || 150),
+        readonly: field.readonly || false,
+        required: field.validation?.required || false,
+        _type: field.type || 'text',
+        _primary: field.primary || false
+      }
 
-    if (['number', 'integer'].includes(field.type)) columnConfig.columnType = 'numeric'
-    else if (['decimal', 'currency'].includes(field.type)) columnConfig.columnType = 'decimal'
-    else if (field.type === 'date') {
-      columnConfig.columnType = 'date'
-      columnConfig.appendTo = 'body'
-
-    }
-    else if (field.type === 'select') {
-      columnConfig.columnType = 'select'
-      columnConfig.labelKey = 'label'
-      columnConfig.valueKey = 'value'
-      columnConfig.appendTo = 'body'
-      columnConfig.source = field.options || []
-      columnConfig.editorProperties = { appendToBody: true }
-    }
-    return columnConfig
-  })
+      if (['number', 'integer'].includes(field.type)) columnConfig.columnType = 'numeric'
+      else if (['decimal', 'currency'].includes(field.type)) columnConfig.columnType = 'decimal'
+      else if (field.type === 'date') {
+        columnConfig.columnType = 'date'
+        columnConfig.appendTo = 'body'
+      }
+      else if (field.type === 'select') {
+        columnConfig.columnType = 'select'
+        columnConfig.labelKey = 'label'
+        columnConfig.valueKey = 'value'
+        columnConfig.appendTo = 'body'
+        columnConfig.source = field.options || []
+        columnConfig.editorProperties = { appendToBody: true }
+      }
+      return columnConfig
+    })
 })
 
 // ==========================================
@@ -174,10 +181,8 @@ const setSyncStatus = (state: any, message: string) => {
 const applyResponseData = (socketIoData: any) => {
   if (!socketIoData || !schema.value) return
 
-  // Ambil objek 'data' utama dari payload Socket.IO
   const payload = socketIoData.data || socketIoData
 
-  // Update data ke schema
   if (payload.queue?.data) {
     schema.value.queue.data = payload.queue.data
   }
@@ -190,6 +195,7 @@ const applyResponseData = (socketIoData: any) => {
     schema.value.details = payload.details
   }
 }
+
 const loadComponentData = () => {
   if (!props.schemaData) return
   schema.value = props.schemaData
@@ -205,7 +211,6 @@ const loadTransaction = async (id: number) => {
     setSyncStatus('error', `Gagal memuat transaksi: ${err.message}`)
   }
 }
-
 
 const updateHeaderData = async (fieldKey?: string, value?: any) => {
   if (!activeHeaderId.value || !fieldKey) {
@@ -437,7 +442,6 @@ const clearGridFocus = () => {
   try {
     const gridEl = gridRef.value?.$el
     if (gridEl) {
-      // Hapus fokus dari shadow root / element aktif jika ada
       if (typeof gridEl.clearFocus === 'function') {
         gridEl.clearFocus()
       }
@@ -445,12 +449,10 @@ const clearGridFocus = () => {
         gridEl.blur()
       }
     }
-    // Pastikan fokus kembali ke document body agar tidak mengendap di Web Component
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur()
     }
   } catch (err) {
-    // Mencegah unmount crash jika method RevoGrid sudah tidak terjangkau
     console.warn('[Grid] Error clearing focus during unmount:', err)
   }
 }
@@ -474,8 +476,7 @@ async function handleOpenSelectDialog({ keyword, context, eventDetail, relationI
   }
 }
 
-
-async function getTransactionHistory(event) {
+async function getTransactionHistory(event: any) {
   handleOpenSelectDialog({
     keyword: '',
     context: 'history',
@@ -509,9 +510,6 @@ const handleSelectDialogClosed = () => {
   focusBackToGrid()
 }
 
-
-
-
 async function focusBackToGrid() {
   await nextTick()
   const grid = gridRef?.value?.$el
@@ -521,7 +519,6 @@ async function focusBackToGrid() {
   await grid?.scrollToCoordinate(startCoord)
   grid?.setCellsFocus(startCoord, startCoord)
 }
-
 
 const handleInputChange = (e: Event, field: any) => {
   const target = e.target as HTMLInputElement;
@@ -540,10 +537,6 @@ const handleInputChange = (e: Event, field: any) => {
     relationInfo
   });
 };
-
-
-
-
 
 // ==========================================
 // 5. WATCHERS & LIFECYCLE HOOKS
@@ -566,175 +559,191 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleGlobalKeyDown, true)
 })
-
-
 </script>
 
 <template>
-  <div class="flex h-full max-h-full overflow-hidden min-h-0 w-full text-slate-800 dark:text-slate-100">
-    <div class="flex-1 flex flex-col h-full overflow-hidden min-h-0 relative">
+  <div
+    class="flex flex-col h-full max-h-full overflow-hidden w-full bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans">
 
+    <!-- 1. HEADER UTAMA: TABS ANTREAN (DRAFTS) & HISTORY -->
+    <header
+      class="flex items-center justify-between gap-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 py-2 shrink-0 z-20">
 
-      <div class="flex flex-1 flex-col min-h-0 overflow-hidden relative w-full">
+      <!-- List Tab Antrean -->
+      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+        <button @click="getTransactionHistory"
+          class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-400"
+          title="Lihat Riwayat Transaksi">
+          <Icon icon="mdi:history" class="w-4 h-4 text-slate-500" />
+          <span>Riwayat</span>
+        </button>
 
-        <div class="flex-1 min-h-0 w-full relative group overflow-hidden z-10">
-          <RevoGrid hide-attribution ref="gridRef" class="w-full h-full max-h-full focus:outline-none"
-            :columns="columns" :source="detailsData" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true"
-            :auto-size-column="true" @afteredit="afterEdit" @beforeedit="beforeEdit" @keydown="handleKeyDown"
-            @afterfocus="saveCurrentStateToStore" @aftercolumnresize="saveCurrentStateToStore"
-            :column-types="columnTypes" />
-          <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="detailsData" :columns="columns" />
+        <div class="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-1 shrink-0"></div>
 
+        <button v-for="item in queueData" :key="item.id" @click="loadTransaction(item.id)" :class="[
+          'px-3 py-1.5 text-xs font-medium flex items-center gap-2 rounded-lg transition-all whitespace-nowrap shrink-0 group border',
+          activeHeaderId === item.id
+            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/60 shadow-sm'
+            : 'bg-slate-50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800'
+        ]">
+          <span class="w-2 h-2 rounded-full transition-all"
+            :class="activeHeaderId === item.id ? 'bg-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-900' : 'bg-slate-300 dark:bg-slate-600 group-hover:bg-slate-400'"></span>
+          <span>{{ item.label || `Draft #${item.id}` }}</span>
+        </button>
 
-          <!-- MODAL PENCARIAN PRODUK -->
-          <div v-if="showSearchModal" @click.self="closeSearchModal"
-            class="absolute backdrop-blur-sm flex inset-0 items-center justify-center transition-all z-50">
-            <div
-              class="bg-white dark:bg-slate-800 w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden p-3 mx-4"
-              @keydown.stop>
-              <form @submit.prevent="handleSearchSubmit" class="flex items-center relative">
-                <div class="absolute left-3.5 text-slate-400 pointer-events-none flex items-center justify-center">
-                  <Icon icon="mdi:magnify" class="w-5 h-5" />
-                </div>
-                <input ref="searchInputRef" v-model="detailSearchQuery" type="text" @keydown.escape="closeSearchModal()"
-                  placeholder="Ketik Kode/Nama barang lalu tekan Enter untuk menambah..."
-                  class="w-full pl-11 pr-20 py-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-400 transition-all" />
-                <div class="absolute right-3 flex items-center gap-1.5 pointer-events-none"> <kbd
-                    class="px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-600 rounded shadow-sm">
-                    Enter ↩
-                  </kbd>
-                  <button type="button" @click="closeSearchModal"
-                    class="pointer-events-auto text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                    Esc
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+        <button @click="handleNewTransaction"
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 border border-dashed border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all shrink-0 ml-1 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          title="Tambah Antrean Baru (F2)">
+          <Icon icon="mdi:plus" class="w-4 h-4" />
+          <span>Baru <kbd class="text-[10px] opacity-70 font-mono">[F2]</kbd></span>
+        </button>
+      </div>
 
+    </header>
 
+    <!-- 2. FORM HEADER TRANSAKSI -->
+    <section
+      class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 shadow-sm shrink-0 z-10">
+      <div v-if="headerData" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 items-end">
+        <div v-for="field in visibleHeaderSchema" :key="field.key" :data-key="field.key" class="flex flex-col gap-1">
+          <label
+            class="text-[11px] font-medium tracking-wider text-slate-500 dark:text-slate-400 uppercase truncate flex items-center gap-1">
+            <span>{{ field.label }}</span>
+          </label>
 
-
-        </div>
-
-        <!-- TABS ANTREAN (DRAFTS) -->
-        <div class="flex items-center gap-1 dark:border-slate-800 shrink-0 overflow-hidden px-2 flex-wrap">
-          <button
-            class="flex text-xs font-extralight px-2 gap-1 py-1 rounded-md items-center text-slate-500 dark:hover:bg-slate-800 hover:bg-slate-200"
-            @click="getTransactionHistory">
-            <Icon icon="mdi:view-grid-outline" class="w-3.5 h-3.5" /> history
-          </button>
-
-          <button v-for="item in queueData" :key="item.id" @click="loadTransaction(item.id)" :class="[
-            'px-4 py-2 text-xs font-medium flex items-center gap-2 whitespace-nowrap shrink-0 relative',
-            activeHeaderId === item.id
-              ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-t-xl shadow-sm z-10' +
-              ' before:absolute before:bottom-0 before:-left-2.5 before:w-2.5 before:h-2.5 before:bg-transparent before:rounded-br-xl before:shadow-[4px_4px_0_4px_white] dark:before:shadow-[4px_4px_0_4px_rgb(30,41,59)]' +
-              ' after:absolute after:bottom-0 after:-right-2.5 after:w-2.5 after:h-2.5 after:bg-transparent after:rounded-bl-xl after:shadow-[-4px_4px_0_4px_white] dark:after:shadow-[-4px_4px_0_4px_rgb(30,41,59)]'
-              : 'bg-slate-100/60 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 rounded-lg'
+          <!-- Readonly Field -->
+          <div v-if="field.readonly" :class="[
+            'px-2.5 py-1.5 text-xs rounded-md border transition-all truncate flex items-center min-h-[30px]',
+            field.highlight
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-bold text-sm'
+              : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-200 font-medium'
           ]">
+            <template v-if="field.type === 'currency'">
+              {{ numberFormat.formatCurrency(headerData[field.key]) }}
+            </template>
+            <template v-else>
+              {{ headerData[field.key] || '-' }}
+            </template>
+          </div>
 
-            <span class="w-1.5 h-1.5 rounded-full"
-              :class="activeHeaderId === item.id ? 'bg-emerald-500' : 'bg-slate-400'"></span>
-            <span>{{ item.label || `Draft #${item.id}` }}</span>
+          <!-- Relation / Search Selector -->
+          <div v-else-if="field.type === 'relation'" class="relative flex items-center">
+            <input type="text" :value="headerData[field.key]" placeholder="Pilih data..."
+              @keydown.enter.prevent="handleInputChange($event, field)" @change="handleInputChange($event, field)"
+              class="w-full pl-2.5 pr-8 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" />
+            <button type="button" @click="handleInputChange($event, field)"
+              class="absolute right-1 p-1 rounded-md text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <Icon icon="mdi:magnify" class="w-4 h-4" />
+            </button>
+          </div>
 
-          </button>
-
-          <button @click="handleNewTransaction"
-            class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 dark:hover:text-emerald-400 bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-all flex items-center justify-center shrink-0 ml-1"
-            title="Tambah Antrean Baru (F2)">
-            <Icon icon="mdi:plus" class="w-4 h-4" />
-          </button>
+          <!-- General Input (Text, Date, Number) -->
+          <input v-else :type="field.type === 'date' ? 'datetime-local' : field.type === 'number' ? 'number' : 'text'"
+            :value="field.type === 'date' ? toLocalDatetimeLocal(headerData[field.key]) : headerData[field.key]" @input="e => {
+              const target = e.target as HTMLInputElement;
+              const val = field.type === 'date'
+                ? (target.value ? new Date(target.value).toISOString() : null)
+                : target.value;
+              headerData[field.key] = val;
+            }" @change="e => {
+              const target = e.target as HTMLInputElement;
+              const val = field.type === 'date'
+                ? (target.value ? new Date(target.value).toISOString() : null)
+                : target.value;
+              updateHeaderData(field.key, val);
+            }"
+            class="dark:[color-scheme:dark] px-2.5 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" />
         </div>
+      </div>
+    </section>
 
-        <!-- FORM HEADER -->
-        <div
-          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 border-t-0 px-3 py-2 transition-colors outline-none focus:ring-1 focus:ring-emerald-500 select-none">
-          <div v-if="headerData"
-            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 items-center">
+    <!-- 3. AREA GRID / TABEL ITEMS -->
+    <main class="flex-1 min-h-0 w-full relative overflow-hidden bg-slate-200 dark:bg-slate-950">
+      <RevoGrid hide-attribution ref="gridRef" class="w-full h-full focus:outline-none" :columns="columns"
+        :source="detailsData" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true" :auto-size-column="true"
+        @afteredit="afterEdit" @beforeedit="beforeEdit" @keydown="handleKeyDown" @afterfocus="saveCurrentStateToStore"
+        @aftercolumnresize="saveCurrentStateToStore" :column-types="columnTypes" />
+      <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="detailsData" :columns="columns" />
 
-            <div v-for="field in headerSchema" :key="field.key" :data-key="field.key" class="flex flex-col space-y-1"
-              :class="{ 'hidden': field.isHidden }">
-              <label
-                class="text-[10px] font-semibold tracking-wide text-slate-400 dark:text-slate-500 uppercase truncate">
-                {{ field.label }}
-              </label>
-
-              <div v-if="field.readonly" :class="[
-                'px-2 py-1 text-xs rounded border border-transparent bg-slate-50 dark:bg-slate-800/50 font-medium truncate',
-                field.highlight ? 'text-emerald-600 dark:text-emerald-400 font-bold text-[16px]  bg-emerald-50/50 dark:bg-emerald-950/30' : 'text-slate-700 dark:text-slate-200'
-              ]">
-                <template v-if="field.type === 'currency'">
-                  {{ numberFormat.formatCurrency(headerData[field.key]) }}
-                </template>
-                <template v-else>
-                  {{ headerData[field.key] || '-' }}
-                </template>
-              </div>
-
-              <div v-else-if="field.type === 'relation'" class="relative">
-                <input type="text" :value="headerData[field.key]" :placeholder="`Pilih...`"
-                  @keydown.enter.prevent="handleInputChange($event, field)" @change="handleInputChange($event, field)"
-                  class="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all pr-6" />
-                <Icon icon="mdi:magnify"
-                  class="w-5 h-5 absolute right-1 rounded-md top-[3px] p-1 bg-emerald-200 dark:bg-slate-800 text-emerald-500 cursor-pointer hover:text-emerald-500"
-                  @click="handleInputChange($event, field)" />
-              </div>
-
-              <!-- Input teks, angka, atau tanggal -->
-              <input v-else
-                :type="field.type === 'date' ? 'datetime-local' : field.type === 'number' ? 'number' : 'text'"
-                :value="field.type === 'date' ? toLocalDatetimeLocal(headerData[field.key]) : headerData[field.key]"
-                @input="e => {
-                  const target = e.target as HTMLInputElement;
-                  const val = field.type === 'date'
-                    ? (target.value ? new Date(target.value).toISOString() : null)
-                    : target.value;
-
-                  headerData[field.key] = val;
-                }" @change="e => {
-                  const target = e.target as HTMLInputElement;
-                  const val = field.type === 'date'
-                    ? (target.value ? new Date(target.value).toISOString() : null)
-                    : target.value;
-
-                  updateHeaderData(field.key, val);
-                }"
-                class="dark:[color-scheme:dark] px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all" />
+      <!-- MODAL PENCARIAN PRODUK -->
+      <Transition enter-active-class="transition duration-150 ease-out" enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100" leave-active-class="transition duration-100 ease-in"
+        leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
+        <div v-if="showSearchModal" @click.self="closeSearchModal"
+          class="absolute inset-0 bg-slate-900/40 backdrop-blur-xs flex items-start justify-center pt-16 z-50 p-4 overflow-y-auto">
+          <div
+            class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-3"
+            @keydown.stop>
+            <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+              <span class="font-medium flex items-center gap-1.5">
+                <Icon icon="mdi:package-variant-closed" class="w-4 h-4 text-emerald-500" />
+                Cari & Tambah Produk
+              </span>
+              <span class="text-[11px]">Tekan <kbd
+                  class="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded border border-slate-300 dark:border-slate-700">ESC</kbd>
+                untuk tutup</span>
             </div>
+
+            <form @submit.prevent="handleSearchSubmit" class="relative flex items-center">
+              <Icon icon="mdi:magnify" class="w-5 h-5 absolute left-3 text-slate-400 pointer-events-none" />
+
+              <input ref="searchInputRef" v-model="detailSearchQuery" type="text" @keydown.escape="closeSearchModal()"
+                placeholder="Ketik Kode / Nama barang lalu tekan Enter..."
+                class="w-full pl-10 pr-20 py-2.5 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm rounded-lg border border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent placeholder-slate-400 transition-all shadow-inner" />
+
+              <div class="absolute right-2 flex items-center gap-1">
+                <button type="submit"
+                  class="px-2.5 py-1 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-md shadow-sm transition-all">
+                  Tambah ↵
+                </button>
+              </div>
+            </form>
           </div>
         </div>
+      </Transition>
+    </main>
+
+    <!-- 4. FOOTER SUMMARY & ACTION BUTTONS -->
+    <footer
+      class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 py-2.5 flex flex-wrap gap-3 items-center justify-between shrink-0 z-20">
+
+      <!-- Info Ringkasan -->
+      <div class="flex items-center gap-4 text-xs text-slate-600 dark:text-slate-400">
+        <div
+          class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/60 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700/50">
+          <Icon icon="mdi:format-list-bulleted" class="w-4 h-4 text-slate-400" />
+          <span>Total Item:</span>
+          <span class="font-bold text-slate-800 dark:text-slate-200">{{ detailsData.length }}</span>
+        </div>
+        <SyncStatus ref="syncStatusRef" />
       </div>
 
-      <!-- FOOTER SUMMARY & ACTIONS -->
-      <div
-        class="bg-white border-b border-slate-200 flex flex-wrap gap-3 items-center justify-between px-4 py-2 transition-colors dark:bg-slate-900 dark:border-slate-800">
-        <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 select-none">
-          <div class="flex items-center gap-1">
-            <span class="font-medium text-slate-700 dark:text-slate-300">{{ detailsData.length }}</span>
-            <span>items</span>
-          </div>
-          <SyncStatus ref="syncStatusRef" />
-        </div>
-        <div class="flex items-center gap-2">
-          <button v-for="action in (schema.actions || [])" :key="action.key" @click="triggerCustomAction(action.key)"
-            class="btn-action-slate">
-            <span>{{ action.label }}</span>
-          </button>
-          <button @click="handleSaveTransaction" type="button" class="btn-action-emerald-600">
-            <span>Simpan Transaksi</span>
-            <kbd class="btn-kbd">[F9]</kbd>
-          </button>
-          <button @click="handleCancelTransaction" type="button" class="btn-action text-rose-600 dark:text-rose-400">
-            <span>Batal</span>
-          </button>
-        </div>
-      </div>
+      <!-- Tombol Aksi -->
+      <div class="flex items-center gap-2">
+        <button v-for="action in (schema.actions || [])" :key="action.key" @click="triggerCustomAction(action.key)"
+          class="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg border border-slate-300 dark:border-slate-700 transition-all focus:outline-none focus:ring-2 focus:ring-slate-400">
+          {{ action.label }}
+        </button>
 
-      <SelectDialog :schema-data="selectDialogDataSchema" :event-detail="selectDialogEventDetail"
-        :relation-info="selectDialogRelationInfo" :context="selectDialogContext" :is-open="isSelectDialogOpen"
-        @close="handleSelectDialogClosed" @select="handleSelectDialogDataSelected" />
-    </div>
+        <button @click="handleCancelTransaction" type="button"
+          class="px-3 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg border border-rose-200 dark:border-rose-900/50 transition-all focus:outline-none focus:ring-2 focus:ring-rose-400">
+          Batal
+        </button>
+
+        <button @click="handleSaveTransaction" type="button"
+          class="flex items-center gap-2 px-4 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-lg shadow-sm hover:shadow transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <Icon icon="mdi:content-save-outline" class="w-4 h-4" />
+          <span>Simpan Transaksi</span>
+          <kbd
+            class="px-1.5 py-0.5 text-[10px] font-mono bg-emerald-700/60 text-emerald-100 rounded border border-emerald-500/50">[F9]</kbd>
+        </button>
+      </div>
+    </footer>
+
+    <!-- DIALOG SELEKSI -->
+    <SelectDialog :schema-data="selectDialogDataSchema" :event-detail="selectDialogEventDetail"
+      :relation-info="selectDialogRelationInfo" :context="selectDialogContext" :is-open="isSelectDialogOpen"
+      @close="handleSelectDialogClosed" @select="handleSelectDialogDataSelected" />
   </div>
 </template>
 
@@ -743,12 +752,16 @@ onBeforeUnmount(() => {
   z-index: 10 !important;
 }
 
+/* Hide scrollbar for Chrome, Safari and Opera */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
+/* Hide scrollbar for IE, Edge and Firefox */
 .no-scrollbar {
   -ms-overflow-style: none;
+  /* IE and Edge */
   scrollbar-width: none;
+  /* Firefox */
 }
 </style>

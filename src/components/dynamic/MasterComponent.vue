@@ -468,11 +468,12 @@ const handleGlobalKeyDown = (e: KeyboardEvent) => {
 
 const handleKeyDown = async (e: KeyboardEvent) => {
 	if (e.repeat) {
-		if (e.key === 'Enter') {
+		if (e.key === 'Enter' || e.key === 'Delete' || e.key === 'Backspace') {
 			e.preventDefault()
 			e.stopPropagation()
+			return
 		}
-		return
+
 	}
 
 	const target = e.target as HTMLElement

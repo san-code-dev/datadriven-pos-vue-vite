@@ -1,7 +1,7 @@
 <template>
     <div ref="filterContainerRef"
         class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 transition-colors outline-none focus:ring-2 focus:ring-emerald-500/50 select-none rounded-xl"
-        tabindex="1" @keydown.stop="handleComponentKey" @mousedown="handleContainerMouseDown">
+        tabindex="1" @keydown="handleComponentKey" @mousedown="handleContainerMouseDown">
 
         <div class="flex items-center justify-between" :class="{ isExpanded }">
             <div class="flex items-center gap-2 text-slate-700 dark:text-slate-200">
@@ -184,7 +184,7 @@ const allowedSchema = computed(() => {
     return props.schema.filter(f =>
         f.type !== 'json' &&
         f.key !== 'action' &&
-        !f.hideFilter // <--- Tambahkan baris ini
+        !f.isHidden
     )
 })
 
@@ -213,6 +213,17 @@ const getAvailableOperators = (fieldKey) => {
             { value: 'less_than', label: 'Lebih Kecil (<)' },
             { value: 'less_or_equal', label: 'Lebih Kecil / Sama (≤)' },
             { value: 'between', label: 'Rentang Angka' },
+            { value: 'is_empty', label: 'Kosong' },
+            { value: 'is_not_empty', label: 'Tidak Kosong' },
+        ]
+    }
+
+    if (type === 'uuid') {
+        return [
+            { value: 'equals', label: 'Sama Dengan' },
+            { value: 'not_equals', label: 'Tidak Sama Dengan' },
+            { value: 'in', label: 'Termasuk dalam (Banyak ID)' },
+            { value: 'not_in', label: 'Tidak Termasuk dalam' },
             { value: 'is_empty', label: 'Kosong' },
             { value: 'is_not_empty', label: 'Tidak Kosong' },
         ]
@@ -259,7 +270,6 @@ const getAvailableOperators = (fieldKey) => {
         { value: 'is_not_empty', label: 'Tidak Kosong' },
     ]
 }
-
 const getInputType = (fieldKey) => {
     const config = getFieldConfig(fieldKey)
     if (!config) return 'text'
@@ -370,6 +380,7 @@ const focusInputAtRow = (rowIndex, inputIndex = 0) => {
 }
 
 const handleComponentKey = (e) => {
+    if (e.repeat) return
     if (e.key === 'Escape') {
         emit('escape-filter')
     }

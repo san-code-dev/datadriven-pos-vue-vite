@@ -44,5 +44,7 @@ export const useFilterStore = defineStore('filter', () => {
         setCollapseState
     }
 }, {
-    persist: true // Flag persistensi Pinia
+    persist: {
+        storage: sessionStorage
+    }
 })

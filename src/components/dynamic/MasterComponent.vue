@@ -715,8 +715,6 @@ const saveCurrentStateToStore = async (event: any) => {
 const cleanupOnTabLeave = () => {
 	clearGridFocus()
 	window.removeEventListener('keydown', handleGlobalKeyDown)
-	console.log('cleaned!')
-	// Bersihkan timer/timeout jika ada
 	activeTimeouts.forEach(timer => clearTimeout(timer))
 	activeTimeouts.clear()
 }

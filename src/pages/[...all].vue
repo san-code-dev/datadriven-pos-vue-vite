@@ -13,12 +13,14 @@ import DashboardContent from '@/components/DashboardContent.vue'
 import MasterComponent from '@/components/dynamic/MasterComponent.vue'
 import TransactionComponent from '@/components/dynamic/TransactionComponent.vue'
 import { useFilterStore } from '@/stores/filter'
+import { useTenantStore } from '@/stores/tenant'
 
 const route = useRoute()
 const router = useRouter()
 const tabStore = useTabStore()
 const authStore = useAuthStore()
 const filterStore = useFilterStore()
+const tenantStore = useTenantStore()
 
 const isError = ref(false)
 const isLoading = ref(false)
@@ -140,7 +142,6 @@ const fetchSchemaFromApi = () => {
         return routeMatch || masterKeyMatch
     })
 
-    console.log('matchedMenu:', matchedMenu, 'rootPath:', rootPath, 'pathSegments:', pathSegments)
 
     if (!matchedMenu) {
         isError.value = true
@@ -148,9 +149,9 @@ const fetchSchemaFromApi = () => {
         errorMessage.value = 'Halaman tidak ditemukan atau Anda tidak memiliki hak akses.'
         return
     }
-    // 3. CEK CACHE PINIA
-    const existingTab = tabStore.openedTabs.find(t => t.id === currentPath)
 
+    const existingTab = tabStore.openedTabs.find(t => t.id === currentPath)
+    document.title = `${matchedMenu.label} -${tenantStore.selectedTenant.name} | Vue Core`
     if (existingTab && existingTab.apiResponse) {
         // TAMPILKAN INSTAN dari Pinia
         tabStore.activeTabId = currentPath

@@ -50,9 +50,9 @@
 				</div>
 
 				<div class="flex flex-wrap items-center gap-2">
-					<button v-if="permission.create" @click="handleAddNewRow" type="button" class="btn-action-slate"
-						:disabled="syncStatusRef?.syncStatus.state === 'loading'">
-						<span>+ Tambah Baris</span>
+					<button v-if="permission.create" @click="handleCreateAction()" type="button"
+						class="btn-action-emerald-600" :disabled="syncStatusRef?.syncStatus.state === 'loading'">
+						<span>+ Tambah data</span>
 						<kbd class="btn-kbd">[F2]</kbd>
 					</button>
 
@@ -104,7 +104,7 @@ import api from '@/lib/axios'
 import { useTabStore } from '@/stores/tabs'
 import { useFilterStore } from '@/stores/filter'
 import { useTenantStore } from '@/stores/tenant'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import NumberColumnType from '@revolist/revogrid-column-numeral'
 import SelectTypePlugin from '@revolist/revogrid-column-select'
@@ -129,6 +129,7 @@ const COLOR_CREATE = 'rgba(34, 197, 94, 0.45)'  // Hijau
 const COLOR_DELETE = 'rgba(239, 68, 68, 0.45)'  // Merah
 
 const route = useRoute()
+const router = useRouter()
 const tabStore = useTabStore()
 const filterStore = useFilterStore()
 const tenantStore = useTenantStore()
@@ -226,6 +227,21 @@ function flashRowDirectly(rowIndex: number, color: string = 'rgba(59, 130, 246, 
 		})
 	}
 }
+
+
+const handleCreateAction = () => {
+	// Ambil masterKey dari schemaData
+	const masterKey = props.schemaData?.masterKey;
+
+	if (masterKey) {
+		// Normalisasi agar selalu ada leading slash '/'
+		const targetRoute = masterKey.startsWith('/') ? masterKey : `/${masterKey}`;
+		router.push(targetRoute);
+	} else {
+		// Jika masterKey undefined atau tidak ada, jalankan handler biasa
+		handleAddNewRow();
+	}
+};
 
 const handleRealtimeMutation = async (action: 'CREATE' | 'UPDATE' | 'DELETE', id: number) => {
 	if (action === 'DELETE') {

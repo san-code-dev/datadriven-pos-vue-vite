@@ -482,6 +482,9 @@ const handleGlobalKeyDown = (e: KeyboardEvent) => {
 }
 
 const handleKeyDown = async (e: KeyboardEvent) => {
+	if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && !e.altKey) {
+		return
+	}
 	const activeEl = document.activeElement as HTMLElement | null
 	const target = e.target as HTMLElement | null
 

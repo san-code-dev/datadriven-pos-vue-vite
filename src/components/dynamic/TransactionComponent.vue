@@ -46,7 +46,7 @@ const currentGridKey = computed(() => `${useTenantStore().selectedTenant?.code}-
 const selectDialogDataSchema = ref<any>(null)
 const selectDialogRelationInfo = ref<any>(null)
 const selectDialogEventDetail = ref<any>(null)
-const selectDialogContext = ref<'history' | 'relation-header' | 'relation-detail' | null>(null)
+const selectDialogContext = ref<'relation-header' | 'relation-detail' | null>(null)
 
 const isSelectDialogOpen = ref(false)
 const showSearchModal = ref(false)
@@ -457,7 +457,7 @@ const clearGridFocus = () => {
   }
 }
 
-async function handleOpenSelectDialog({ keyword, context, eventDetail, relationInfo, }: { keyword?: string, eventDetail?: any, context?: 'history' | 'relation-header' | 'relation-detail', relationInfo: any }) {
+async function handleOpenSelectDialog({ keyword, context, eventDetail, relationInfo, }: { keyword?: string, eventDetail?: any, context?: 'relation-header' | 'relation-detail', relationInfo: any }) {
   try {
     const targetEntity = relationInfo.entity
     const response = await api.get(`/${targetEntity}/search-data`, {
@@ -476,20 +476,6 @@ async function handleOpenSelectDialog({ keyword, context, eventDetail, relationI
   }
 }
 
-async function getTransactionHistory(event: any) {
-  handleOpenSelectDialog({
-    keyword: '',
-    context: 'history',
-    eventDetail: event.detail,
-    relationInfo: {
-      entity: formKey.value,
-      entityKey: schema.value.prefix,
-      entityKeySetTo: null,
-      fieldsToShow: null,
-    }
-  })
-}
-
 const handleSelectDialogDataSelected = async (selectedData: any, context: any, relationInfo: any, eventDetail: any) => {
   if (!selectedData || !relationInfo || !context) {
     console.error('[handleSelectDialogDataSelected] Tidak ada data yang dipilih atau relation tidak ditentukan.')
@@ -497,10 +483,6 @@ const handleSelectDialogDataSelected = async (selectedData: any, context: any, r
   }
   if (context === 'relation-header') {
     await updateHeaderData(relationInfo.entityKeySetTo, selectedData[relationInfo.entityKey])
-  }
-
-  if (context === 'history') {
-    router.push('print')
   }
   handleSelectDialogClosed()
 }
@@ -570,8 +552,8 @@ onBeforeUnmount(() => {
       class="flex items-center justify-between gap-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 py-2 shrink-0 z-20">
 
       <!-- List Tab Antrean -->
-      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-        <button @click="getTransactionHistory"
+      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar p-0.5">
+        <button v-if="schemaData.masterKey" @click="router.push(schemaData.masterKey)"
           class="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-400"
           title="Lihat Riwayat Transaksi">
           <Icon icon="mdi:history" class="w-4 h-4 text-slate-500" />

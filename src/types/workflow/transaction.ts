@@ -28,6 +28,7 @@ export interface TransactionSchemaState {
     prefix?: string
     label?: string
     type?: string
+    masterKey?: string
     icon?: string
     permissions?: Record<string, boolean | undefined>
     isMenuHidden?: boolean

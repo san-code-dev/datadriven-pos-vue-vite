@@ -8,6 +8,7 @@ export interface MenuItem {
     route: string
     api: string
     menuCategory: string
+    isMenuHidden: boolean
 }
 
 export interface UserInfo {

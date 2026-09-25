@@ -39,13 +39,15 @@ const menuTree = computed(() => {
     const tree = {}
     if (!authStore.menus || authStore.menus.length === 0) return tree
 
-    authStore.menus.forEach(menu => {
-        const category = menu.menuCategory || 'general'
-        if (!tree[category]) {
-            tree[category] = []
-        }
-        tree[category].push(menu)
-    })
+    authStore.menus
+        .filter(menu => !menu.isMenuHidden)
+        .forEach(menu => {
+            const category = menu.menuCategory || 'general'
+            if (!tree[category]) {
+                tree[category] = []
+            }
+            tree[category].push(menu)
+        })
     return tree
 })
 
@@ -56,7 +58,8 @@ const flatMenus = computed(() => {
         { key: 'print', label: 'Tes print', route: '/print', menuCategory: 'General', icon: 'mdi:printer-outline' },
         { key: 'setting', label: 'Settings', route: '/setting', menuCategory: 'General', icon: 'mdi:cog-outline' }
     ]
-    return [...extraMenus, ...authStore.menus]
+    const visibleStoreMenus = authStore.menus.filter(menu => !menu.isMenuHidden)
+    return [...extraMenus, ...visibleStoreMenus]
 })
 
 const filteredMenus = computed(() => {
@@ -258,7 +261,7 @@ onUnmounted(() => {
                         :class="sidebarStore.isCollapsed ? 'left-full' : 'left-full'">
 
                         <div
-                            class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none animate-fadeInFast">
+                            class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-gray-900 animate-fadeInFast">
 
                             <!-- Judul Kategori Paling Atas -->
                             <div

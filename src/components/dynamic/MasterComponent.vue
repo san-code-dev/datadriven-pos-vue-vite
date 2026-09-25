@@ -482,24 +482,55 @@ const handleGlobalKeyDown = (e: KeyboardEvent) => {
 }
 
 const handleKeyDown = async (e: KeyboardEvent) => {
-	if (e.repeat) {
-		if (e.key === 'Enter' || e.key === 'Delete' || e.key === 'Backspace') {
-			e.preventDefault()
-			e.stopPropagation()
-			return
-		}
+	const activeEl = document.activeElement as HTMLElement | null
+	const target = e.target as HTMLElement | null
 
+	// Cek apakah elemen adalah Input teks murni (input, textarea, contenteditable, atau editor RevoGrid)
+	const isPureTextInput = (el: HTMLElement | null) => {
+		if (!el) return false
+		return (
+			el.tagName === 'INPUT' ||
+			el.tagName === 'TEXTAREA' ||
+			el.isContentEditable ||
+			el.closest('.revo-editor') !== null
+		)
 	}
 
-	const target = e.target as HTMLElement
-	if (
-		target.tagName === 'INPUT' ||
-		target.tagName === 'TEXTAREA' ||
-		target.isContentEditable
-	) {
+	// Cek apakah fokus berada di area RevoGrid
+	const isInRevoGrid = (el: HTMLElement | null) => {
+		if (!el) return false
+		return el.closest('revo-grid') !== null || el.closest('.rgRow') !== null
+	}
+
+	const isTextEditing = isPureTextInput(activeEl) || isPureTextInput(target)
+	const inGrid = isInRevoGrid(activeEl) || isInRevoGrid(target)
+
+	// 1. DIBLOKIR: Backspace jika TIDAK dalam mode edit teks
+	if (e.key === 'Backspace' && !isTextEditing) {
+		e.preventDefault()
 		return
 	}
 
+	// 2. TAHAN SPAM / REPEAT (saat tombol ditahan lama)
+	if (e.repeat) {
+		// Jika sedang mengedit teks, biarkan repeat berjalan (misal: menghapus teks berturut-turut)
+		if (isTextEditing) {
+			return
+		}
+
+		// Tahan Enter dan Delete agar tidak menembak API berulang kali saat tombol ditahan
+		if (e.key === 'Enter' || e.key === 'Delete') {
+			e.preventDefault()
+			return
+		}
+	}
+
+	// 3. Jika sedang mengetik di input teks murni, abaikan shortcut global di bawah
+	if (isTextEditing) {
+		return
+	}
+
+	// 4. HANDLER SHORTCUT GLOBAL (Hanya diproses 1x per tekan)
 	if (e.key === 'Delete') {
 		handleDeleteKey()
 		e.preventDefault()

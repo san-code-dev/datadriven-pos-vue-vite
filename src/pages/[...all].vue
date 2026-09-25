@@ -133,7 +133,14 @@ const fetchSchemaFromApi = () => {
 
     const pathSegments = currentPath.split('/').filter(Boolean)
     const rootPath = pathSegments.length ? `/${pathSegments[0]}` : '/'
-    const matchedMenu = authStore.menus.find(m => m.route === rootPath)
+
+    const matchedMenu = authStore.menus.find(m => {
+        const routeMatch = m.route?.toLowerCase() === rootPath.toLowerCase()
+        const masterKeyMatch = m.masterKey?.toLowerCase() === rootPath.toLowerCase()
+        return routeMatch || masterKeyMatch
+    })
+
+    console.log('matchedMenu:', matchedMenu, 'rootPath:', rootPath, 'pathSegments:', pathSegments)
 
     if (!matchedMenu) {
         isError.value = true
@@ -141,7 +148,6 @@ const fetchSchemaFromApi = () => {
         errorMessage.value = 'Halaman tidak ditemukan atau Anda tidak memiliki hak akses.'
         return
     }
-
     // 3. CEK CACHE PINIA
     const existingTab = tabStore.openedTabs.find(t => t.id === currentPath)
 

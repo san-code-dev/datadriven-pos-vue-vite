@@ -389,7 +389,7 @@ const loadComponentData = async () => {
 		columns.value = [...visibleColumns].sort((a, b) => {
 			const left = orderMap.get(String(a.prop)) ?? Number.MAX_SAFE_INTEGER
 			const right = orderMap.get(String(b.prop)) ?? Number.MAX_SAFE_INTEGER
-			return left - right
+			return Number(left) - Number(right)
 		})
 	} else {
 		columns.value = visibleColumns

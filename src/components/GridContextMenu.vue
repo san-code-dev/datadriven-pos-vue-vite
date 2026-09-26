@@ -99,6 +99,10 @@ const executeRefresh = async () => {
 // 5. Aksi: Reset Tatak Letak (Layout)
 const executeResetLayout = async () => {
     isOpen.value = false
+
+    if (!confirm('Apakah Anda yakin ingin mengatur ulang tata letak grid?')) {
+        return
+    }
     const activeTabId = tabStore.activeTabId || route.path
     const gridKey = getGridStoreKey()
 

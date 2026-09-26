@@ -77,7 +77,8 @@
 						:auto-size-column="true" @afteredit="afterEdit" @beforeedit="beforeEdit"
 						@keydown="handleKeyDown" @beforeeditstart="beforeEditStart"
 						@afterfocus="saveCurrentStateToStore" @aftercolumnresize="saveCurrentStateToStore"
-						:column-types="columnTypes" :can-move-columns="true" :stretch="true" />
+						@beforecolumndragend="handleBeforeColumnDragEnd" :column-types="columnTypes"
+						:can-move-columns="true" :stretch="true" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
 
@@ -377,8 +378,22 @@ const loadComponentData = async () => {
 		return columnConfig
 	})
 
-	// 2. Filter kolom yang TIDAK disembunyikan
-	columns.value = allColumns.filter((col: any) => !col.isHidden)
+	const visibleColumns = allColumns.filter((col: any) => !col.isHidden)
+
+	// 🟢 2. URUTKAN KOLOM BERDASARKAN HASIL SIMPANAN DI PINIA
+	if (savedColumnsConfig.length > 0) {
+		const orderMap = new Map(
+			savedColumnsConfig.map((c: any, index: number) => [String(c.key), index])
+		)
+
+		columns.value = [...visibleColumns].sort((a, b) => {
+			const left = orderMap.get(String(a.prop)) ?? Number.MAX_SAFE_INTEGER
+			const right = orderMap.get(String(b.prop)) ?? Number.MAX_SAFE_INTEGER
+			return left - right
+		})
+	} else {
+		columns.value = visibleColumns
+	}
 
 	primaryKey.value = (res.schema || []).find((f: any) => f.primary)?.key || 'id'
 	permission.value = res.permissions || {}
@@ -471,7 +486,57 @@ const afterEdit = async (event: any) => {
 	}
 }
 
+const handleBeforeColumnDragEnd = (event: CustomEvent) => {
+	try {
+		const detail = event.detail
+		if (!detail) return
 
+		// 1. Ekstrak indeks asal dan indeks tujuan dari payload RevoGrid
+		const oldIndex = detail.startItem?.itemIndex ?? detail.startPosition?.itemIndex
+		const newIndex = detail.newPosition?.itemIndex
+		const itemProp = detail.newItem?.prop
+
+		// Validasi: pastikan oldIndex dan newIndex valid serta berbeda
+		if (typeof oldIndex === 'number' && typeof newIndex === 'number' && oldIndex !== newIndex) {
+
+			// 2. Buat salinan array columns saat ini
+			const reorderedColumns = [...columns.value]
+
+			// Verifikasi indeks lama berdasarkan prop kolom (jika oldIndex meleset karena hidden column)
+			const actualOldIndex = itemProp
+				? reorderedColumns.findIndex((c: any) => c.prop === itemProp)
+				: oldIndex
+
+			const sourceIdx = actualOldIndex !== -1 ? actualOldIndex : oldIndex
+
+			// 3. Pindahkan elemen dari sourceIdx ke newIndex
+			const [movedColumn] = reorderedColumns.splice(sourceIdx, 1)
+			reorderedColumns.splice(newIndex, 0, movedColumn)
+
+			// 4. Update reactive state `columns.value` agar UI Vue & RevoGrid tetap sinkron
+			columns.value = reorderedColumns
+
+			// 5. Format payload untuk disimpan ke Pinia
+			const updatedColumnConfigs = reorderedColumns.map((col: any) => ({
+				key: col.prop,
+				size: col.size
+			}))
+
+			console.log('✅ [Urutan Kolom Berhasil Diperbarui]', updatedColumnConfigs)
+
+			// 6. Simpan langsung ke Pinia Store
+			const activeTabId = tabStore.activeTabId || props.menu?.route || route.path
+			if (activeTabId) {
+				tabStore.updateGridConfig(activeTabId, currentGridKey.value, {
+					column: updatedColumnConfigs
+				})
+				console.log('💾 [Pinia Grid Config Saved]', updatedColumnConfigs)
+			}
+		}
+	} catch (err) {
+		console.error('[handleBeforeColumnDragEnd Error]', err)
+	}
+}
 const handleGlobalKeyDown = (e: KeyboardEvent) => {
 
 	if (e.key === '/' && e.ctrlKey) {

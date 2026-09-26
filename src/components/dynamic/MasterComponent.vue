@@ -81,7 +81,8 @@
 						:can-move-columns="true" :stretch="true" />
 
 					<GridNavigator ref="navigatorRef" :grid="gridRef" :rows="rows" :columns="columns" />
-
+					<GridContextMenu :grid-ref="gridRef" :form-key="formKey" :on-refresh="fetchGridData"
+						:on-reset-layout-complete="loadComponentData" />
 				</div>
 			</div>
 			<SelectDialog :schema-data="selectDialogDataSchema" :event-detail="selectDialogEventDetail"

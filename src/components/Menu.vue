@@ -254,14 +254,11 @@ onUnmounted(() => {
                                 { 'text-emerald-500': openCategory === category }
                             ]" />
                     </div>
-
                     <!-- Flyout Submenu -->
-                    <div v-show="openCategory === category"
-                        class="absolute z-50 top-1/2 -translate-y-1/2 w-[500px] flyout-container pl-3"
-                        :class="sidebarStore.isCollapsed ? 'left-full' : 'left-full'">
+                    <div v-show="openCategory === category" class="absolute z-50 top-0 left-full pl-3 flyout-container">
 
                         <div
-                            class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-gray-900 animate-fadeInFast">
+                            class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-gray-900 animate-fadeInFast w-max max-w-[480px]">
 
                             <!-- Judul Kategori Paling Atas -->
                             <div
@@ -279,7 +276,7 @@ onUnmounted(() => {
                                         route.path === menu.route
                                             ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
                                             : 'bg-slate-50/60 dark:bg-slate-700/30 border-slate-200/50 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600',
-                                        'flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all duration-150 aspect-square group/item text-center relative overflow-hidden'
+                                        'w-28 h-28 flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all duration-150 group/item text-center relative overflow-hidden'
                                     ]">
 
                                     <!-- Indicator Aktif -->
@@ -289,7 +286,7 @@ onUnmounted(() => {
 
                                     <!-- Icon Menu -->
                                     <Icon :icon="formatIcon(menu.icon)"
-                                        class="text-4xl mb-1.5 flex-shrink-0 transition-transform duration-200"
+                                        class="text-3xl mb-1.5 flex-shrink-0 transition-transform duration-200 group-hover/item:scale-105"
                                         :class="route.path === menu.route ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'" />
 
                                     <!-- Label Menu -->

@@ -1,117 +1,163 @@
 <template>
     <div ref="filterContainerRef"
-        class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 transition-colors outline-none focus:ring-2 focus:ring-emerald-500/50 select-none rounded-xl"
+        class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl shadow-sm transition-all duration-200 outline-none focus-within:ring-2 focus-within:ring-emerald-500/30 select-none p-3.5"
         tabindex="1" @keydown="handleComponentKey" @mousedown="handleContainerMouseDown">
 
-        <div class="flex items-center justify-between" :class="{ isExpanded }">
-            <div class="flex items-center gap-2 text-slate-700 dark:text-slate-200">
-                <h3
-                    class="text-xs font-bold uppercase mb-0 tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center h-5">
-                    Filter
-                </h3>
-                <span
-                    class="text-[10px] bg-emerald-500 text-white px-2 py-1 rounded shadow-sm font-bold tracking-wide inline-flex items-center justify-center h-5 box-border">
-                    Alt + F
-                </span>
+        <!-- HEADER / ACTION BAR -->
+        <div
+            class="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100 dark:border-slate-700/60">
 
-                <span v-if="localFilters.length > 0"
-                    class="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-semibold border border-slate-200 dark:border-slate-600">
-                    {{ localFilters.length }} Aturan Aktif
-                </span>
-
-                <button v-if="localFilters.length > 0" @click="toggleCollapse" type="button"
-                    class="text-[10px] text-slate-600 dark:text-slate-300  font-semibold dark:border-slate-600">
-                    <span class="flex items-center gap-1">
-                        {{ isExpanded ? 'sembunyikan' : 'tampilkan..' }}
+            <!-- Left Controls: Title, Badge, & Secondary Actions -->
+            <div class="flex items-center flex-wrap gap-2 text-slate-700 dark:text-slate-200">
+                <div class="flex items-center gap-1.5 mr-1">
+                    <Icon icon="heroicons:funnel-20-solid" class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100 mb-0">
+                        Filter
+                    </h3>
+                    <span
+                        class="text-[10px] font-mono bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 px-1.5 py-0.5 rounded font-bold">
+                        Alt + F
                     </span>
+                </div>
+
+                <!-- Add Rule Button -->
+                <button @click="addFilterRow" type="button"
+                    class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 transition-colors">
+                    <span>+ Aturan</span>
+                    <kbd
+                        class="text-[9px] font-mono opacity-60 bg-white dark:bg-slate-800 px-1 rounded shadow-xs">[Ins]</kbd>
                 </button>
+
+                <!-- Reset Button -->
+                <button v-if="localFilters.length > 0" @click="resetFilters" type="button"
+                    class="text-xs font-medium px-2 py-1 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                    Reset
+                </button>
+
+                <!-- Active Rules Badge -->
+                <span v-if="localFilters.length > 0"
+                    class="inline-flex items-center gap-1 text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-semibold border border-slate-200 dark:border-slate-600">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    {{ localFilters.length }} Aturan
+                </span>
             </div>
 
-            <div class=" flex items-center space-x-2 text-xs">
-                <button @click="addFilterRow" class="btn-action-slate">
-                    <span>+ Aturan</span> <kbd class="opacity-60 text-[10px]">[Ins]</kbd>
+            <!-- Right Controls: Primary CTA & Collapse Toggle -->
+            <div class="flex items-center gap-2 ml-auto">
+                <!-- Primary Apply Button -->
+                <button v-if="localFilters.length > 0" @click="applyFilters" type="button"
+                    class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs active:scale-95 transition-all">
+                    <span>Terapkan</span>
+                    <kbd class="text-[9px] font-mono bg-emerald-700/60 text-emerald-100 px-1 rounded">[Enter]</kbd>
                 </button>
-                <button v-if="localFilters.length > 0" @click="applyFilters" class="btn-action-slate">
-                    <span>Terapkan</span> <kbd class="opacity-60 text-[10px]">[Enter]</kbd>
-                </button>
-                <button v-if="localFilters.length > 0" @click="resetFilters" class="btn-action-slate">
-                    Reset
+
+                <!-- Hide/Show Toggle Button -->
+                <button v-if="localFilters.length > 0" @click="toggleCollapse" type="button"
+                    class="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 font-medium px-1.5 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors">
+                    {{ isExpanded ? 'Sembunyikan' : 'Tampilkan' }}
                 </button>
             </div>
         </div>
 
-        <div v-show="isExpanded">
-            <div class="space-y-3 pt-2">
-                <div v-for="(item, index) in localFilters" :key="index" :ref="el => { if (el) rowRefs[index] = el }"
-                    class="flex flex-wrap items-center gap-2 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 focus-within:border-emerald-500/40">
+        <!-- FILTER CONTENT BODY -->
+        <div v-show="isExpanded" class="pt-3">
+            <!-- Empty State jika belum ada aturan -->
+            <div v-if="localFilters.length === 0"
+                class="py-4 text-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+                <p class="text-xs text-slate-400 dark:text-slate-500 mb-1.5">Belum ada aturan filter yang ditambahkan.
+                </p>
+                <button @click="addFilterRow" type="button"
+                    class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1">
+                    + Tambah Aturan Pertama
+                </button>
+            </div>
 
-                    <div class="relative flex items-center h-full">
+            <!-- List Baris Filter menggunakan CSS Grid -->
+            <div v-else class="space-y-2">
+                <div v-for="(item, index) in localFilters" :key="index" :ref="el => { if (el) rowRefs[index] = el }"
+                    class="group grid grid-cols-12 gap-2 bg-slate-50 dark:bg-slate-900/40 p-2 rounded-lg border border-slate-200/80 dark:border-slate-700/60 focus-within:border-emerald-500/50 transition-all items-center">
+
+                    <!-- 1. Select Field / Kolom (Mengambil 3 / 12 kolom) -->
+                    <div class="col-span-3 relative">
                         <select v-model="item.field" @change="onFieldChange(index)"
-                            class="filter-input data-field cursor-pointer text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[140px]">
+                            class="filter-input data-field w-full cursor-pointer text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md pl-2.5 pr-7 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 appearance-none">
                             <option value="" disabled>-- Pilih Kolom --</option>
                             <option v-for="field in allowedSchema" :key="field.key" :value="field.key">
                                 {{ field.label }}
                             </option>
                         </select>
-                        <div
-                            class="absolute right-2.5 pointer-events-none text-slate-400 dark:text-slate-500 flex items-center justify-center">
+                        <div class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                             <Icon icon="heroicons:chevron-down-20-solid" class="w-4 h-4" />
                         </div>
                     </div>
 
-                    <div class="relative flex items-center h-full">
+                    <!-- 2. Select Operator (Mengambil 3 / 12 kolom - UKURAN PASTI SAMA PERSIS) -->
+                    <div class="col-span-3 relative">
                         <select v-model="item.operator" @change="onOperatorChange(index)"
-                            class="filter-input data-operator  cursor-pointer text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 appearance-none bg-none min-w-[150px]">
+                            class="filter-input data-operator w-full cursor-pointer text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md pl-2.5 pr-7 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 appearance-none">
                             <option v-for="op in getAvailableOperators(item.field)" :key="op.value" :value="op.value">
                                 {{ op.label }}
                             </option>
                         </select>
-                        <div
-                            class="absolute right-2.5 pointer-events-none text-slate-400 dark:text-slate-500 flex items-center justify-center">
+                        <div class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                             <Icon icon="heroicons:chevron-down-20-solid" class="w-4 h-4" />
                         </div>
                     </div>
 
-                    <!-- Operator tanpa kebutuhan nilai (Kosong / Tidak Kosong) -->
-                    <div v-if="isValuelessOperator(item.operator)"
-                        class="text-[11px] italic text-slate-400 dark:text-slate-500 px-1">
-                        Tidak perlu nilai
-                    </div>
+                    <!-- 3. Value Inputs (Mengambil 5 / 12 kolom) -->
+                    <div class="col-span-5 flex items-center">
+                        <!-- Operator tanpa nilai -->
+                        <div v-if="isValuelessOperator(item.operator)"
+                            class="text-[11px] italic text-slate-400 dark:text-slate-500 px-1">
+                            Tidak perlu nilai
+                        </div>
 
-                    <!-- Operator BETWEEN (angka / tanggal) -->
-                    <div v-else-if="item.operator === 'between'" class="flex items-center gap-2">
-                        <input v-model="item.value" :type="getInputType(item.field)" placeholder="Min"
-                            @focus="handleFocus"
-                            class="filter-input data-val-min w-28 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                        <!-- Operator BETWEEN -->
+                        <div v-else-if="item.operator === 'between'" class="flex items-center gap-1.5 w-full">
+                            <input v-model="item.value" :type="getInputType(item.field)" placeholder="Min"
+                                @focus="handleFocus"
+                                class="filter-input data-val-min w-full text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                            <span class="text-xs text-slate-400 font-medium">s/d</span>
+                            <input v-model="item.valueTo" :type="getInputType(item.field)" placeholder="Max"
+                                @focus="handleFocus"
+                                class="filter-input data-val-max w-full text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                        </div>
 
-                        <span class="text-xs text-slate-400">s/d</span>
+                        <!-- Nilai Boolean -->
+                        <div v-else-if="getFieldConfig(item.field)?.type === 'boolean'" class="relative w-full">
+                            <select v-model="item.value"
+                                class="filter-input data-val w-full cursor-pointer text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md pl-2.5 pr-7 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 appearance-none">
+                                <option value="" disabled>-- Pilih Status --</option>
+                                <option value="true">Ya</option>
+                                <option value="false">Tidak</option>
+                            </select>
+                            <div class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                <Icon icon="heroicons:chevron-down-20-solid" class="w-4 h-4" />
+                            </div>
+                        </div>
 
-                        <input v-model="item.valueTo" :type="getInputType(item.field)" placeholder="Max"
-                            @focus="handleFocus"
-                            class="filter-input data-val-max w-28 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
-                    </div>
+                        <!-- Nilai Select / Dropdown -->
+                        <div v-else-if="getFieldConfig(item.field)?.type === 'select'" class="relative w-full">
+                            <select v-model="item.value"
+                                class="filter-input data-val w-full cursor-pointer text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md pl-2.5 pr-7 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 appearance-none">
+                                <option value="" disabled>-- Pilih Option --</option>
+                                <option v-for="opt in (getFieldConfig(item.field)?.options || [])" :key="opt.value"
+                                    :value="opt.value">
+                                    {{ opt.label }}
+                                </option>
+                            </select>
+                            <div class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                <Icon icon="heroicons:chevron-down-20-solid" class="w-4 h-4" />
+                            </div>
+                        </div>
 
-                    <!-- Nilai boolean -->
-                    <div v-else-if="getFieldConfig(item.field)?.type === 'boolean'" class="flex items-center">
-                        <select v-model="item.value"
-                            class="filter-input data-val cursor-pointer text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
-                            <option value="" disabled>-- Pilih --</option>
-                            <option value="true">Ya</option>
-                            <option value="false">Tidak</option>
-                        </select>
-                    </div>
-
-                    <!-- Nilai Relation -->
-                    <div v-else-if="getFieldConfig(item.field)?.type === 'relation'" class="relative flex items-center">
-
-                        <!-- Ambil config skema field relasi -->
-                        <template v-if="getFieldConfig(item.field)">
-                            <input type="search" :value="item.value" placeholder="Pilih..."
-                                class="filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
-
-                            <Icon icon="mdi:magnify"
-                                class="w-5 h-5 absolute right-1 rounded-md p-1 bg-emerald-200 dark:bg-slate-700 text-emerald-500 cursor-pointer hover:text-emerald-500"
-                                @click="e => {
+                        <!-- Nilai Relation -->
+                        <div v-else-if="getFieldConfig(item.field)?.type === 'relation'"
+                            class="relative flex items-center w-full">
+                            <template v-if="getFieldConfig(item.field)">
+                                <input type="search" :value="item.value" placeholder="Pilih..." readonly
+                                    class="filter-input data-val w-full cursor-pointer text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md pl-2.5 pr-8 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                                <button type="button" @click="e => {
                                     const fieldKey = item.field.key;
                                     emit('open-select-dialog', {
                                         keyword: '',
@@ -124,28 +170,32 @@
                                             fieldsToShow: getFieldConfig(item.field)?.fieldsToShow,
                                         }
                                     })
-                                }
-                                " />
-                        </template>
+                                }"
+                                    class="absolute right-1 p-1 rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-slate-700 dark:text-emerald-400 transition-colors">
+                                    <Icon icon="mdi:magnify" class="w-3.5 h-3.5" />
+                                </button>
+                            </template>
+                        </div>
 
+                        <!-- Nilai Default (String / Number / Date) -->
+                        <div v-else class="w-full">
+                            <input v-model="item.value" :type="getInputType(item.field)" placeholder="Ketik nilai..."
+                                @focus="handleFocus"
+                                class="filter-input data-val w-full text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                        </div>
                     </div>
 
-
-                    <!-- Nilai default (string / number / date) -->
-                    <div v-else class="flex items-center">
-                        <input v-model="item.value" :type="getInputType(item.field)" placeholder="Ketik nilai..."
-                            @focus="handleFocus"
-                            class="filter-input data-val text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" />
+                    <!-- 4. Delete Button (Mengambil 1 / 12 kolom) -->
+                    <div class="col-span-1 flex justify-end">
+                        <button @click="removeFilterRow(index)" type="button"
+                            class="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-colors focus:outline-none"
+                            tabindex="-1" title="Hapus Aturan">
+                            <Icon icon="heroicons:x-mark-20-solid" class="w-4 h-4" />
+                        </button>
                     </div>
 
-                    <button @click="removeFilterRow(index)"
-                        class="ml-auto p-1.5 text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 rounded transition-colors focus:outline-none focus:ring-1 focus:ring-red-500 flex items-center justify-center"
-                        tabindex="-1" title="Hapus Aturan (Delete)">
-                        <Icon icon="heroicons:x-mark-20-solid" class="w-4 h-4" />
-                    </button>
                 </div>
             </div>
-
         </div>
     </div>
 </template>
@@ -213,6 +263,15 @@ const getAvailableOperators = (fieldKey) => {
             { value: 'less_than', label: 'Lebih Kecil (<)' },
             { value: 'less_or_equal', label: 'Lebih Kecil / Sama (≤)' },
             { value: 'between', label: 'Rentang Angka' },
+            { value: 'is_empty', label: 'Kosong' },
+            { value: 'is_not_empty', label: 'Tidak Kosong' },
+        ]
+    }
+
+    if (type === 'select') {
+        return [
+            { value: 'equals', label: 'Sama Dengan' },
+            { value: 'not_equals', label: 'Tidak Sama Dengan' },
             { value: 'is_empty', label: 'Kosong' },
             { value: 'is_not_empty', label: 'Tidak Kosong' },
         ]

@@ -176,6 +176,7 @@ export default defineConfig({
               fileName: () => 'preload.js',
             },
             rollupOptions: {
+              external: ['electron'],
               output: {
                 format: 'cjs',
                 entryFileNames: 'preload.js',

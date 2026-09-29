@@ -1,23 +1,23 @@
 BUGS
 
-- autofocus rows data master/ transaction tidak konsisten setelah view/add/update/delete
-- data selector untuk relation details, header, master belum bisa
+- autofocus rows data master/ transaction tidak konsisten setelah view/add/update/delete ✔
+- data selector untuk relation details, header, master belum bisa ✔
 - action button print, export dll belum bisa
-- quick search dialog belum bisa menampilkan hasil pencarian di dialog selector
-- <mark>date parse UTC ke lokal di input belum</mark>
+- quick search dialog belum bisa menampilkan hasil pencarian di dialog selector ✔
+- <mark>date parse UTC ke lokal di input belum</mark> ✔
 - autorefresh sesi login belum
-- validasi input type
+- validasi input type ✔
 - filter data masih lokal based perlu dimasukan di schema agar sinkron
-- info user
+- info user ✔
 - chat user
-- multi database connection untuk pemisahan system dan data tahunan
-- multi database untuk lokasi dataset yang berbeda untuk perusahaan yang berbeda
+- multi database connection untuk pemisahan system dan data tahunan ✔
+- multi database untuk lokasi dataset yang berbeda untuk perusahaan yang berbeda ✔
 - pagination / lazy load (tidak mungkin karena pakai socket io dan atomic schema update)
-- transaction activeHeaderId masih hardcoded dari property id harusnya dari field yang primary=true
-- standarisasi dynamic filter,form,input,data, dll untuk tipe data datetime diserver di ubah ke date tapi memastikan jam tetap ada
-- tab header grab error reorder array rtl cant redifined on revogrid mouse pointer grab
-- alt + arrow shortcut revogrid error
+- transaction activeHeaderId masih hardcoded dari property id harusnya dari field yang primary=true ✔
+- standarisasi dynamic filter,form,input,data, dll untuk tipe data datetime diserver di ubah ke date tapi memastikan jam tetap ada ✔
+- tab header grab error reorder array rtl cant redifined on revogrid mouse pointer grab ✔
+- alt + arrow shortcut revogrid error ✔
 - add reset tab for active tabs
 - belum ada .env
-- memory leaks electron heap v8 4GB
-- dynamics filter relation field must display reference data list for selector instead of manual typing
+- memory leaks electron heap v8 4GB ✔
+- dynamics filter relation field must display reference data list for selector instead of manual typing ✔

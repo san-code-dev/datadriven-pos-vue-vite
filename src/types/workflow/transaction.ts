@@ -8,6 +8,7 @@ export interface SchemaField {
     size?: number
     highlight?: boolean
     isHidden?: boolean
+    isBottom?: boolean
     options?: any[]
     formula?: string
     entityKey?: string

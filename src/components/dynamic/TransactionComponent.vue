@@ -547,8 +547,8 @@ onBeforeUnmount(() => {
   <div
     class="flex flex-col h-full max-h-full overflow-hidden w-full bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans">
 
-    <!-- 1. HEADER UTAMA: TABS ANTREAN (DRAFTS) & HISTORY -->
-    <header
+    <!-- TABS ANTREAN (DRAFTS) & HISTORY -->
+    <div
       class="flex items-center justify-between gap-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 py-2 shrink-0 z-20">
 
       <!-- List Tab Antrean -->
@@ -581,10 +581,10 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-    </header>
+    </div>
 
-    <!-- 2. FORM HEADER TRANSAKSI -->
-    <section
+    <!--  FORM HEADER TRANSAKSI -->
+    <div
       class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2.5 shadow-sm shrink-0 z-10">
       <div v-if="headerData" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 items-end">
         <div v-for="field in visibleHeaderSchema" :key="field.key" :data-key="field.key" class="flex flex-col gap-1">
@@ -637,10 +637,10 @@ onBeforeUnmount(() => {
             class="dark:[color-scheme:dark] px-2.5 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" />
         </div>
       </div>
-    </section>
+    </div>
 
-    <!-- 3. AREA GRID / TABEL ITEMS -->
-    <main class="flex-1 min-h-0 w-full relative overflow-hidden bg-slate-200 dark:bg-slate-950">
+    <!--  AREA GRID / TABEL ITEMS -->
+    <div class="flex-1 min-h-0 w-full relative overflow-hidden bg-slate-200 dark:bg-slate-950">
       <RevoGrid hide-attribution ref="gridRef" class="w-full h-full focus:outline-none" :columns="columns"
         :source="detailsData" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true" :auto-size-column="true"
         @afteredit="afterEdit" @beforeedit="beforeEdit" @keydown="handleKeyDown" @afterfocus="saveCurrentStateToStore"
@@ -683,10 +683,10 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </Transition>
-    </main>
+    </div>
 
-    <!-- 4. FOOTER SUMMARY & ACTION BUTTONS -->
-    <footer
+    <!--  FOOTER SUMMARY & ACTION BUTTONS -->
+    <div
       class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 py-2.5 flex flex-wrap gap-3 items-center justify-between shrink-0 z-20">
 
       <!-- Info Ringkasan -->
@@ -720,7 +720,7 @@ onBeforeUnmount(() => {
             class="px-1.5 py-0.5 text-[10px] font-mono bg-emerald-700/60 text-emerald-100 rounded border border-emerald-500/50">[F9]</kbd>
         </button>
       </div>
-    </footer>
+    </div>
 
     <!-- DIALOG SELEKSI -->
     <SelectDialog :schema-data="selectDialogDataSchema" :event-detail="selectDialogEventDetail"

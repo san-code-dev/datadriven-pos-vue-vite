@@ -621,7 +621,7 @@ onBeforeUnmount(() => {
                   @keydown.enter.prevent="handleInputChange($event, field)" @change="handleInputChange($event, field)"
                   class="w-full pl-2.5 pr-8 py-1 text-xs rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" />
                 <button type="button" @click="handleInputChange($event, field)"
-                  class="absolute right-0 m-0.5 p-1 rounded-md text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  class="absolute right-0.5 m-0.5 p-1 rounded-md text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                   <Icon icon="mdi:magnify" class="w-3 h-3" />
                 </button>
               </div>
@@ -649,27 +649,47 @@ onBeforeUnmount(() => {
         </section>
 
         <!-- AREA GRID / TABEL ITEMS -->
-        <main class="flex-1 min-h-0 w-full relative overflow-hidden bg-slate-200 dark:bg-red-950 m-4">
+        <main class="flex-1 min-h-0 w-full flex flex-col overflow-hidden bg-slate-100 dark:bg-slate-950 p-3 gap-2.5">
 
-          <div class="mb-2">
-            Cari barang
-            <input>
-            <button>ambil dari</button>
-            <select>
-              <option>pembelian</option>
-              <option>pesanan</option>
-              <option>pengiriman</option>
-            </select>
+          <!-- BARIS PENCARIAN & SUMBER TRANSAKSI -->
+          <div
+            class="flex flex-wrap items-center justify-between gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm shrink-0">
+
+            <!-- Input Cari Barang -->
+            <div class="relative">
+              <Icon icon="mdi:magnify" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input type="text" placeholder="Cari barang atau scan barcode..."
+                class="w-72 pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all" />
+            </div>
+
+            <!-- Group Ambil Dari Transaksi Lain -->
+            <div class="flex items-center gap-2">
+              <div class="relative flex items-center">
+                <select
+                  class="appearance-none pl-3 pr-8 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all cursor-pointer">
+                  <option value="pembelian">Ambil dari</option>
+                  <option value="pembelian">Pembelian</option>
+                  <option value="pesanan">Pesanan (SO)</option>
+                  <option value="pengiriman">Pengiriman (DO)</option>
+                </select>
+                <Icon icon="mdi:chevron-down" class="w-4 h-4 absolute right-2 pointer-events-none text-slate-400" />
+              </div>
+            </div>
+
           </div>
-          <RevoGrid hide-attribution ref="gridRef" class="w-full h-full focus:outline-none" :columns="columns"
-            :source="detailsData" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true" :auto-size-column="true"
-            @afteredit="afterEdit" @beforeedit="beforeEdit" @keydown="handleKeyDown"
-            @afterfocus="saveCurrentStateToStore" @aftercolumnresize="saveCurrentStateToStore"
-            :column-types="columnTypes" />
-          <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="detailsData" :columns="columns" />
+
+          <!-- CONTAINER TABLE (RevoGrid) -->
+          <div
+            class="flex-1 min-h-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden relative">
+            <RevoGrid hide-attribution ref="gridRef" class="w-full h-full focus:outline-none" :columns="columns"
+              :source="detailsData" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true" :auto-size-column="true"
+              @afteredit="afterEdit" @beforeedit="beforeEdit" @keydown="handleKeyDown"
+              @afterfocus="saveCurrentStateToStore" @aftercolumnresize="saveCurrentStateToStore"
+              :column-types="columnTypes" />
+            <GridNavigator ref="navigatorRef" :grid="gridRef" :rows="detailsData" :columns="columns" />
+          </div>
 
         </main>
-
         <!-- AREA FIELD FOOTER (isBottom = true) -->
         <section
           class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 py-2.5 shadow-sm shrink-0 z-10 w-full">

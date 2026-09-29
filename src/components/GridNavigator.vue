@@ -1,35 +1,39 @@
 <template>
+    <!-- Kontainer Vertikal (Kanan) -->
+    <!-- PERUBAHAN: bottom-[15px] diganti menjadi bottom-[15px] jika kontainer horizontal juga setinggi 15px, -->
+    <!-- Namun agar posisinya berada pas di ATAS garis horizontal (tanpa tumpang tindih), pastikan bottom bernilai 15px -->
     <div v-if="rows.length > 0"
-        class="absolute right-0 top-0 bottom-[15px] w-[15px] flex flex-col justify-between pointer-events-none z-50">
+        class="absolute right-0.5 top-0 bottom-[15px] w-[15px] flex flex-col justify-between pointer-events-none z-50">
         <button @click="scrollToFirstRow"
-            class="pointer-events-auto w-full h-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-b-sm"
+            class="pointer-events-auto border border-emerald-600 w-[16px] h-[16px] bg-emerald-700 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all"
             title="Ke Baris Pertama Alt+⬆">
             <Icon icon="heroicons:chevron-up-20-solid" class="w-3 h-3 flex-shrink-0" />
         </button>
 
         <button @click="scrollToLastRow"
-            class="pointer-events-auto w-full h-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-t-sm"
+            class="pointer-events-auto border border-emerald-600 w-[16px] h-[16px] bg-emerald-700 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all"
             title="Ke Baris Terakhir Alt+⬇">
             <Icon icon="heroicons:chevron-down-20-solid" class="w-3 h-3 flex-shrink-0" />
         </button>
     </div>
 
+    <!-- Kontainer Horizontal (Bawah - Full Width) -->
+    <!-- PERUBAHAN: right-[15px] diganti menjadi right-0 agar lebar horizontal menjadi Full (100%) -->
     <div v-if="columns.length > 0"
-        class="absolute bottom-0 left-0 right-[15px] h-[15px] flex justify-between pointer-events-none z-50">
+        class="absolute bottom-0 left-0 right-0.5 h-[15px] flex justify-between pointer-events-none z-50">
         <button @click="scrollToFirstCol"
-            class="pointer-events-auto h-full w-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-r-sm"
-            title="Ke Kolom Pertama Ke Kolom Terakhir Alt+⬅">
+            class="pointer-events-auto border border-emerald-600 h-[16px] w-[16px] bg-emerald-700 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all"
+            title="Ke Kolom Pertama Alt+⬅">
             <Icon icon="heroicons:chevron-left-20-solid" class="w-3 h-3 flex-shrink-0" />
         </button>
 
         <button @click="scrollToLastCol"
-            class="pointer-events-auto h-full w-4 bg-emerald-500/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all rounded-l-sm"
+            class="pointer-events-auto border border-emerald-600 h-[16px] w-[16px] bg-emerald-700 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all"
             title="Ke Kolom Terakhir Alt+➡">
             <Icon icon="heroicons:chevron-right-20-solid" class="w-3 h-3 flex-shrink-0" />
         </button>
     </div>
 </template>
-
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
 import { toRef } from 'vue'
@@ -100,20 +104,24 @@ revogr-scroll-virtual:active {
     cursor: grabbing !important;
 }
 
-revogr-scroll-virtual::-webkit-scrollbar-track {
+/* 
+  1. SCROLLBAR VERTIKAL (Kanan)
+  - Atas: margin-top: 16px (memberi ruang untuk tombol Chevron UP di atas)
+  - Bawah: margin-bottom: 16px (memberi ruang untuk tombol Chevron DOWN di bawah)
+*/
+revogr-scroll-virtual.vertical::-webkit-scrollbar-track,
+.vertical revogr-scroll-virtual::-webkit-scrollbar-track {
     background: transparent !important;
     margin-top: 16px !important;
-    margin-bottom: 15px !important;
-    margin-left: 16px !important;
-    margin-right: 31px !important;
+    margin-bottom: 16px !important;
 }
 
-revogr-scroll-virtual[type="horizontal"]::-webkit-scrollbar-track {
+/* Scrollbar Horizontal */
+revogr-scroll-virtual.horizontal::-webkit-scrollbar-track,
+.horizontal revogr-scroll-virtual::-webkit-scrollbar-track {
     background: transparent !important;
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
     margin-left: 16px !important;
-    margin-right: 26px !important;
+    margin-right: 16px !important;
 }
 
 revogr-scroll-virtual::-webkit-scrollbar-thumb {
@@ -138,6 +146,6 @@ revogr-scroll-virtual::-webkit-scrollbar-thumb:hover {
 }
 
 .dark revogr-scroll-virtual::-webkit-scrollbar-thumb:hover {
-    background-color: rgb(52, 211, 153) !important;
+    background-color: rgb(5, 150, 105) !important;
 }
 </style>

@@ -46,7 +46,7 @@ const currentGridKey = computed(() => `${useTenantStore().selectedTenant?.code}-
 const selectDialogDataSchema = ref<any>(null)
 const selectDialogRelationInfo = ref<any>(null)
 const selectDialogEventDetail = ref<any>(null)
-const selectDialogContext = ref<'relation-header' | 'relation-detail' | null>(null)
+const selectDialogContext = ref<'get-from-other-transaction' | 'relation-header' | 'relation-detail' | null>(null)
 
 const isSelectDialogOpen = ref(false)
 const showSearchModal = ref(false)
@@ -457,7 +457,7 @@ const clearGridFocus = () => {
   }
 }
 
-async function handleOpenSelectDialog({ keyword, context, eventDetail, relationInfo, }: { keyword?: string, eventDetail?: any, context?: 'relation-header' | 'relation-detail', relationInfo: any }) {
+async function handleOpenSelectDialog({ keyword, context, eventDetail, relationInfo, }: { keyword?: string, eventDetail?: any, context?: 'get-from-other-transaction' | 'relation-header' | 'relation-detail', relationInfo: any }) {
   try {
     const targetEntity = relationInfo.entity
     const response = await api.get(`/${targetEntity}/search-data`, {
@@ -519,6 +519,15 @@ const handleInputChange = (e: Event, field: any) => {
     relationInfo
   });
 };
+
+
+const openTransactionGetterDialog = (item) => {
+  const relationInfo = {
+    entity: item.value,
+  }
+  handleOpenSelectDialog({ keyword: '', context: 'get-from-other-transaction', eventDetail: null, relationInfo })
+}
+
 
 // ==========================================
 // 5. WATCHERS & LIFECYCLE HOOKS
@@ -662,25 +671,14 @@ onBeforeUnmount(() => {
                 class="w-72 pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all" />
             </div>
 
-            <!-- Group Ambil Dari Transaksi Lain -->
-            <div class="flex items-center gap-2">
-              <div class="relative flex items-center">
-                <select
-                  class="appearance-none pl-3 pr-8 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all cursor-pointer">
-                  <option value="pembelian">Ambil dari</option>
-                  <option value="pembelian">Pembelian</option>
-                  <option value="pesanan">Pesanan (SO)</option>
-                  <option value="pengiriman">Pengiriman (DO)</option>
-                </select>
-                <Icon icon="mdi:chevron-down" class="w-4 h-4 absolute right-2 pointer-events-none text-slate-400" />
-              </div>
-            </div>
+            <DropdownAction v-if="schemaData.transactionRefKey" :options="schemaData.transactionRefKey"
+              @select="openTransactionGetterDialog" />
 
           </div>
 
           <!-- CONTAINER TABLE (RevoGrid) -->
           <div
-            class="flex-1 min-h-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden relative">
+            class="flex-1 min-h-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-tl-xl rounded-tr-xl shadow-sm overflow-hidden relative">
             <RevoGrid hide-attribution ref="gridRef" class="w-full h-full focus:outline-none" :columns="columns"
               :source="detailsData" :theme="isDark ? 'darkCompact' : 'compact'" :resize="true" :auto-size-column="true"
               @afteredit="afterEdit" @beforeedit="beforeEdit" @keydown="handleKeyDown"
@@ -759,7 +757,7 @@ onBeforeUnmount(() => {
 
       <!-- AREA KANAN: PANEL TOMBOL AKSI -->
       <aside
-        class="w-48 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 p-3 flex flex-col justify-between shrink-0 z-20">
+        class="w-48 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 p-3 flex flex-col justify-between shrink-0 z-0">
         <div class="flex flex-col gap-2">
           <button v-for="action in (schema.actions || [])" :key="action.key" @click="triggerCustomAction(action.key)"
             class="w-full px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg border border-slate-300 dark:border-slate-700 transition-all focus:outline-none focus:ring-2 focus:ring-slate-400 flex items-center justify-center">

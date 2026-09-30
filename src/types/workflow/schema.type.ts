@@ -1,5 +1,5 @@
 // src/types/workflow/schema.type.ts
-import type { Options, BaseQueueItem } from './common.type';
+import type { BaseOptions, BaseQueueItem } from './common.type';
 
 // =========================================================================
 // 1. LAYER KOLOM SCHEMA
@@ -50,7 +50,7 @@ export interface RelationColumnSchema<T = any> extends BaseColumnSchema<T> {
 
 export interface SelectColumnSchema<T = any> extends BaseColumnSchema<T> {
     type: 'select';
-    options: Options[];
+    options: BaseOptions[];
     primary?: boolean;
     readonly?: boolean;
     required?: boolean;

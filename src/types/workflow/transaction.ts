@@ -1,3 +1,5 @@
+import type { BaseOptions } from "./common.type"
+
 export interface SchemaField {
     key: string
     label: string
@@ -23,7 +25,6 @@ export interface SchemaSection<T = any> {
     schema: SchemaField[]
     data: T
 }
-
 export interface TransactionSchemaState {
     key: string
     prefix?: string
@@ -33,6 +34,7 @@ export interface TransactionSchemaState {
     icon?: string
     permissions?: Record<string, boolean | undefined>
     isMenuHidden?: boolean
+    transactionRefKey: BaseOptions[]
     actions?: { key: string; label: string; type?: string }[]
     queue: SchemaSection<any[]>
     header: SchemaSection<Record<string, any> | null>

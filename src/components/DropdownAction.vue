@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import type { BaseOptions } from '@/types/workflow/common.type'
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-
+import { Icon } from '@iconify/vue'
 interface Props {
     label?: string
     options: BaseOptions[]

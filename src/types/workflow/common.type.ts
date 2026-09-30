@@ -1,6 +1,6 @@
 // src/types/workflow/common.type.ts
 
-export interface Options {
+export interface BaseOptions {
     label: string;
     value: string;
 }

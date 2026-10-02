@@ -3,7 +3,7 @@
     <!-- PERUBAHAN: bottom-[15px] diganti menjadi bottom-[15px] jika kontainer horizontal juga setinggi 15px, -->
     <!-- Namun agar posisinya berada pas di ATAS garis horizontal (tanpa tumpang tindih), pastikan bottom bernilai 15px -->
     <div v-if="rows.length > 0"
-        class="absolute right-0 top-0 bottom-[15px] w-[15px] flex flex-col justify-between pointer-events-none z-50">
+        class="absolute right-[1px] top-0 bottom-[15px] w-[15px] flex flex-col justify-between pointer-events-none z-50">
         <button @click="scrollToFirstRow"
             class="pointer-events-auto border border-emerald-600 w-[16px] h-[16px] bg-emerald-700 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 flex items-center justify-center transition-all"
             title="Ke Baris Pertama Alt+⬆">
